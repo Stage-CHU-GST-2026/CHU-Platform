@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from ai.models.config import AgentConfig
@@ -15,6 +16,7 @@ def build_graph(
     config: AgentConfig,
     tools: list[ToolProtocol],
     prompt: str = "You are a helpful assistant.",
+    checkpointer: InMemorySaver | None = None,
 ) -> StateGraph:
     """Build a compiled LangGraph workflow.
 
@@ -22,6 +24,7 @@ def build_graph(
         config: Model configuration.
         tools: List of tool objects to make available to the LLM.
         prompt: System prompt for the LLM.
+        checkpointer: Optional checkpointer for multi-turn conversations.
 
     Returns:
         Compiled StateGraph.
@@ -46,4 +49,4 @@ def build_graph(
                                   "tools": "tools", END: END})
     builder.add_edge("tools", "agent")
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)

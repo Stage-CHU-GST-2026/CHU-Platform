@@ -12,9 +12,9 @@ _engine = AnalysisEngine()
 
 class CorrelationSchema(BaseModel):
     path: str = Field(description="Path to the dataset file.")
-    columns: list[str] | None = Field(
+    columns: list[str] | str | None = Field(
         default=None,
-        description="Columns to correlate. If empty, uses all numeric columns.",
+        description="Columns to correlate (comma-separated string or list). If empty, uses all numeric columns.",
     )
 
 
@@ -30,7 +30,10 @@ class CorrelationTool(BaseTool):
     description: str = "Calculate Pearson correlation between numeric columns."
     args_schema: type[BaseModel] = CorrelationSchema
 
-    def _run(self, path: str, columns: list[str] | None = None) -> str:
+    def _run(self, path: str, columns: list[str] | str | None = None) -> str:
+        # LLMs sometimes pass columns as a comma-separated string
+        if isinstance(columns, str):
+            columns = [c.strip() for c in columns.split(",") if c.strip()]
         df = _engine.load(path)
         result = _engine.correlation(df, columns)
         return result.to_string()

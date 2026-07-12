@@ -4,6 +4,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import InMemorySaver
 
 from ai.graph import build_graph
 from ai.models.config import AgentConfig
@@ -30,11 +31,18 @@ class Agent:
         config: AgentConfig,
         tools: list[ToolProtocol],
         prompt: str = "You are a helpful assistant.",
+        checkpointer: InMemorySaver | None = None,
     ) -> None:
         self.config = config
         self.tools = tools
         self.prompt = prompt
-        self.graph = build_graph(config=config, tools=tools, prompt=prompt)
+        self.checkpointer = checkpointer or InMemorySaver()
+        self.graph = build_graph(
+            config=config,
+            tools=tools,
+            prompt=prompt,
+            checkpointer=self.checkpointer,
+        )
 
     async def run(
         self,
@@ -57,5 +65,10 @@ class Agent:
         state: AgentState = {
             "messages": [HumanMessage(content=message)],
         }
-        async for chunk in self.graph.astream_events(state, version="v3", config=config):
-            yield chunk
+        async for chunk, _metadata in self.graph.astream(
+            state,
+            stream_mode="messages",
+            config=config,
+        ):
+            if hasattr(chunk, "content") and chunk.content:
+                yield chunk.content

@@ -12,34 +12,36 @@
 # ///
 
 """
-Data Analyst Agent demo.
+Data Analyst Agent — interactive REPL.
 
 Usage:
     uv run examples/data_analyst_demo.py
 
-This creates a sample dataset and uses the Data Analyst agent
-to explore and describe it step by step.
+You will be prompted to enter:
+    1. The path to a dataset (CSV, Excel, Parquet, etc.)
+    2. Your question/prompt for the agent
+
+The conversation history is preserved across turns.
+Type 'exit', 'quit', or '/bye' to stop.
+Type '/new' to switch to a different dataset.
 """
 
-from dotenv import load_dotenv
 import asyncio
 import os
 import sys
+import uuid
 
-# Allow imports from local packages/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from dotenv import load_dotenv
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 load_dotenv()
 
 
-async def main():
-    # Import here so the script works with uv run
-    from agents.data_analyst import create_data_analyst
-
-    # Create a sample dataset
-    import pandas as pd
+def make_sample_dataset() -> str:
+    """Create a sample dataset and return its path."""
     import numpy as np
+    import pandas as pd
     import tempfile
 
     rng = np.random.default_rng(42)
@@ -57,31 +59,70 @@ async def main():
     df.loc[rng.choice(n, 10), "age"] = None
     path = os.path.join(tempfile.gettempdir(), "chu_demo.csv")
     df.to_csv(path, index=False)
+    return path
+
+
+async def repl():
+    from agents.data_analyst import create_data_analyst
 
     agent = create_data_analyst()
+    thread_id = str(uuid.uuid4())
 
     print("=" * 60)
-    print("Data Analyst Agent")
-    print(f"Dataset: {path}")
+    print("  Data Analyst Agent — Interactive REPL")
     print("=" * 60)
     print()
+    print("  Commands:")
+    print("    exit / quit / /bye    — stop")
+    print("    /new                  — start a fresh conversation")
+    print()
 
-    questions = [
-        f"Describe the dataset at {path} — its shape, columns, and any missing values.",
-        f"Give me the statistical summary for the numeric columns in {path}.",
-        f"Show me the first 5 rows of {path}.",
-        f"Tell me all about the 'fare' column in {path}.",
-        f"Group by 'class' in {path} and show the mean fare for each class.",
-        f"Correlation between age and fare in {path}.",
-    ]
+    dataset_path = ""
+    first = True
 
-    for i, q in enumerate(questions, 1):
-        print(f"[{i}/{len(questions)}] User: {q}")
+    while True:
+        # --- Dataset path ---
+        if first or not dataset_path:
+            default = make_sample_dataset() if first else dataset_path
+            prompt_text = f"Dataset path (Enter for default: {os.path.basename(default)}): "
+            inp = input(prompt_text).strip()
+            dataset_path = inp if inp else default
+            first = False
+            print(f"  Using: {dataset_path}")
+            print()
+
+        # --- Question ---
+        inp = input("Prompt > ").strip()
+
+        if inp.lower() in ("exit", "quit", "/bye"):
+            print("Goodbye!")
+            break
+        if inp.lower() == "/new":
+            dataset_path = ""
+            thread_id = str(uuid.uuid4())
+            print("Starting a new conversation.")
+            print()
+            continue
+        if not inp:
+            continue
+
+        # Prepend the dataset path to the prompt so the agent knows where the data is
+        full_prompt = (
+            f"[Dataset: {dataset_path}]\n{inp}"
+            if dataset_path not in inp
+            else inp
+        )
+
         print("-" * 50)
-        result = await agent.run(q)
-        print(f"Agent: {result.content}")
+        print("Agent: ", end="", flush=True)
+        async for token in agent.astream(
+            full_prompt,
+            config={"configurable": {"thread_id": thread_id}},
+        ):
+            print(token, end="", flush=True)
+        print()
         print()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(repl())
