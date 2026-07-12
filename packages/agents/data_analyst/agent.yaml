@@ -1,0 +1,45 @@
+name: Data Analyst
+description: Analyze structured datasets with statistics, aggregations, and charts.
+
+model: gpt-4o-mini
+temperature: 0
+max_iterations: 15
+
+prompt: prompt.md
+
+tools:
+  # Dataset inspection
+  - describe_dataset
+  - dataset_summary
+  - dataset_head
+  - dataset_shape
+  - list_columns
+  - column_info
+
+  # Statistics
+  - mean
+  - median
+  - min
+  - max
+  - std
+  - quantiles
+
+  # Data cleaning
+  - missing_values
+  - duplicates
+  - drop_columns
+
+  # Aggregation
+  - aggregate
+  - filter
+  - sort
+
+  # Relationships
+  - correlation
+  - outliers
+
+  # Visualization
+  - bar_chart
+  - histogram
+  - scatter_plot
+  - line_chart
