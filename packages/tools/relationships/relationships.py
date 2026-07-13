@@ -48,6 +48,8 @@ class OutlierDetectionTool(BaseTool):
     args_schema: type[BaseModel] = OutlierSchema
 
     def _run(self, path: str, column: str, factor: float = 1.5) -> str:
+        # Groq envoie parfois factor en string — on le convertit
+        factor = float(factor)  # type: ignore[arg-type]
         df = _engine.load(path)
         outliers = _engine.detect_outliers_iqr(df, column, factor=factor)
         if len(outliers) == 0:

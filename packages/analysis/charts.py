@@ -6,7 +6,6 @@ No AI dependencies. Uses matplotlib under the hood.
 from __future__ import annotations
 
 import os
-import tempfile
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -15,6 +14,11 @@ import pandas as pd
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+
+# Default output directory: CHU-Platform/outputs/charts/
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_PROJ_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
+_DEFAULT_OUTPUT_DIR = os.path.join(_PROJ_ROOT, "outputs", "charts")
 
 
 @dataclass
@@ -58,7 +62,7 @@ def render_chart(spec: ChartSpec) -> str:
     finally:
         plt.close(fig)
 
-    output_dir = spec.output_dir or tempfile.mkdtemp(prefix="chu_charts_")
+    output_dir = spec.output_dir or _DEFAULT_OUTPUT_DIR
     os.makedirs(output_dir, exist_ok=True)
 
     safe_title = (spec.title or spec.chart_type).replace(" ", "_").lower()[:50]

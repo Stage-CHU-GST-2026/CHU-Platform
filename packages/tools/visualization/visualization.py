@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from typing import Literal
 
 from langchain.tools import BaseTool
@@ -14,14 +13,14 @@ from analysis.engine import AnalysisEngine
 
 _engine = AnalysisEngine()
 
-# Shared output directory for all charts in a session
-_OUTPUT_DIR: str = ""
+# Output directory: CHU-Platform/outputs/charts/
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_PROJ_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", "..", ".."))
+_OUTPUT_DIR = os.path.join(_PROJ_ROOT, "outputs", "charts")
 
 
 def _get_output_dir() -> str:
-    global _OUTPUT_DIR
-    if not _OUTPUT_DIR:
-        _OUTPUT_DIR = tempfile.mkdtemp(prefix="chu_charts_")
+    os.makedirs(_OUTPUT_DIR, exist_ok=True)
     return _OUTPUT_DIR
 
 

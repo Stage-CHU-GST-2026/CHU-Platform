@@ -63,6 +63,8 @@ class DatasetHeadTool(BaseTool):
     args_schema: type[BaseModel] = HeadSchema
 
     def _run(self, path: str, n: int = 5) -> str:
+        # Groq envoie parfois n en string — on le convertit
+        n = int(n)  # type: ignore[arg-type]
         df = _engine.load(path)
         return _engine.head(df, n=n).to_string()
 
