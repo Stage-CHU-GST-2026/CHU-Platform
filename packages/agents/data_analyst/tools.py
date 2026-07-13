@@ -33,12 +33,7 @@ from tools.relationships import (
     CorrelationTool,
     OutlierDetectionTool,
 )
-from tools.visualization import (
-    BarChartTool,
-    HistogramTool,
-    LineChartTool,
-    ScatterPlotTool,
-)
+from tools.visualization import GenerateChartTool
 
 DATA_ANALYST_TOOLS = [
     # Inspection
@@ -67,8 +62,5 @@ DATA_ANALYST_TOOLS = [
     CorrelationTool(),
     OutlierDetectionTool(),
     # Visualization
-    BarChartTool(),
-    HistogramTool(),
-    ScatterPlotTool(),
-    LineChartTool(),
+    GenerateChartTool(),
 ]

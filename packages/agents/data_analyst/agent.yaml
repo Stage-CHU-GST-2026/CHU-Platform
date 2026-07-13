@@ -39,6 +39,9 @@ tools:
   - outliers
 
   # Visualization
+  - generate_chart
+
+  # Visualization
   - bar_chart
   - histogram
   - scatter_plot

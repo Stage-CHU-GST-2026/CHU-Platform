@@ -36,6 +36,9 @@ dev = [
     "pre-commit>=3.0",
 ]
 
+[tool.uv.workspace]
+members = ["apps/api"]
+
 [project.urls]
 Homepage = "https://github.com/example/chu-platform"
 

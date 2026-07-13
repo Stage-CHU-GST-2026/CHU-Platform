@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chu-api"
+version = "0.1.0"
+description = "Data Analyst API backend"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sse-starlette>=2.0.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/api"]
+
+[tool.uv.sources]
+chu-platform = { path = "../.." }

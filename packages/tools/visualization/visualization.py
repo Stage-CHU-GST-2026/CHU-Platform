@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import Literal
 
 from langchain.tools import BaseTool
@@ -12,23 +14,42 @@ from analysis.engine import AnalysisEngine
 
 _engine = AnalysisEngine()
 
+# Shared output directory for all charts in a session
+_OUTPUT_DIR: str = ""
 
-class ChartSchema(BaseModel):
+
+def _get_output_dir() -> str:
+    global _OUTPUT_DIR
+    if not _OUTPUT_DIR:
+        _OUTPUT_DIR = tempfile.mkdtemp(prefix="chu_charts_")
+    return _OUTPUT_DIR
+
+
+class GenerateChartSchema(BaseModel):
     path: str = Field(description="Path to the dataset file.")
     chart_type: Literal["bar", "line", "histogram", "scatter", "pie", "box"] = Field(
         description="Type of chart to generate."
     )
     x: str | None = Field(
-        default=None, description="Column for the x-axis / categories.")
+        default=None, description="Column for the x-axis / categories."
+    )
     y: str | None = Field(
-        default=None, description="Column for the y-axis / values.")
+        default=None, description="Column for the y-axis / values."
+    )
     title: str = Field(default="", description="Chart title.")
+    bins: int | None = Field(
+        default=None, description="Number of bins (for histogram only)."
+    )
 
 
-class BarChartTool(BaseTool):
-    name: str = "bar_chart"
-    description: str = "Generate a bar chart from two columns and return it as an image."
-    args_schema: type[BaseModel] = ChartSchema
+class GenerateChartTool(BaseTool):
+    name: str = "generate_chart"
+    description: str = (
+        "Generate a chart from dataset columns and save it as a PNG file. "
+        "Supports: bar, line, histogram, scatter, pie, box. "
+        "Returns the file path to the saved chart."
+    )
+    args_schema: type[BaseModel] = GenerateChartSchema
 
     def _run(
         self,
@@ -37,93 +58,24 @@ class BarChartTool(BaseTool):
         x: str | None = None,
         y: str | None = None,
         title: str = "",
+        bins: int | None = None,
     ) -> str:
         df = _engine.load(path)
+
+        kwargs = {}
+        if chart_type == "histogram" and bins:
+            kwargs["bins"] = bins
+
         spec = ChartSpec(
-            chart_type="bar",
+            chart_type=chart_type,  # type: ignore[arg-type]
             data=df,
             x=x,
             y=y,
-            title=title or f"Bar Chart: {y or ''} by {x or ''}",
+            title=title or f"{chart_type.title()} Chart",
             xlabel=x or "",
             ylabel=y or "",
+            output_dir=_get_output_dir(),
+            kwargs=kwargs,
         )
-        return render_chart(spec)
-
-
-class HistogramTool(BaseTool):
-    name: str = "histogram"
-    description: str = "Generate a histogram for a numeric column."
-    args_schema: type[BaseModel] = ChartSchema
-
-    def _run(
-        self,
-        path: str,
-        chart_type: str = "histogram",
-        x: str | None = None,
-        y: str | None = None,
-        title: str = "",
-    ) -> str:
-        df = _engine.load(path)
-        col = y or x
-        spec = ChartSpec(
-            chart_type="histogram",
-            data=df,
-            x=col,
-            title=title or f"Histogram of '{col}'",
-            xlabel=col or "",
-            ylabel="Frequency",
-        )
-        return render_chart(spec)
-
-
-class ScatterPlotTool(BaseTool):
-    name: str = "scatter_plot"
-    description: str = "Generate a scatter plot of two numeric columns."
-    args_schema: type[BaseModel] = ChartSchema
-
-    def _run(
-        self,
-        path: str,
-        chart_type: str = "scatter",
-        x: str | None = None,
-        y: str | None = None,
-        title: str = "",
-    ) -> str:
-        df = _engine.load(path)
-        spec = ChartSpec(
-            chart_type="scatter",
-            data=df,
-            x=x,
-            y=y,
-            title=title or f"Scatter: {y or ''} vs {x or ''}",
-            xlabel=x or "",
-            ylabel=y or "",
-        )
-        return render_chart(spec)
-
-
-class LineChartTool(BaseTool):
-    name: str = "line_chart"
-    description: str = "Generate a line chart from two columns."
-    args_schema: type[BaseModel] = ChartSchema
-
-    def _run(
-        self,
-        path: str,
-        chart_type: str = "line",
-        x: str | None = None,
-        y: str | None = None,
-        title: str = "",
-    ) -> str:
-        df = _engine.load(path)
-        spec = ChartSpec(
-            chart_type="line",
-            data=df,
-            x=x,
-            y=y,
-            title=title or f"Line Chart: {y or ''} over {x or ''}",
-            xlabel=x or "",
-            ylabel=y or "",
-        )
-        return render_chart(spec)
+        filepath = render_chart(spec)
+        return f"Chart saved: {filepath}"

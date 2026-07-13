@@ -1,15 +1,7 @@
 """Visualization tools."""
 
-from .visualization import (
-    BarChartTool,
-    HistogramTool,
-    LineChartTool,
-    ScatterPlotTool,
-)
+from .visualization import GenerateChartTool
 
 __all__ = [
-    "BarChartTool",
-    "HistogramTool",
-    "ScatterPlotTool",
-    "LineChartTool",
+    "GenerateChartTool",
 ]

@@ -115,12 +115,20 @@ async def repl():
 
         print("-" * 50)
         print("Agent: ", end="", flush=True)
+        response_lines = []
         async for token in agent.astream(
             full_prompt,
             config={"configurable": {"thread_id": thread_id}},
         ):
             print(token, end="", flush=True)
+            response_lines.append(token)
         print()
+        # If the response contains a chart path, highlight it
+        full = "".join(response_lines)
+        if "Chart saved:" in full:
+            for line in full.split("\n"):
+                if "Chart saved:" in line:
+                    print(f"  -> {line.strip()}")
         print()
 
 

@@ -1,12 +1,12 @@
-"""Chart generation — produces base64-encoded PNG charts.
+"""Chart generation — produces PNG chart files.
 
 No AI dependencies. Uses matplotlib under the hood.
 """
 
 from __future__ import annotations
 
-import base64
-import io
+import os
+import tempfile
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -30,19 +30,20 @@ class ChartSpec:
     xlabel: str = ""
     ylabel: str = ""
     figsize: tuple[int, int] = (10, 6)
+    output_dir: str | None = None
 
     # Extra kwargs passed to the plotting method
     kwargs: dict = field(default_factory=lambda: {"color": "#2563eb"})
 
 
 def render_chart(spec: ChartSpec) -> str:
-    """Render a chart and return it as a base64 data URI.
+    """Render a chart and save it as a PNG file.
 
     Args:
         spec: Chart specification.
 
     Returns:
-        Base64-encoded PNG data URI.
+        Absolute path to the saved PNG file.
     """
     fig, ax = plt.subplots(figsize=spec.figsize)
 
@@ -57,11 +58,15 @@ def render_chart(spec: ChartSpec) -> str:
     finally:
         plt.close(fig)
 
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=120)
-    buf.seek(0)
-    b64 = base64.b64encode(buf.read()).decode()
-    return f"data:image/png;base64,{b64}"
+    output_dir = spec.output_dir or tempfile.mkdtemp(prefix="chu_charts_")
+    os.makedirs(output_dir, exist_ok=True)
+
+    safe_title = (spec.title or spec.chart_type).replace(" ", "_").lower()[:50]
+    filename = f"{safe_title}.png"
+    filepath = os.path.join(output_dir, filename)
+
+    fig.savefig(filepath, format="png", dpi=120)
+    return os.path.abspath(filepath)
 
 
 def _draw(ax: plt.Axes, spec: ChartSpec) -> None:
