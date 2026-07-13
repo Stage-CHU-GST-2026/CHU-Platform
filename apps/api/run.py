@@ -11,7 +11,8 @@ import os
 import sys
 
 # ----- Working directory: project root -----
-_proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_proj_root = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", ".."))
 os.chdir(_proj_root)
 
 # Allow imports from api/src and the root packages/

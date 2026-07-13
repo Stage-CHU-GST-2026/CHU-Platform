@@ -55,13 +55,15 @@ async def get_history(thread_id: str):
     """Return message history for a thread."""
     service = sessions.get_agent(thread_id)
     if service is None:
-        raise HTTPException(status_code=404, detail=ErrorResponse(detail="Thread not found").model_dump())
+        raise HTTPException(status_code=404, detail=ErrorResponse(
+            detail="Thread not found").model_dump())
 
     agent = service.agent
     try:
         state = await agent.graph.aget_state({"configurable": {"thread_id": thread_id}})
     except Exception:
-        raise HTTPException(status_code=500, detail=ErrorResponse(detail="Failed to retrieve state").model_dump())
+        raise HTTPException(status_code=500, detail=ErrorResponse(
+            detail="Failed to retrieve state").model_dump())
 
     if not state or not state.values.get("messages"):
         return HistoryResponse(thread_id=thread_id, messages=[])
