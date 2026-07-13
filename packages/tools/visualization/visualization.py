@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from typing import Literal
 
 from langchain.tools import BaseTool
@@ -14,15 +13,17 @@ from analysis.engine import AnalysisEngine
 
 _engine = AnalysisEngine()
 
-# Shared output directory for all charts in a session
-_OUTPUT_DIR: str = ""
+# Fixed output directory served as static files by the API.
+# The API mounts this directory at /api/v1/charts.
+CHARTS_DIR = "/tmp/chu_charts"
+
+# Prefix embedded in tool output so the streaming layer can detect chart URLs.
+CHART_URL_PREFIX = "CHART_URL:"
 
 
 def _get_output_dir() -> str:
-    global _OUTPUT_DIR
-    if not _OUTPUT_DIR:
-        _OUTPUT_DIR = tempfile.mkdtemp(prefix="chu_charts_")
-    return _OUTPUT_DIR
+    os.makedirs(CHARTS_DIR, exist_ok=True)
+    return CHARTS_DIR
 
 
 class GenerateChartSchema(BaseModel):
@@ -78,4 +79,8 @@ class GenerateChartTool(BaseTool):
             kwargs=kwargs,
         )
         filepath = render_chart(spec)
-        return f"Chart saved: {filepath}"
+        filename = os.path.basename(filepath)
+        api_url = f"/api/v1/charts/{filename}"
+        # The CHART_URL: prefix is detected by AgentService.stream() which
+        # emits a dedicated 'image' SSE event so the UI can render it inline.
+        return f"{CHART_URL_PREFIX}{api_url}\nChart saved to {filepath}"

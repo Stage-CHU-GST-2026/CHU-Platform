@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
@@ -30,8 +31,14 @@ def build_graph(
         Compiled StateGraph.
     """
 
-    def call_model(state: AgentState):
-        return make_llm_node(state=state, config=config, tools=tools, prompt=prompt)
+    def call_model(state: AgentState, _config: RunnableConfig | None = None):
+        return make_llm_node(
+            state=state,
+            config=config,
+            tools=tools,
+            prompt=prompt,
+            runnable_config=_config,
+        )
 
     def should_continue(state: AgentState) -> str:
         last = state["messages"][-1]

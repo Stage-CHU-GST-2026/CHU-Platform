@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe Sketch · Data Analyzer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+    <style>
+        /* ================================================================
+                   SKETCH / WIREFRAME STYLE — black & white, dashed, minimal
+                ================================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #222;
+        }
+
+        /* ---------- sketch helpers ---------- */
+        .wf-dashed {
+            border: 1.5px dashed #888;
+        }
+
+        .wf-dashed-thick {
+            border: 2px dashed #555;
+        }
+
+        .wf-solid {
+            border: 1.5px solid #aaa;
+        }
+
+        .wf-solid-thick {
+            border: 2px solid #555;
+        }
+
+        .wf-bg-light {
+            background: #f5f5f5;
+        }
+
+        .wf-bg-white {
+            background: #ffffff;
+        }
+
+        .wf-rounded {
+            border-radius: 6px;
+        }
+
+        .wf-rounded-lg {
+            border-radius: 12px;
+        }
+
+        .wf-text-muted {
+            color: #888;
+        }
+
+        .wf-text-dark {
+            color: #222;
+        }
+
+        .wf-text-small {
+            font-size: 0.65rem;
+        }
+
+        .wf-text-tiny {
+            font-size: 0.55rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #999;
+        }
+
+        .wf-placeholder {
+            background: #ececec;
+            height: 0.45rem;
+            border-radius: 2px;
+        }
+
+        .wf-placeholder.short {
+            width: 60%;
+        }
+
+        .wf-placeholder.tiny {
+            width: 35%;
+            height: 0.3rem;
+        }
+
+        .wf-divider {
+            border-top: 1.5px dashed #ccc;
+            margin: 0.4rem 0;
+        }
+
+        /* ---------- layout ---------- */
+        .wf-app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ---------- sidebar ---------- */
+        .wf-sidebar {
+            width: 220px;
+            height: 100vh;
+            background: #fafafa;
+            border-right: 2px dashed #bbb;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            padding: 0.75rem 0.5rem;
+            transition: width 0.2s;
+            overflow: hidden;
+        }
+
+        .wf-sidebar.collapsed {
+            width: 56px;
+        }
+
+        .wf-sidebar.collapsed .wf-label {
+            display: none;
+        }
+
+        .wf-sidebar .wf-label {
+            white-space: nowrap;
+            font-size: 0.75rem;
+            color: #333;
+        }
+
+        .wf-sidebar .wf-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0.6rem;
+            border: 1.5px solid transparent;
+            border-radius: 4px;
+            margin-bottom: 0.1rem;
+            color: #333;
+        }
+
+        .wf-sidebar .wf-item.active {
+            border-color: #888;
+            background: #eee;
+        }
+
+        .wf-sidebar .wf-item .wf-icon {
+            font-size: 1.1rem;
+            width: 1.4rem;
+            text-align: center;
+            flex-shrink: 0;
+            color: #555;
+        }
+
+        .wf-sidebar .wf-divider {
+            border-top: 1.5px dashed #ccc;
+            margin: 0.4rem 0.6rem;
+        }
+
+        .wf-toggle-btn {
+            background: transparent;
+            border: 1.5px solid #aaa;
+            border-radius: 4px;
+            padding: 0.15rem 0.4rem;
+            cursor: default;
+            color: #555;
+            font-size: 0.8rem;
+        }
+
+        /* ---------- main ---------- */
+        .wf-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+        }
+
+        .wf-main-inner {
+            max-width: 580px;
+            width: 100%;
+        }
+
+        /* brand */
+        .wf-brand {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .wf-brand h2 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: #222;
+        }
+
+        .wf-brand p {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 0.1rem;
+        }
+
+        /* chat preview */
+        .wf-chat-preview {
+            margin-bottom: 1.25rem;
+        }
+
+        .wf-msg {
+            border: 1.5px solid #ccc;
+            border-radius: 10px;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.7rem;
+            color: #555;
+            background: #fcfcfc;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .wf-msg .wf-role {
+            font-weight: 500;
+            color: #222;
+            min-width: 2.8rem;
+        }
+
+        .wf-msg .wf-text {
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .wf-msg.agent {
+            border-left: 3px solid #999;
+            background: #f7f7f7;
+        }
+
+        /* file status */
+        .wf-file-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            min-height: 1.8rem;
+            font-size: 0.7rem;
+            color: #777;
+        }
+
+        .wf-file-status .wf-file-name {
+            color: #777;
+        }
+
+        .wf-file-status .wf-file-name.has-file {
+            color: #222;
+        }
+
+        .wf-upload-btn {
+            border: 1.5px solid #aaa;
+            border-radius: 999px;
+            padding: 0.05rem 0.6rem;
+            font-size: 0.6rem;
+            color: #555;
+            background: transparent;
+        }
+
+        /* input bar */
+        .wf-input {
+            border: 1.5px solid #aaa;
+            border-radius: 20px;
+            background: #fcfcfc;
+            padding: 0.2rem 0.2rem 0.2rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .wf-input input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+            color: #222;
+            min-width: 0;
+        }
+
+        .wf-input input::placeholder {
+            color: #aaa;
+        }
+
+        .wf-input .wf-icon-btn {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            border: 1.5px solid #aaa;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #555;
+            flex-shrink: 0;
+        }
+
+        .wf-input .wf-icon-btn.primary {
+            background: #222;
+            border-color: #222;
+            color: #fff;
+        }
+
+        /* example chips */
+        .wf-chips {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.4rem;
+            margin-top: 1.25rem;
+        }
+
+        .wf-chip {
+            border: 1.5px solid #ccc;
+            border-radius: 8px;
+            padding: 0.3rem 0.5rem;
+            font-size: 0.65rem;
+            color: #444;
+            background: #fcfcfc;
+            text-align: center;
+        }
+
+        /* hint */
+        .wf-hint {
+            text-align: center;
+            font-size: 0.5rem;
+            color: #aaa;
+            margin-top: 0.75rem;
+            letter-spacing: 0.03em;
+        }
+
+        /* ---------- mobile ---------- */
+        .wf-hamburger {
+            display: none;
+            position: fixed;
+            top: 0.6rem;
+            left: 0.7rem;
+            z-index: 50;
+            width: 2rem;
+            height: 2rem;
+            border: 1.5px solid #aaa;
+            border-radius: 4px;
+            background: #fff;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+
+        .wf-hamburger span {
+            display: block;
+            width: 14px;
+            height: 1.5px;
+            background: #333;
+            border-radius: 1px;
+        }
+
+        .wf-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.03);
+            z-index: 35;
+        }
+
+        .wf-overlay.active {
+            display: block;
+        }
+
+        @media (max-width: 720px) {
+            .wf-sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 40;
+                transform: translateX(-100%);
+                transition: transform 0.2s;
+                width: 240px;
+                border-right: 2px dashed #bbb;
+            }
+
+            .wf-sidebar.open {
+                transform: translateX(0);
+            }
+
+            .wf-sidebar.collapsed {
+                width: 240px;
+            }
+
+            .wf-sidebar.collapsed .wf-label {
+                display: block;
+            }
+
+            .wf-hamburger {
+                display: flex;
+            }
+
+            .wf-main {
+                padding: 4.5rem 1rem 1.5rem 1rem;
+            }
+
+            .wf-chips {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* small helper */
+        .wf-flex {
+            display: flex;
+        }
+
+        .wf-flex-center {
+            align-items: center;
+        }
+
+        .wf-gap-1 {
+            gap: 0.4rem;
+        }
+
+        .wf-gap-2 {
+            gap: 0.75rem;
+        }
+
+        .wf-mt-1 {
+            margin-top: 0.4rem;
+        }
+
+        .wf-mb-1 {
+            margin-bottom: 0.4rem;
+        }
+
+        .wf-px-1 {
+            padding-left: 0.4rem;
+            padding-right: 0.4rem;
+        }
+
+        .wf-py-1 {
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
+        }
+
+        .wf-w-full {
+            width: 100%;
+        }
+
+        .wf-flex-1 {
+            flex: 1;
+        }
+
+        .wf-relative {
+            position: relative;
+        }
+
+        .wf-overflow-hidden {
+            overflow: hidden;
+        }
+
+        .wf-text-center {
+            text-align: center;
+        }
+
+        .wf-uppercase {
+            text-transform: uppercase;
+        }
+
+        .wf-tracking-wide {
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ================================================================ -->
+    <!--  OVERLAY (mobile)                                                 -->
+    <!-- ================================================================ -->
+    <div id="overlay" class="wf-overlay"></div>
+
+    <!-- ================================================================ -->
+    <!--  HAMBURGER (mobile)                                               -->
+    <!-- ================================================================ -->
+    <div id="hamburger" class="wf-hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <!-- ================================================================ -->
+    <!--  APP                                                             -->
+    <!-- ================================================================ -->
+    <div class="wf-app">
+
+        <!-- ============================================================= -->
+        <!--  SIDEBAR  (sketch style)                                       -->
+        <!-- ============================================================= -->
+        <aside id="sidebar" class="wf-sidebar">
+
+            <!-- header -->
+            <div class="wf-flex wf-flex-center"
+                style="justify-content:space-between; padding:0 0.25rem 0.25rem 0.25rem;">
+                <div class="wf-label wf-flex wf-flex-center" style="gap:0.3rem; font-weight:500;">
+                    <i class="ti ti-database" style="font-size:1rem;"></i>
+                    <span>Data Analyzer</span>
+                </div>
+                <button id="sidebarToggle" class="wf-toggle-btn" style="font-size:0.7rem; padding:0.05rem 0.3rem;">
+                    <i id="toggleIcon" class="ti ti-chevron-left"></i>
+                </button>
+            </div>
+
+            <!-- new chat -->
+            <div class="wf-item active" style="margin-top:0.25rem;">
+                <i class="wf-icon ti ti-plus"></i>
+                <span class="wf-label">New chat</span>
+            </div>
+
+            <div class="wf-divider"></div>
+
+            <!-- history -->
+            <div style="flex:1; overflow-y:auto; padding:0 0.1rem;">
+                <div class="wf-item"><i class="wf-icon ti ti-file-text"></i><span class="wf-label">Sales Q2
+                        analysis</span></div>
+                <div class="wf-item"><i class="wf-icon ti ti-file-text"></i><span class="wf-label">Customer
+                        segmentation</span></div>
+                <div class="wf-item"><i class="wf-icon ti ti-file-text"></i><span class="wf-label">Revenue by
+                        region</span></div>
+                <div class="wf-item"><i class="wf-icon ti ti-file-text"></i><span class="wf-label">Outlier
+                        detection</span></div>
+                <div class="wf-item"><i class="wf-icon ti ti-file-text"></i><span class="wf-label">Product
+                        performance</span></div>
+            </div>
+
+            <div class="wf-divider"></div>
+
+            <!-- bottom -->
+            <div style="padding:0 0.1rem 0.25rem 0.1rem;">
+                <div class="wf-item"><i class="wf-icon ti ti-settings"></i><span class="wf-label">Settings</span></div>
+                <div class="wf-item"><i class="wf-icon ti ti-help-circle"></i><span class="wf-label">Help</span></div>
+                <div class="wf-item"
+                    style="border-top:1.5px dashed #ccc; border-radius:0; padding-top:0.4rem; margin-top:0.2rem;">
+                    <i class="wf-icon ti ti-user"></i><span class="wf-label">User</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ============================================================= -->
+        <!--  MAIN CONTENT  (centered, sketch style)                       -->
+        <!-- ============================================================= -->
+        <main class="wf-main">
+            <div class="wf-main-inner">
+
+                <!-- brand -->
+                <div class="wf-brand">
+                    <h2>Data Analyzer Agent</h2>
+                    <p>Ask questions about your data in plain English</p>
+                </div>
+
+                <!-- chat preview -->
+                <div class="wf-chat-preview">
+                    <div class="wf-msg">
+                        <span class="wf-role">User</span>
+                        <span class="wf-text">Show me a summary of the dataset</span>
+                    </div>
+                    <div class="wf-msg agent">
+                        <span class="wf-role">Agent</span>
+                        <span class="wf-text">The dataset contains 1,234 rows and 12 columns…</span>
+                    </div>
+                </div>
+
+                <!-- file status -->
+                <div class="wf-file-status">
+                    <span id="fileNameDisplay" class="wf-file-name">No dataset loaded</span>
+                    <span style="color:#bbb;">|</span>
+                    <button id="uploadBtn" class="wf-upload-btn">Upload</button>
+                    <input type="file" id="fileInput" hidden accept=".csv,.xlsx,.xls,.json,.parquet,.feather" />
+                </div>
+
+                <!-- input bar -->
+                <div class="wf-input">
+                    <button id="attachBtn" class="wf-icon-btn" style="font-size:0.9rem;">
+                        <i class="ti ti-paperclip"></i>
+                    </button>
+                    <input type="text" id="messageInput" placeholder="Type your message…" autofocus />
+                    <button id="sendBtn" class="wf-icon-btn primary">
+                        <i class="ti ti-send"></i>
+                    </button>
+                </div>
+
+                <!-- example chips -->
+                <div class="wf-chips">
+                    <div class="wf-chip">summary of dataset</div>
+                    <div class="wf-chip">bar chart by region</div>
+                    <div class="wf-chip">find outliers</div>
+                    <div class="wf-chip">correlations</div>
+                    <div class="wf-chip">revenue by category</div>
+                    <div class="wf-chip">average order value</div>
+                </div>
+
+                <!-- hint -->
+                <p class="wf-hint">CSV · Excel · JSON · Parquet — drag &amp; drop or click to upload</p>
+
+            </div>
+        </main>
+
+    </div>
+
+    <!-- ================================================================ -->
+    <!--  JAVASCRIPT  (minimal)                                           -->
+    <!-- ================================================================ -->
+    <script>
+        (function () {
+            'use strict';
+
+            // ---- sidebar toggle ----
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const toggleIcon = document.getElementById('toggleIcon');
+            let collapsed = false;
+
+            toggleBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                collapsed = !collapsed;
+                sidebar.classList.toggle('collapsed', collapsed);
+                toggleIcon.className = collapsed ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
+            });
+
+            // ---- mobile hamburger ----
+            const hamburger = document.getElementById('hamburger');
+            const overlay = document.getElementById('overlay');
+            let mobileOpen = false;
+
+            function toggleMobile() {
+                mobileOpen = !mobileOpen;
+                sidebar.classList.toggle('open', mobileOpen);
+                overlay.classList.toggle('active', mobileOpen);
+                document.body.style.overflow = mobileOpen ? 'hidden' : '';
+            }
+
+            hamburger.addEventListener('click', toggleMobile);
+            overlay.addEventListener('click', toggleMobile);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && mobileOpen) toggleMobile();
+            });
+
+            // ---- file upload ----
+            const fileInput = document.getElementById('fileInput');
+            const fileNameDisplay = document.getElementById('fileNameDisplay');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const attachBtn = document.getElementById('attachBtn');
+
+            function updateFileStatus(file) {
+                if (file) {
+                    fileNameDisplay.textContent = file.name + '  (' + (file.size / 1024).toFixed(0) + ' KB)';
+                    fileNameDisplay.className = 'wf-file-name has-file';
+                } else {
+                    fileNameDisplay.textContent = 'No dataset loaded';
+                    fileNameDisplay.className = 'wf-file-name';
+                }
+            }
+
+            function handleFile(file) {
+                updateFileStatus(file);
+            }
+
+            uploadBtn.addEventListener('click', function () { fileInput.click(); });
+            attachBtn.addEventListener('click', function () { fileInput.click(); });
+
+            fileInput.addEventListener('change', function () {
+                if (this.files.length > 0) handleFile(this.files[0]);
+                this.value = '';
+            });
+
+            document.addEventListener('dragover', function (e) { e.preventDefault(); });
+            document.addEventListener('drop', function (e) {
+                e.preventDefault();
+                if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+            });
+
+            // ---- quick chips ----
+            document.querySelectorAll('.wf-chip').forEach(function (el) {
+                el.addEventListener('click', function () {
+                    var input = document.getElementById('messageInput');
+                    if (input) {
+                        input.value = this.textContent.trim();
+                        input.focus();
+                    }
+                });
+            });
+
+            // ---- send ----
+            var sendBtn = document.getElementById('sendBtn');
+            var msgInput = document.getElementById('messageInput');
+
+            function sendMessage() {
+                var text = msgInput.value.trim();
+                if (!text) return;
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<i class="ti ti-loader"></i>';
+                setTimeout(function () {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="ti ti-send"></i>';
+                    msgInput.value = '';
+                    msgInput.focus();
+                }, 400);
+            }
+
+            sendBtn.addEventListener('click', sendMessage);
+            msgInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            setTimeout(function () { msgInput.focus(); }, 200);
+            updateFileStatus(null);
+
+        })();
+    </script>
+
+</body>
+
+</html>

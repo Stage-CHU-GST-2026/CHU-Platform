@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessageChunk, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -70,5 +70,6 @@ class Agent:
             stream_mode="messages",
             config=config,
         ):
-            if hasattr(chunk, "content") and chunk.content:
+            # Only yield text tokens from the AI model, not tool-result chunks
+            if isinstance(chunk, AIMessageChunk) and chunk.content:
                 yield chunk.content

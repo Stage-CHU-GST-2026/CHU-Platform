@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, HTTPException
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
@@ -14,9 +17,15 @@ from api.schemas.chat import (
     HistoryResponse,
 )
 from api.services.session import SessionManager
+from tools.visualization.visualization import CHARTS_DIR
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 sessions = SessionManager()
+
+# Ensure charts directory exists and mount it for static file serving.
+# The router exposes it at /api/v1/charts/<filename>.
+os.makedirs(CHARTS_DIR, exist_ok=True)
+charts_static = StaticFiles(directory=CHARTS_DIR)
 
 
 @router.post("/new", response_model=ChatNewResponse)
@@ -37,17 +46,20 @@ async def chat(request: ChatRequest):
     async def event_stream():
         # 1) Emit thread_id so the client can persist it
         yield {"event": "thread_id", "data": thread_id}
-        # 2) Stream tokens
-        async for token in service.stream(
+        # 2) Stream tokens and chart images
+        async for event_type, data in service.stream(
             message=request.message,
             thread_id=thread_id,
             dataset_path=request.dataset_path,
         ):
-            yield {"event": "token", "data": token}
+            yield {"event": event_type, "data": data}
         # 3) Signal completion
         yield {"event": "done", "data": ""}
 
-    return EventSourceResponse(event_stream())
+    return EventSourceResponse(
+        event_stream(),
+        headers={"X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/{thread_id}/history", response_model=HistoryResponse)

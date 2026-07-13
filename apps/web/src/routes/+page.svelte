@@ -3,184 +3,136 @@
 	import * as Message from '$lib/components/ai-elements/message';
 	import * as PromptInput from '$lib/components/ai-elements/prompt-input';
 	import type { Message as PromptInputMessage } from '$lib/components/ai-elements/prompt-input';
+	import { sendMessage, createThread } from '$lib/api/chat';
 
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 
 	interface MessageData {
 		key: string;
 		value: string;
-		name: string;
+		role: 'user' | 'assistant';
 	}
 
-	// Static messages data using crypto.randomUUID()
-	const messages: MessageData[] = [
-		{
-			key: crypto.randomUUID(),
-			value: 'Hello, how are you?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm good, thank you! How can I assist you today?",
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm looking for information about your services.",
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Sure! We offer a variety of AI solutions. What are you interested in?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm interested in natural language processing tools.",
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Great choice! We have several NLP APIs. Would you like a demo?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, a demo would be helpful.',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Alright, I can show you a sentiment analysis example. Ready?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, please proceed.',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "Here is a sample: 'I love this product!' → Positive sentiment.",
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Impressive! Can it handle multiple languages?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Absolutely, our models support over 20 languages.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'How do I get started with the API?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'You can sign up on our website and get an API key instantly.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Is there a free trial available?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, we offer a 14-day free trial with full access.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'What kind of support do you provide?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'We provide 24/7 chat and email support for all users.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Thank you for the information!',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "You're welcome! Let me know if you have any more questions.",
-			name: 'AI Assistant'
-		}
-	];
+	let messages = $state<MessageData[]>([]);
+	let chatStatus = $state<'ready' | 'submitted' | 'streaming'>('ready');
+	let threadId = $state<string | undefined>(undefined);
 
-	// Reactive state using Svelte 5 runes
-	let visibleMessages = $state<MessageData[]>([]);
+	async function handleSubmit(prompt: PromptInputMessage) {
+		const text = prompt.text.trim();
+		if (!text || chatStatus !== 'ready') return;
 
-	// Auto-add messages effect using Svelte 5 $effect
-	$effect(() => {
-		let currentIndex = 0;
-		const interval = setInterval(() => {
-			if (currentIndex < messages.length && messages[currentIndex]) {
-				const currentMessage = messages[currentIndex];
-				visibleMessages = [
-					...visibleMessages,
-					{
-						key: currentMessage.key,
-						value: currentMessage.value,
-						name: currentMessage.name
-					}
-				];
-				currentIndex++;
-			} else {
-				clearInterval(interval);
+		// Lock the UI immediately to prevent double-submits while the
+		// thread is being created / before the first token arrives.
+		chatStatus = 'submitted';
+
+		// Create thread on first message
+		if (!threadId) {
+			try {
+				const thread = await createThread();
+				threadId = thread.threadId;
+			} catch (err) {
+				console.error('Failed to create thread:', err);
+				chatStatus = 'ready';
+				return;
 			}
-		}, 500);
+		}
 
-		return () => clearInterval(interval);
-	});
+		// Add user message directly into the reactive array — don't keep a
+		// separate reference to the plain object, or it'll diverge in
+		// identity from the proxied version Svelte stores internally.
+		messages.push({
+			key: crypto.randomUUID(),
+			value: text,
+			role: 'user'
+		});
 
-	function handleSubmit(message: PromptInputMessage) {
-		console.log('Submitted message:', message.text);
-		console.log('Files', message.files);
+		// Prepare a placeholder for the assistant response
+		const assistantKey = crypto.randomUUID();
+		messages.push({ key: assistantKey, value: '', role: 'assistant' });
+		chatStatus = 'streaming';
+
+		// Stream the response
+		try {
+			// sendMessage returns the thread_id confirmed by the SSE stream
+			// (the backend emits it as the very first event). We must persist
+			// it so subsequent messages are sent to the same conversation.
+			const confirmedThreadId = await sendMessage(text, threadId, {
+				onToken: (token: string) => {
+					// messages is already a reactive $state array/objects,
+					// so mutate in place instead of rebuilding the whole array.
+					const msg = messages.find((m) => m.key === assistantKey);
+					if (msg) msg.value += token;
+				},
+				onDone: () => {
+					chatStatus = 'ready';
+				},
+				onError: (err: Error) => {
+					console.error('Stream error:', err);
+					const msg = messages.find((m) => m.key === assistantKey);
+					if (msg && !msg.value) msg.value = 'Sorry, something went wrong.';
+					chatStatus = 'ready';
+				}
+			});
+			if (confirmedThreadId) threadId = confirmedThreadId;
+		} catch (err) {
+			console.error('Chat request failed:', err);
+			const msg = messages.find((m) => m.key === assistantKey);
+			if (msg) msg.value = 'Failed to connect to the server.';
+			chatStatus = 'ready';
+		}
 	}
 </script>
 
-<div class="flex h-dvh flex-col">
-	<!-- Chat area: fills all remaining space -->
-	<Conversation.Root class="flex-1 min-h-0">
-		<Conversation.Content class="gap-4">
-			{#if visibleMessages.length === 0}
-				<Conversation.EmptyState
-					description="Messages will appear here as the conversation progresses."
-					title="Start a conversation"
-				>
-					{#snippet icon()}
-						<MessageSquare class="size-6" />
-					{/snippet}
-				</Conversation.EmptyState>
-			{:else}
-				{#each visibleMessages as messageData, index (messageData.key)}
-					<Message.Root from={index % 2 === 0 ? 'user' : 'assistant'}>
-						<Message.Content>{messageData.value}</Message.Content>
-					</Message.Root>
-				{/each}
-			{/if}
-		</Conversation.Content>
-		<Conversation.ScrollButton />
-	</Conversation.Root>
-
-	<!-- Prompt input: pinned to bottom with responsive width -->
-	<div class="shrink-0 border-t bg-background px-4 py-3">
-		<PromptInput.Root class="mx-auto max-w-2xl" onSubmit={handleSubmit}>
+{#if messages.length === 0}
+	<!-- ===== LANDING: Centered prompt ===== -->
+	<div class="flex h-dvh flex-col items-center justify-center px-4">
+		<div class="mb-8 text-center">
+			<MessageSquare class="mx-auto mb-4 size-10 text-primary" />
+			<h1 class="text-2xl font-semibold tracking-tight">What can I help with?</h1>
+			<p class="text-muted-foreground mt-1 text-sm">
+				Ask a question or describe what you're looking for.
+			</p>
+		</div>
+		<PromptInput.Root class="w-full max-w-3xl" onSubmit={handleSubmit}>
 			<PromptInput.Body>
 				<PromptInput.Textarea placeholder="Type your message..." />
 			</PromptInput.Body>
 			<PromptInput.Toolbar class="justify-end">
-				<PromptInput.Submit />
+				<PromptInput.Submit status={chatStatus} />
 			</PromptInput.Toolbar>
 		</PromptInput.Root>
 	</div>
-</div>
+{:else}
+	<!-- ===== CONVERSATION: Messages + prompt at bottom ===== -->
+	<div class="flex h-dvh flex-col">
+		<Conversation.Root class="flex-1 min-h-0">
+			<Conversation.Content class="flex-1 gap-0 overflow-y-auto">
+				<div class="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+					{#each messages as messageData (messageData.key)}
+						<Message.Root from={messageData.role}>
+							<Message.Content>
+								{#if messageData.role === 'assistant'}
+									<Message.Response content={messageData.value} />
+								{:else}
+									{messageData.value}
+								{/if}
+							</Message.Content>
+						</Message.Root>
+					{/each}
+				</div>
+			</Conversation.Content>
+			<Conversation.ScrollButton />
+		</Conversation.Root>
+
+		<div class="shrink-0 border-t bg-background px-4 py-3">
+			<PromptInput.Root class="mx-auto max-w-3xl" onSubmit={handleSubmit}>
+				<PromptInput.Body>
+					<PromptInput.Textarea placeholder="Type your message..." />
+				</PromptInput.Body>
+				<PromptInput.Toolbar class="justify-end">
+					<PromptInput.Submit status={chatStatus} />
+				</PromptInput.Toolbar>
+			</PromptInput.Root>
+		</div>
+	</div>
+{/if}

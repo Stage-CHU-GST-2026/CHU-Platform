@@ -13,7 +13,7 @@ load_dotenv()
 class AgentConfig(BaseModel):
     """Configuration for the generic AI Agent."""
 
-    model: str = Field(default="gpt-4o-mini")
+    model: str = Field(default="meta-llama/llama-4-scout-17b-16e-instruct")
     base_url: str = Field(default=os.getenv(
         "OPENAI_BASE_URL", "http://localhost:6060/v1"))
     api_key: str = Field(default=os.getenv("OPENAI_API_KEY", ""))

@@ -20,6 +20,12 @@ def create_app() -> FastAPI:
     # ----- Routers -----
     app.include_router(chat_router, prefix="/api/v1")
 
+    # ----- Static files: generated charts -----
+    # Must be mounted AFTER including the router so /api/v1/chat routes
+    # take precedence over the static mount.
+    from api.routers.chat import charts_static  # noqa: PLC0415
+    app.mount("/api/v1/charts", charts_static, name="charts")
+
     # ----- Global error handler -----
     @app.exception_handler(Exception)
     async def global_exception(_request: Request, exc: Exception):

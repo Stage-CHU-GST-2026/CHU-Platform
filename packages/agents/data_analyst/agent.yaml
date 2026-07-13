@@ -1,7 +1,7 @@
 name: Data Analyst
 description: Analyze structured datasets with statistics, aggregations, and charts.
 
-model: gpt-4o-mini
+model: meta-llama/llama-4-scout-17b-16e-instruct
 temperature: 0
 max_iterations: 15
 

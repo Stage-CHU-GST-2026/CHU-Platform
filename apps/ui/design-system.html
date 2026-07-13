@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytical Workspace — Design System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #121212;
+            --canvas: #181818;
+            --surface: #1A1A1A;
+            --surface-elevated: #282828;
+            --sidebar: #000000;
+            --border: #2A2A2A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B3B3B3;
+            --muted: #6A6A6A;
+            --blue: #1DB954;
+            --indigo: #8D87FF;
+            --success: #34D399;
+            --warning: #F0A23E;
+            --danger: #F0555C;
+
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-btn: 500px;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.36), 0 1px 1px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.28);
+            --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.32);
+
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+            --space-7: 48px;
+            --space-8: 64px;
+            --space-9: 96px;
+
+            --font-ui: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            -webkit-font-smoothing: antialiased;
+            scroll-behavior: smooth;
+        }
+
+        ::selection {
+            background: rgba(29, 185, 84, 0.32);
+        }
+
+        a {
+            color: inherit;
+        }
+
+        /* focus visibility */
+        :focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ---------- Layout shell ---------- */
+
+        .shell {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            padding: var(--space-6) var(--space-4);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: var(--space-1) var(--space-2) var(--space-5);
+            margin-bottom: var(--space-3);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-mark {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--blue);
+            flex-shrink: 0;
+        }
+
+        .brand-name {
+            font-size: 13.5px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .nav-group {
+            margin-bottom: var(--space-6);
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 0 var(--space-2);
+            margin-bottom: var(--space-2);
+        }
+
+        .nav-link {
+            display: block;
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 7px var(--space-2);
+            border-radius: var(--radius-sm);
+            margin-bottom: 2px;
+            transition: background 0.12s ease, color 0.12s ease;
+        }
+
+        .nav-link:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .main {
+            padding: 0 0 160px;
+        }
+
+        section {
+            padding: var(--space-9) var(--space-8);
+            border-bottom: 1px solid var(--border);
+        }
+
+        section:last-child {
+            border-bottom: none;
+        }
+
+        .section-head {
+            max-width: 720px;
+            margin-bottom: var(--space-7);
+        }
+
+        .eyebrow {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--blue);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        h2.section-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0 0 10px;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 14.5px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* ---------- Hero ---------- */
+
+        .hero {
+            padding: var(--space-9) var(--space-8) var(--space-8);
+            background:
+                radial-gradient(ellipse 900px 400px at 15% 0%, rgba(29, 185, 84, 0.07), transparent 60%),
+                var(--bg);
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 999px;
+            margin-bottom: var(--space-6);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hero-eyebrow .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin: 0 0 20px;
+            max-width: 780px;
+        }
+
+        .hero .lede {
+            font-size: 17px;
+            line-height: 1.65;
+            color: var(--text-secondary);
+            max-width: 620px;
+            margin: 0 0 36px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-8);
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            max-width: 760px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hero-stat {
+            background: var(--canvas);
+            padding: var(--space-4) var(--space-5);
+        }
+
+        .hero-stat .num {
+            font-family: var(--font-mono);
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-stat .label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ---------- Buttons ---------- */
+
+        .btn {
+            appearance: none;
+            border: 1px solid transparent;
+            font-family: var(--font-ui);
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 10px 22px;
+            border-radius: var(--radius-btn);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            transition: background 0.16s cubic-bezier(.4, 0, .2, 1), border-color 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease;
+            letter-spacing: 0;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--blue);
+            color: #0A0A0A;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background: #1ED760;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+
+        .btn-secondary {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #2E2E2E;
+            border-color: #3E3E3E;
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-btn);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: rgba(240, 85, 92, 0.13);
+            color: #FF9498;
+            border-color: rgba(240, 85, 92, 0.26);
+        }
+
+        .btn-danger:hover {
+            background: rgba(240, 85, 92, 0.2);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 12.5px;
+            border-radius: 500px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+            align-items: center;
+        }
+
+        /* ---------- Color swatches ---------- */
+
+        .swatch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .swatch {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--canvas);
+            transition: box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        .swatch:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .swatch-color {
+            height: 72px;
+        }
+
+        .swatch-meta {
+            padding: var(--space-3) var(--space-4);
+        }
+
+        .swatch-name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .swatch-hex {
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .swatch-usage {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        /* ---------- Type scale ---------- */
+
+        .type-row {
+            display: flex;
+            align-items: baseline;
+            gap: 28px;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .type-row:last-child {
+            border-bottom: none;
+        }
+
+        .type-meta {
+            width: 160px;
+            flex-shrink: 0;
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .type-meta .name {
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .type-sample {
+            color: var(--text-primary);
+        }
+
+        /* ---------- Cards / Panels ---------- */
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-5);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-5);
+        }
+
+        .panel {
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            transition: box-shadow 0.15s ease;
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .panel-elevated {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            box-shadow: var(--shadow-md);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -0.005em;
+        }
+
+        .panel-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .kpi-value {
+            font-family: var(--font-mono);
+            font-size: 30px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            margin: 4px 0 6px;
+        }
+
+        .kpi-delta {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font-mono);
+        }
+
+        .kpi-delta.up {
+            color: var(--success);
+        }
+
+        .kpi-delta.down {
+            color: var(--danger);
+        }
+
+        /* ---------- Badges / Tags ---------- */
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 500;
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-family: var(--font-mono);
+            letter-spacing: 0.01em;
+        }
+
+        .badge-blue {
+            background: rgba(29, 185, 84, 0.13);
+            color: var(--blue);
+        }
+
+        .badge-indigo {
+            background: rgba(141, 135, 255, 0.15);
+            color: var(--indigo);
+        }
+
+        .badge-success {
+            background: rgba(52, 211, 153, 0.13);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(240, 162, 62, 0.14);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(240, 85, 92, 0.13);
+            color: var(--danger);
+        }
+
+        .badge-neutral {
+            background: var(--surface-elevated);
+            color: var(--text-secondary);
+        }
+
+        /* ---------- Table ---------- */
+
+        .table-wrap {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--space-3) var(--space-4);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td {
+            padding: 13px var(--space-4);
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr {
+            transition: background 0.1s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--surface);
+        }
+
+        .cell-mono {
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            font-size: 12.5px;
+        }
+
+        /* ---------- Inputs ---------- */
+
+        .field {
+            margin-bottom: var(--space-4);
+        }
+
+        .field label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 7px;
+        }
+
+        .input,
+        select.input {
+            width: 100%;
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 13.5px;
+            padding: 10px var(--space-3);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .input::placeholder {
+            color: var(--muted);
+        }
+
+        .input:focus {
+            border-color: var(--blue);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.15);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .checkbox-row input {
+            accent-color: var(--blue);
+            width: 15px;
+            height: 15px;
+        }
+
+        /* ---------- Chart mock ---------- */
+
+        .chart-legend {
+            display: flex;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        /* ---------- AI panel ---------- */
+
+        .ai-panel {
+            background: var(--canvas);
+            border: 1px solid rgba(141, 135, 255, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            position: relative;
+            box-shadow: 0 8px 24px -10px rgba(141, 135, 255, 0.18), var(--shadow-sm);
+        }
+
+        .ai-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--indigo);
+            margin-bottom: var(--space-3);
+        }
+
+        .ai-tag .spark {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--indigo);
+        }
+
+        .ai-text {
+            font-size: 13.5px;
+            line-height: 1.65;
+            color: var(--text-primary);
+        }
+
+        .ai-text .ref {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            background: rgba(141, 135, 255, 0.15);
+            color: var(--indigo);
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        /* ---------- Motion sample ---------- */
+
+        .motion-demo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-6);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse-fade 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-fade {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.35;
+            }
+        }
+
+        .progress-track {
+            width: 220px;
+            height: 6px;
+            background: var(--surface-elevated);
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 68%;
+            background: var(--blue);
+            border-radius: 999px;
+            transition: width 0.4s ease;
+        }
+
+        /* ---------- Footer ---------- */
+
+        .foot {
+            padding: var(--space-7) var(--space-8) var(--space-8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            font-size: 12.5px;
+            font-family: var(--font-mono);
+        }
+
+        code.inline {
+            font-family: var(--font-mono);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ---------- Dataset context bar ---------- */
+
+        .context-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-3) var(--space-4);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .context-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .context-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+        }
+
+        .context-item .file-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 2px;
+            background: var(--blue);
+        }
+
+        .context-divider {
+            width: 1px;
+            height: 14px;
+            background: var(--border);
+        }
+
+        .context-status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--indigo);
+        }
+
+        .context-status .spinner {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--indigo);
+            animation: pulse-fade 1.4s ease-in-out infinite;
+        }
+
+        /* ---------- Tool execution timeline ---------- */
+
+        .timeline {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--canvas);
+            overflow: hidden;
+        }
+
+        .timeline-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: default;
+        }
+
+        .timeline-step:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-marker {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-family: var(--font-mono);
+        }
+
+        .timeline-marker.done {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--success);
+        }
+
+        .timeline-marker.active {
+            background: rgba(29, 185, 84, 0.15);
+            color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.12);
+        }
+
+        .timeline-marker.pending {
+            background: var(--surface);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .timeline-body {
+            flex: 1;
+        }
+
+        .timeline-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .timeline-label {
+            color: var(--text-primary);
+        }
+
+        .timeline-label.dim {
+            color: var(--muted);
+        }
+
+        .timeline-time {
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .timeline-detail {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+
+        /* ---------- Conversation ---------- */
+
+        .conversation {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+        }
+
+        .msg-row {
+            display: flex;
+        }
+
+        .msg-row.user {
+            justify-content: flex-end;
+        }
+
+        .msg-bubble {
+            max-width: 72%;
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        .msg-bubble.user {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-bottom-right-radius: 4px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .msg-bubble.assistant {
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: var(--space-2);
+            font-family: var(--font-mono);
+        }
+
+        .msg-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--space-3) 0;
+            font-size: 12px;
+        }
+
+        .msg-table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 500;
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .msg-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .msg-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .msg-actions {
+            display: flex;
+            gap: var(--space-2);
+            margin-top: var(--space-3);
+        }
+
+        .composer {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px 10px 10px var(--space-4);
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+
+        .composer:focus-within {
+            border-color: var(--blue);
+            box-shadow: var(--shadow-md);
+        }
+
+        .composer input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 13.5px;
+            outline: none;
+        }
+
+        .composer input::placeholder {
+            color: var(--muted);
+        }
+
+        /* ---------- Quick prompts ---------- */
+
+        .prompt-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12.5px;
+            padding: 8px var(--space-4);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .prompt-chip:hover {
+            border-color: var(--blue);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .prompt-chip .chip-icon {
+            color: var(--muted);
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        /* ---------- Upload dropzone ---------- */
+
+        .dropzone {
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            background: var(--canvas);
+            padding: var(--space-7) var(--space-5);
+            text-align: center;
+            transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .dropzone:hover {
+            border-color: var(--blue);
+            background: rgba(29, 185, 84, 0.03);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .dropzone-icon {
+            width: 36px;
+            height: 36px;
+            margin: 0 auto var(--space-4);
+            border-radius: var(--radius-sm);
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--blue);
+        }
+
+        .dropzone-title {
+            font-size: 13.5px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .dropzone-sub {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* ---------- Data explorer split view ---------- */
+
+        .split-view {
+            display: grid;
+            grid-template-columns: 1.1fr 1.4fr;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            min-height: 320px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .split-pane {
+            background: var(--canvas);
+            padding: var(--space-4);
+            overflow: auto;
+        }
+
+        .split-pane-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+        }
+
+        .column-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 12.5px;
+        }
+
+        .column-row:last-child {
+            border-bottom: none;
+        }
+
+        .column-dist {
+            width: 80px;
+            height: 5px;
+            background: var(--surface-elevated);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .column-dist span {
+            display: block;
+            height: 100%;
+            background: var(--blue);
+        }
+
+        /* ---------- Spacing scale ---------- */
+
+        .space-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-5);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .space-row:last-child {
+            border-bottom: none;
+        }
+
+        .space-block {
+            background: var(--blue);
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .space-meta {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            width: 120px;
+        }
+
+        .space-usage {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 980px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            section {
+                padding: var(--space-7) var(--space-5);
+            }
+
+            .hero {
+                padding: var(--space-8) var(--space-5);
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .hero h1 {
+                font-size: 34px;
+            }
+
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+
+            .context-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .msg-bubble {
+                max-width: 88%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="shell">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark"></div>
+                <div class="brand-name">Analytical Workspace</div>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Foundations</div>
+                <a class="nav-link" href="#colors">Color</a>
+                <a class="nav-link" href="#typography">Typography</a>
+                <a class="nav-link" href="#shape">Shape &amp; elevation</a>
+                <a class="nav-link" href="#motion">Motion</a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Components</div>
+                <a class="nav-link" href="#buttons">Buttons</a>
+                <a class="nav-link" href="#badges">Badges</a>
+                <a class="nav-link" href="#inputs">Inputs</a>
+                <a class="nav-link" href="#cards">Cards &amp; KPIs</a>
+                <a class="nav-link" href="#table">Tables</a>
+                <a class="nav-link" href="#charts">Data visualization</a>
+                <a class="nav-link" href="#ai">AI presence</a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Patterns</div>
+                <a class="nav-link" href="#context-bar">Dataset context bar</a>
+                <a class="nav-link" href="#timeline">Tool execution timeline</a>
+                <a class="nav-link" href="#conversation">Conversation</a>
+                <a class="nav-link" href="#prompts">Quick prompts</a>
+                <a class="nav-link" href="#upload">Dataset upload</a>
+                <a class="nav-link" href="#explorer">Data explorer</a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Reference</div>
+                <a class="nav-link" href="#principles">Principles</a>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main">
+
+            <!-- HERO -->
+            <section class="hero" style="border-bottom: 1px solid var(--border);">
+                <div class="hero-eyebrow"><span class="dot"></span> v1.0 — Dark-first design system</div>
+                <h1>The interface exists&nbsp;to support&nbsp;thinking.</h1>
+                <p class="lede">A calm, focused environment where data is the primary content and AI acts as an
+                    invisible expert. Every pixel here exists for a reason — nothing competes with the user's data.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary">Explore components</button>
+                    <button class="btn btn-secondary">Read the philosophy</button>
+                </div>
+
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <div class="num">6</div>
+                        <div class="label">Core colors</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="num">8px</div>
+                        <div class="label">Base radius</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="num">2</div>
+                        <div class="label">Typefaces</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="num">0</div>
+                        <div class="label">Gradients as decoration</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PRINCIPLES -->
+            <section id="principles">
+                <div class="section-head">
+                    <div class="eyebrow">Philosophy</div>
+                    <h2 class="section-title">Six principles, one discipline</h2>
+                    <p class="section-desc">The system is dark-first because analysts, engineers, and researchers
+                        already live in dark environments — IDEs, terminals, notebooks. This is a natural extension of
+                        that world, not a stylistic choice.</p>
+                </div>
+
+                <div class="grid-3">
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">01</div>
+                        <div class="panel-title">Data is the hero</div>
+                        <p class="section-desc" style="margin-top:8px;">Charts, tables, and statistics receive visual
+                            emphasis. The interface fades into the background.</p>
+                    </div>
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">02</div>
+                        <div class="panel-title">White space is functional</div>
+                        <p class="section-desc" style="margin-top:8px;">Spacing separates thoughts, not decorates pages.
+                            Every section is given room to breathe.</p>
+                    </div>
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">03</div>
+                        <div class="panel-title">Motion is purposeful</div>
+                        <p class="section-desc" style="margin-top:8px;">Animation communicates state — dataset uploaded,
+                            chart updated — never personality.</p>
+                    </div>
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">04</div>
+                        <div class="panel-title">Typography first</div>
+                        <p class="section-desc" style="margin-top:8px;">Most of the app is text. It must be readable,
+                            consistent, and comfortable for long sessions.</p>
+                    </div>
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">05</div>
+                        <div class="panel-title">Color is information</div>
+                        <p class="section-desc" style="margin-top:8px;">Blue means action, purple means AI, green means
+                            success. Everything else stays neutral.</p>
+                    </div>
+                    <div class="panel">
+                        <div class="badge badge-blue" style="margin-bottom:14px;">06</div>
+                        <div class="panel-title">Borders before shadows</div>
+                        <p class="section-desc" style="margin-top:8px;">Hierarchy comes from surface contrast and thin
+                            borders. Shadows are a last resort.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLOR -->
+            <section id="colors">
+                <div class="section-head">
+                    <div class="eyebrow">Foundations / 01</div>
+                    <h2 class="section-title">Color</h2>
+                    <p class="section-desc">True black sidebar, near-black canvas — the interface recedes so a single
+                        confident accent can carry every action. Everything else stays neutral grey, several shades deep
+                        instead of one flat surface.</p>
+                </div>
+
+                <div class="swatch-grid" style="margin-bottom:32px;">
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#121212;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Background</div>
+                            <div class="swatch-hex">#121212</div>
+                            <div class="swatch-usage">App-level base layer</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#181818;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Canvas</div>
+                            <div class="swatch-hex">#181818</div>
+                            <div class="swatch-usage">Content area background</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#1A1A1A;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Surface</div>
+                            <div class="swatch-hex">#1A1A1A</div>
+                            <div class="swatch-usage">Cards, panels, table headers</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#282828;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Elevated surface</div>
+                            <div class="swatch-hex">#282828</div>
+                            <div class="swatch-usage">Popovers, active states</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#000000;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Sidebar</div>
+                            <div class="swatch-hex">#000000</div>
+                            <div class="swatch-usage">Navigation chrome</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#2A2A2A;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Border</div>
+                            <div class="swatch-hex">#2A2A2A</div>
+                            <div class="swatch-usage">Hairline dividers</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="swatch-grid">
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#1DB954;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Primary green</div>
+                            <div class="swatch-hex">#1DB954</div>
+                            <div class="swatch-usage">Actions — buttons, links, focus, play state</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#8D87FF;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Accent indigo</div>
+                            <div class="swatch-hex">#8D87FF</div>
+                            <div class="swatch-usage">AI — reserved exclusively</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#34D399;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Success</div>
+                            <div class="swatch-hex">#34D399</div>
+                            <div class="swatch-usage">Positive deltas, confirmations</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#F0A23E;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Warning</div>
+                            <div class="swatch-hex">#F0A23E</div>
+                            <div class="swatch-usage">Needs attention, not urgent</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#F0555C;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Danger</div>
+                            <div class="swatch-hex">#F0555C</div>
+                            <div class="swatch-usage">Errors, destructive actions</div>
+                        </div>
+                    </div>
+                    <div class="swatch">
+                        <div class="swatch-color" style="background:#FFFFFF;"></div>
+                        <div class="swatch-meta">
+                            <div class="swatch-name">Primary text</div>
+                            <div class="swatch-hex">#FFFFFF</div>
+                            <div class="swatch-usage">Headlines, body copy</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TYPOGRAPHY -->
+            <section id="typography">
+                <div class="section-head">
+                    <div class="eyebrow">Foundations / 02</div>
+                    <h2 class="section-title">Typography</h2>
+                    <p class="section-desc">Inter carries the interface. JetBrains Mono carries numbers — metrics, code,
+                        timestamps — anything that benefits from fixed-width alignment. No decorative fonts, no
+                        oversized headings.</p>
+                </div>
+
+                <div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Title / SemiBold</span>32px · -0.02em</div>
+                        <div class="type-sample" style="font-size:32px; font-weight:600; letter-spacing:-0.02em;">
+                            Quarterly revenue analysis</div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Heading / SemiBold</span>22px · -0.01em</div>
+                        <div class="type-sample" style="font-size:22px; font-weight:600; letter-spacing:-0.01em;">Cohort
+                            retention by channel</div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Subheading / Medium</span>15px</div>
+                        <div class="type-sample" style="font-size:15px; font-weight:500;">Panel and card titles</div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Body / Regular</span>13.5px · 1.6 line-height</div>
+                        <div class="type-sample"
+                            style="font-size:13.5px; color:var(--text-secondary); line-height:1.6; max-width:480px;">
+                            Body copy stays quiet and legible across long analytical sessions, never competing with the
+                            data it describes.</div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Caption / Regular</span>12px</div>
+                        <div class="type-sample" style="font-size:12px; color:var(--muted);">Last updated 4 minutes ago
+                        </div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Mono / Numbers</span>JetBrains Mono</div>
+                        <div class="type-sample"
+                            style="font-family:var(--font-mono); font-size:20px; letter-spacing:-0.02em;">$482,190.24
+                        </div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-meta"><span class="name">Mono / Code</span>13px</div>
+                        <div class="type-sample"><code
+                                class="inline">SELECT revenue FROM q3 WHERE region = 'EMEA'</code></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SHAPE & ELEVATION -->
+            <section id="shape">
+                <div class="section-head">
+                    <div class="eyebrow">Foundations / 03</div>
+                    <h2 class="section-title">Shape &amp; elevation</h2>
+                    <p class="section-desc">Everything feels engineered. Radii are modest and consistent. Hierarchy
+                        still comes from surface contrast and hairline borders first — shadows are used deliberately as
+                        a second layer, soft and close, never a glow.</p>
+                </div>
+
+                <div class="grid-3">
+                    <div class="panel">
+                        <div
+                            style="width:100%; height:56px; background:var(--surface-elevated); border-radius:8px; margin-bottom:14px;">
+                        </div>
+                        <div class="panel-title" style="font-size:13px;">Radius — 8px</div>
+                        <div class="section-desc" style="font-size:12px; margin-top:4px;">Buttons, inputs, small
+                            controls</div>
+                    </div>
+                    <div class="panel">
+                        <div
+                            style="width:100%; height:56px; background:var(--surface-elevated); border-radius:12px; margin-bottom:14px;">
+                        </div>
+                        <div class="panel-title" style="font-size:13px;">Radius — 12px</div>
+                        <div class="section-desc" style="font-size:12px; margin-top:4px;">Cards and panels</div>
+                    </div>
+                    <div class="panel">
+                        <div
+                            style="width:100%; height:56px; background:var(--surface-elevated); border-radius:16px; margin-bottom:14px;">
+                        </div>
+                        <div class="panel-title" style="font-size:13px;">Radius — 16px</div>
+                        <div class="section-desc" style="font-size:12px; margin-top:4px;">Dialogs and modals</div>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="margin-top:20px;">
+                    <div
+                        style="background:var(--canvas); border:1px solid var(--border); border-radius:12px; padding:18px;">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Level 0 — Canvas</div>
+                        <div class="section-desc" style="font-size:12px;">Base content background</div>
+                    </div>
+                    <div
+                        style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px;">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Level 1 — Surface</div>
+                        <div class="section-desc" style="font-size:12px;">Resting panels</div>
+                    </div>
+                    <div
+                        style="background:var(--surface-elevated); border:1px solid var(--border); border-radius:12px; padding:18px; box-shadow:var(--shadow-md);">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Level 2 — Elevated</div>
+                        <div class="section-desc" style="font-size:12px;">Active / hovered / focused — border + soft
+                            shadow</div>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="margin-top:20px;">
+                    <div class="panel" style="box-shadow:var(--shadow-sm);">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Shadow — sm</div>
+                        <div class="section-desc" style="font-size:12px;">Resting hover, composer, active nav</div>
+                    </div>
+                    <div class="panel" style="box-shadow:var(--shadow-md);">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Shadow — md</div>
+                        <div class="section-desc" style="font-size:12px;">Elevated panels, AI presence, focused composer
+                        </div>
+                    </div>
+                    <div class="panel" style="box-shadow:var(--shadow-lg);">
+                        <div class="panel-title" style="font-size:13px; margin-bottom:6px;">Shadow — lg</div>
+                        <div class="section-desc" style="font-size:12px;">Dialogs, dropdowns, anything floating above
+                            content</div>
+                    </div>
+                </div>
+
+                <div class="section-head" style="margin-top:48px; margin-bottom:24px;">
+                    <h2 class="section-title" style="font-size:16px;">Spacing scale</h2>
+                    <p class="section-desc">An 8-point rhythm, one step looser than before — room for data to breathe
+                        without turning into empty luxury.</p>
+                </div>
+
+                <div style="max-width:520px;">
+                    <div class="space-row">
+                        <div class="space-block" style="width:4px; height:16px;"></div>
+                        <div class="space-meta">--space-1 · 4px</div>
+                        <div class="space-usage">Icon-to-label gaps</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:8px; height:16px;"></div>
+                        <div class="space-meta">--space-2 · 8px</div>
+                        <div class="space-usage">Chip and badge padding</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:12px; height:16px;"></div>
+                        <div class="space-meta">--space-3 · 12px</div>
+                        <div class="space-usage">Input padding, tight stacks</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:16px; height:16px;"></div>
+                        <div class="space-meta">--space-4 · 16px</div>
+                        <div class="space-usage">Panel internal padding</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:24px; height:16px;"></div>
+                        <div class="space-meta">--space-5 · 24px</div>
+                        <div class="space-usage">Grid gaps, panel padding</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:32px; height:16px;"></div>
+                        <div class="space-meta">--space-6 · 32px</div>
+                        <div class="space-usage">Nav groups, hero actions</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:48px; height:16px;"></div>
+                        <div class="space-meta">--space-7 · 48px</div>
+                        <div class="space-usage">Section head margins</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:64px; height:16px;"></div>
+                        <div class="space-meta">--space-8 · 64px</div>
+                        <div class="space-usage">Section horizontal padding</div>
+                    </div>
+                    <div class="space-row">
+                        <div class="space-block" style="width:96px; height:16px;"></div>
+                        <div class="space-meta">--space-9 · 96px</div>
+                        <div class="space-usage">Section vertical padding</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MOTION -->
+            <section id="motion">
+                <div class="section-head">
+                    <div class="eyebrow">Foundations / 04</div>
+                    <h2 class="section-title">Motion</h2>
+                    <p class="section-desc">Animation communicates state, never personality. Nothing bounces. Nothing
+                        spins forever.</p>
+                </div>
+
+                <div class="panel motion-demo">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="pulse-dot"></div>
+                        <span style="font-size:13px; color:var(--text-secondary);">Live query running</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:12.5px; color:var(--muted); font-family:var(--font-mono);">Analysis
+                            68%</span>
+                        <div class="progress-track">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BUTTONS -->
+            <section id="buttons">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 01</div>
+                    <h2 class="section-title">Buttons</h2>
+                    <p class="section-desc">One primary action per view. Softer, rounder corners (10px) and a tactile
+                        press give the interface a warmer, more conversational feel — closer to a chat product than a
+                        CAD tool — while staying flat and gradient-free.</p>
+                </div>
+
+                <div class="btn-row" style="margin-bottom:18px;">
+                    <button class="btn btn-primary">Run analysis</button>
+                    <button class="btn btn-secondary">Export data</button>
+                    <button class="btn btn-ghost">Cancel</button>
+                    <button class="btn btn-danger">Delete dataset</button>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary btn-sm">Apply filter</button>
+                    <button class="btn btn-secondary btn-sm">Duplicate</button>
+                    <button class="btn btn-ghost btn-sm">Reset</button>
+                </div>
+
+                <div class="section-head" style="margin-top:var(--space-7); margin-bottom:var(--space-4);">
+                    <h2 class="section-title" style="font-size:14px;">Interaction</h2>
+                    <p class="section-desc">Hover lifts 1px with a soft shadow. Press settles to 97% scale — a quiet,
+                        tactile click rather than a color flash.</p>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary">Hover or click me</button>
+                    <span class="section-desc" style="font-size:12px;">↑ try it</span>
+                </div>
+            </section>
+
+            <!-- BADGES -->
+            <section id="badges">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 02</div>
+                    <h2 class="section-title">Badges &amp; status</h2>
+                    <p class="section-desc">Color as information — never as ornament. Each hue maps to exactly one
+                        meaning across the entire product.</p>
+                </div>
+
+                <div class="btn-row">
+                    <span class="badge badge-blue">Action</span>
+                    <span class="badge badge-indigo">AI-assisted</span>
+                    <span class="badge badge-success">Completed</span>
+                    <span class="badge badge-warning">Needs review</span>
+                    <span class="badge badge-danger">Failed</span>
+                    <span class="badge badge-neutral">Draft</span>
+                </div>
+            </section>
+
+            <!-- INPUTS -->
+            <section id="inputs">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 03</div>
+                    <h2 class="section-title">Inputs &amp; filters</h2>
+                    <p class="section-desc">Form controls stay quiet — 8px radius, single hairline border, subtle blue
+                        on focus.</p>
+                </div>
+
+                <div class="panel" style="max-width:520px;">
+                    <div class="field">
+                        <label for="dataset">Dataset</label>
+                        <input class="input" id="dataset" type="text" placeholder="Search datasets…">
+                    </div>
+                    <div class="field">
+                        <label for="range">Date range</label>
+                        <select class="input" id="range">
+                            <option>Last 7 days</option>
+                            <option>Last 30 days</option>
+                            <option>Quarter to date</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="anomaly" checked>
+                        <label for="anomaly" style="margin:0;">Flag anomalies automatically</label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CARDS / KPIs -->
+            <section id="cards">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 04</div>
+                    <h2 class="section-title">Cards &amp; KPI panels</h2>
+                    <p class="section-desc">Each component lives inside a clearly defined container. The user should
+                        instantly understand what belongs together.</p>
+                </div>
+
+                <div class="grid-3">
+                    <div class="panel">
+                        <div class="panel-sub">Total revenue</div>
+                        <div class="kpi-value">$1.24M</div>
+                        <span class="kpi-delta up">▲ 12.4%</span>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-sub">Active queries</div>
+                        <div class="kpi-value">342</div>
+                        <span class="kpi-delta down">▼ 3.1%</span>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-sub">Model latency</div>
+                        <div class="kpi-value">184<span style="font-size:15px; color:var(--muted);">ms</span></div>
+                        <span class="kpi-delta up">▲ 0.8%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TABLE -->
+            <section id="table">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 05</div>
+                    <h2 class="section-title">Tables</h2>
+                    <p class="section-desc">High information density, modeled after GitHub and Observable. Rows
+                        highlight on hover; nothing else moves.</p>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Requests</th>
+                                <th>Avg. latency</th>
+                                <th>Error rate</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>llama-3.1-70b</td>
+                                <td class="cell-mono">18,204</td>
+                                <td class="cell-mono">142ms</td>
+                                <td class="cell-mono">0.02%</td>
+                                <td><span class="badge badge-success">Healthy</span></td>
+                            </tr>
+                            <tr>
+                                <td>mixtral-8x7b</td>
+                                <td class="cell-mono">9,481</td>
+                                <td class="cell-mono">98ms</td>
+                                <td class="cell-mono">0.11%</td>
+                                <td><span class="badge badge-success">Healthy</span></td>
+                            </tr>
+                            <tr>
+                                <td>qwen-2.5-32b</td>
+                                <td class="cell-mono">3,027</td>
+                                <td class="cell-mono">210ms</td>
+                                <td class="cell-mono">1.84%</td>
+                                <td><span class="badge badge-warning">Degraded</span></td>
+                            </tr>
+                            <tr>
+                                <td>phi-3-mini</td>
+                                <td class="cell-mono">512</td>
+                                <td class="cell-mono">—</td>
+                                <td class="cell-mono">100%</td>
+                                <td><span class="badge badge-danger">Offline</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- CHARTS -->
+            <section id="charts">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 06</div>
+                    <h2 class="section-title">Data visualization</h2>
+                    <p class="section-desc">Minimal grid lines. Muted axes. One primary accent color. Highlight only
+                        what matters — the visualization communicates information, not decoration.</p>
+                </div>
+
+                <div class="grid-2">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Requests per hour</div>
+                                <div class="panel-sub">Last 24 hours</div>
+                            </div>
+                        </div>
+                        <div class="chart-legend">
+                            <div class="legend-item"><span class="legend-dot"
+                                    style="background:var(--blue);"></span>Requests</div>
+                            <div class="legend-item"><span class="legend-dot"
+                                    style="background:var(--indigo);"></span>Forecast</div>
+                        </div>
+                        <svg viewBox="0 0 480 200" width="100%" height="200" style="overflow:visible;">
+                            <!-- grid lines -->
+                            <g stroke="#2A2A2A" stroke-width="1">
+                                <line x1="0" y1="20" x2="480" y2="20" />
+                                <line x1="0" y1="70" x2="480" y2="70" />
+                                <line x1="0" y1="120" x2="480" y2="120" />
+                                <line x1="0" y1="170" x2="480" y2="170" />
+                            </g>
+                            <!-- forecast dashed -->
+                            <polyline fill="none" stroke="#8D87FF" stroke-width="2" stroke-dasharray="4 4" opacity="0.7"
+                                points="300,110 340,100 380,95 420,80 460,75" />
+                            <!-- main line -->
+                            <polyline fill="none" stroke="#1DB954" stroke-width="2.5"
+                                points="0,140 40,130 80,150 120,110 160,120 200,90 240,100 280,85 300,110" />
+                            <!-- fill under curve -->
+                            <polygon fill="url(#areaFade)" opacity="0.5"
+                                points="0,140 40,130 80,150 120,110 160,120 200,90 240,100 280,85 300,110 300,170 0,170" />
+                            <defs>
+                                <linearGradient id="areaFade" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#1DB954" stop-opacity="0.25" />
+                                    <stop offset="100%" stop-color="#1DB954" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                            <!-- highlighted point -->
+                            <circle cx="280" cy="85" r="4" fill="#1DB954" stroke="#121212" stroke-width="2" />
+                        </svg>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <div class="panel-title">Traffic by endpoint</div>
+                                <div class="panel-sub">Share of total requests</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:14px; margin-top:8px;">
+                            <div>
+                                <div
+                                    style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                                    <span style="color:var(--text-secondary);">/v1/chat/completions</span>
+                                    <span class="cell-mono">62%</span>
+                                </div>
+                                <div
+                                    style="height:6px; background:var(--surface-elevated); border-radius:999px; overflow:hidden;">
+                                    <div style="height:100%; width:62%; background:var(--blue); border-radius:999px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div
+                                    style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                                    <span style="color:var(--text-secondary);">/v1/embeddings</span>
+                                    <span class="cell-mono">24%</span>
+                                </div>
+                                <div
+                                    style="height:6px; background:var(--surface-elevated); border-radius:999px; overflow:hidden;">
+                                    <div style="height:100%; width:24%; background:var(--muted); border-radius:999px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div
+                                    style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                                    <span style="color:var(--text-secondary);">/v1/models</span>
+                                    <span class="cell-mono">9%</span>
+                                </div>
+                                <div
+                                    style="height:6px; background:var(--surface-elevated); border-radius:999px; overflow:hidden;">
+                                    <div style="height:100%; width:9%; background:var(--muted); border-radius:999px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div
+                                    style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                                    <span style="color:var(--warning);">/v1/fine-tunes</span>
+                                    <span class="cell-mono">5%</span>
+                                </div>
+                                <div
+                                    style="height:6px; background:var(--surface-elevated); border-radius:999px; overflow:hidden;">
+                                    <div style="height:100%; width:5%; background:var(--warning); border-radius:999px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI PRESENCE -->
+            <section id="ai">
+                <div class="section-head">
+                    <div class="eyebrow">Components / 07</div>
+                    <h2 class="section-title">AI presence</h2>
+                    <p class="section-desc">The AI is an expert collaborator, not the product. It appears when needed,
+                        analyzes, explains, then gets out of the way — indigo is reserved exclusively for its presence.
+                    </p>
+                </div>
+
+                <div class="ai-panel" style="max-width:640px;">
+                    <div class="ai-tag"><span class="spark"></span> AI insight</div>
+                    <p class="ai-text">Error rate for <span class="ref">qwen-2.5-32b</span> increased sharply after the
+                        14:00 deploy. Latency correlates with a spike in prompt length — consider reverting the context
+                        window change or scaling the batch size down.</p>
+                    <div class="btn-row" style="margin-top:16px;">
+                        <button class="btn btn-secondary btn-sm">View trace</button>
+                        <button class="btn btn-ghost btn-sm">Dismiss</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DATASET CONTEXT BAR -->
+            <section id="context-bar">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 01</div>
+                    <h2 class="section-title">Dataset context bar</h2>
+                    <p class="section-desc">Persistent strip above the conversation. It answers the first question any
+                        analytical session needs: what data am I looking at, and is the agent doing anything right now.
+                    </p>
+                </div>
+
+                <div class="context-bar">
+                    <div class="context-left">
+                        <div class="context-item"><span class="file-dot"></span> sales_2025.csv</div>
+                        <div class="context-divider"></div>
+                        <div class="context-item">12,430 rows · 18 columns</div>
+                        <div class="context-divider"></div>
+                        <div class="context-item">Updated 4m ago</div>
+                    </div>
+                    <div class="context-status"><span class="spinner"></span> Analyzing</div>
+                </div>
+            </section>
+
+            <!-- TOOL EXECUTION TIMELINE -->
+            <section id="timeline">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 02 — Signature component</div>
+                    <h2 class="section-title">Tool execution timeline</h2>
+                    <p class="section-desc">Replaces a silent "thinking…" state. Each LangGraph tool call becomes one
+                        row — high-level, never chain-of-thought. Completed steps stay visible so the user can trace how
+                        an answer was produced.</p>
+                </div>
+
+                <div class="timeline" style="max-width:560px;">
+                    <div class="timeline-step">
+                        <div class="timeline-marker done">✓</div>
+                        <div class="timeline-body">
+                            <div class="timeline-title">
+                                <span class="timeline-label">Reading dataset</span>
+                                <span class="timeline-time">0.4s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="timeline-marker done">✓</div>
+                        <div class="timeline-body">
+                            <div class="timeline-title">
+                                <span class="timeline-label">Detecting schema</span>
+                                <span class="timeline-time">0.2s</span>
+                            </div>
+                            <div class="timeline-detail">18 columns · 4 numeric · 2 datetime · 12 categorical</div>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="timeline-marker active">●</div>
+                        <div class="timeline-body">
+                            <div class="timeline-title">
+                                <span class="timeline-label">Running correlation analysis</span>
+                                <span class="timeline-time cell-mono">1.1s</span>
+                            </div>
+                            <div class="timeline-detail">revenue × region, revenue × discount_rate</div>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="timeline-marker pending">3</div>
+                        <div class="timeline-body">
+                            <div class="timeline-title">
+                                <span class="timeline-label dim">Generating visualization</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="timeline-marker pending">4</div>
+                        <div class="timeline-body">
+                            <div class="timeline-title">
+                                <span class="timeline-label dim">Preparing response</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CONVERSATION -->
+            <section id="conversation">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 03</div>
+                    <h2 class="section-title">Conversation</h2>
+                    <p class="section-desc">Chat is the primary workspace, not a side panel — this is a conversational
+                        analysis tool first. Assistant replies render Markdown, tables, and inline charts; never raw
+                        code blocks for findings.</p>
+                </div>
+
+                <div class="conversation" style="max-width:640px; margin-bottom:20px;">
+                    <div class="msg-row user">
+                        <div class="msg-bubble user">Show me a summary of sales_2025.csv</div>
+                    </div>
+
+                    <div class="msg-row assistant">
+                        <div class="msg-bubble assistant">
+                            <div class="msg-meta">Data Analyst Agent · 2.3s</div>
+                            The dataset contains <strong>12,430 rows</strong> and <strong>18 columns</strong>. Here's
+                            the overview:
+                            <table class="msg-table">
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Type</th>
+                                    <th>Nulls</th>
+                                    <th>Unique</th>
+                                </tr>
+                                <tr>
+                                    <td>date</td>
+                                    <td class="cell-mono">datetime</td>
+                                    <td class="cell-mono">0</td>
+                                    <td class="cell-mono">456</td>
+                                </tr>
+                                <tr>
+                                    <td>revenue</td>
+                                    <td class="cell-mono">float</td>
+                                    <td class="cell-mono">23</td>
+                                    <td class="cell-mono">1,200</td>
+                                </tr>
+                                <tr>
+                                    <td>region</td>
+                                    <td class="cell-mono">string</td>
+                                    <td class="cell-mono">0</td>
+                                    <td class="cell-mono">5</td>
+                                </tr>
+                            </table>
+                            <div class="msg-actions">
+                                <button class="btn btn-secondary btn-sm">View chart</button>
+                                <button class="btn btn-ghost btn-sm">Export</button>
+                                <button class="btn btn-ghost btn-sm">Explore</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="composer" style="max-width:640px;">
+                    <input type="text" placeholder="Ask something about your dataset…">
+                    <button class="btn btn-primary btn-sm">Send</button>
+                </div>
+            </section>
+
+            <!-- QUICK PROMPTS -->
+            <section id="prompts">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 04</div>
+                    <h2 class="section-title">Quick prompts</h2>
+                    <p class="section-desc">Lower the cost of the first question. Shown above the composer on an empty
+                        thread or after a dataset upload — never after the conversation has real content.</p>
+                </div>
+
+                <div class="btn-row">
+                    <div class="prompt-chip"><span class="chip-icon">▤</span> Summarize this dataset</div>
+                    <div class="prompt-chip"><span class="chip-icon">▥</span> Chart revenue by region</div>
+                    <div class="prompt-chip"><span class="chip-icon">◈</span> Find outliers</div>
+                    <div class="prompt-chip"><span class="chip-icon">∿</span> Correlation between price and sales</div>
+                </div>
+            </section>
+
+            <!-- UPLOAD -->
+            <section id="upload">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 05</div>
+                    <h2 class="section-title">Dataset upload</h2>
+                    <p class="section-desc">The dropzone is quiet until it matters — a hairline dash, not an
+                        illustration. It only changes state on drag-over or on error.</p>
+                </div>
+
+                <div class="dropzone" style="max-width:520px;">
+                    <div class="dropzone-icon">↑</div>
+                    <div class="dropzone-title">Drop a dataset here, or browse</div>
+                    <div class="dropzone-sub">CSV, Excel, JSON, or Parquet · up to 100MB</div>
+                </div>
+            </section>
+
+            <!-- DATA EXPLORER -->
+            <section id="explorer">
+                <div class="section-head">
+                    <div class="eyebrow">Patterns / 06</div>
+                    <h2 class="section-title">Data explorer split view</h2>
+                    <p class="section-desc">Opens beside the conversation for the professional-workspace phase of the
+                        roadmap — chat stays the source of intent, the explorer stays the source of ground truth.
+                        Neither view ever fully replaces the other.</p>
+                </div>
+
+                <div class="split-view">
+                    <div class="split-pane" style="border-right:1px solid var(--border);">
+                        <div class="split-pane-header">
+                            <div class="panel-title" style="font-size:13px;">Columns</div>
+                            <span class="badge badge-neutral">18</span>
+                        </div>
+                        <div class="column-row">
+                            <span>date</span>
+                            <div class="column-dist"><span style="width:92%;"></span></div>
+                        </div>
+                        <div class="column-row">
+                            <span>revenue</span>
+                            <div class="column-dist"><span style="width:78%; background:var(--blue);"></span></div>
+                        </div>
+                        <div class="column-row">
+                            <span>region</span>
+                            <div class="column-dist"><span style="width:40%;"></span></div>
+                        </div>
+                        <div class="column-row">
+                            <span>discount_rate</span>
+                            <div class="column-dist"><span style="width:22%; background:var(--warning);"></span></div>
+                        </div>
+                    </div>
+                    <div class="split-pane">
+                        <div class="split-pane-header">
+                            <div class="panel-title" style="font-size:13px;">Revenue by region</div>
+                            <span class="badge badge-blue">Chart</span>
+                        </div>
+                        <svg viewBox="0 0 400 160" width="100%" height="160">
+                            <g stroke="#2A2A2A" stroke-width="1">
+                                <line x1="0" y1="10" x2="400" y2="10" />
+                                <line x1="0" y1="60" x2="400" y2="60" />
+                                <line x1="0" y1="110" x2="400" y2="110" />
+                                <line x1="0" y1="150" x2="400" y2="150" />
+                            </g>
+                            <rect x="20" y="50" width="48" height="100" fill="#1DB954" />
+                            <rect x="100" y="70" width="48" height="80" fill="#1DB954" opacity="0.75" />
+                            <rect x="180" y="95" width="48" height="55" fill="#1DB954" opacity="0.55" />
+                            <rect x="260" y="115" width="48" height="35" fill="#1DB954" opacity="0.4" />
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <div class="foot">
+                <div>analytical-workspace / design-system</div>
+                <div>dark-first · v1.1 — conversational patterns</div>
+            </div>
+
+        </main>
+    </div>
+
+</body>
+
+</html>
