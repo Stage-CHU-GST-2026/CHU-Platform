@@ -6,145 +6,97 @@
 
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 
-	interface MessageData {
+	const API_BASE = 'http://localhost:10000/api/v1';
+
+	interface ChatMessage {
 		key: string;
-		value: string;
-		name: string;
+		role: 'user' | 'assistant';
+		content: string;
 	}
 
-	// Static messages data using crypto.randomUUID()
-	const messages: MessageData[] = [
-		{
-			key: crypto.randomUUID(),
-			value: 'Hello, how are you?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm good, thank you! How can I assist you today?",
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm looking for information about your services.",
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Sure! We offer a variety of AI solutions. What are you interested in?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "I'm interested in natural language processing tools.",
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Great choice! We have several NLP APIs. Would you like a demo?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, a demo would be helpful.',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Alright, I can show you a sentiment analysis example. Ready?',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, please proceed.',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "Here is a sample: 'I love this product!' → Positive sentiment.",
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Impressive! Can it handle multiple languages?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Absolutely, our models support over 20 languages.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'How do I get started with the API?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'You can sign up on our website and get an API key instantly.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Is there a free trial available?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Yes, we offer a 14-day free trial with full access.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'What kind of support do you provide?',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'We provide 24/7 chat and email support for all users.',
-			name: 'AI Assistant'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: 'Thank you for the information!',
-			name: 'Alex Johnson'
-		},
-		{
-			key: crypto.randomUUID(),
-			value: "You're welcome! Let me know if you have any more questions.",
-			name: 'AI Assistant'
-		}
-	];
+	let messages = $state<ChatMessage[]>([]);
+	let threadId = $state<string | null>(null);
+	let isLoading = $state(false);
 
-	// Reactive state using Svelte 5 runes
-	let visibleMessages = $state<MessageData[]>([]);
+	async function handleSubmit(input: PromptInputMessage) {
+		if (isLoading || !input.text.trim()) return;
 
-	// Auto-add messages effect using Svelte 5 $effect
-	$effect(() => {
-		let currentIndex = 0;
-		const interval = setInterval(() => {
-			if (currentIndex < messages.length && messages[currentIndex]) {
-				const currentMessage = messages[currentIndex];
-				visibleMessages = [
-					...visibleMessages,
-					{
-						key: currentMessage.key,
-						value: currentMessage.value,
-						name: currentMessage.name
-					}
-				];
-				currentIndex++;
-			} else {
-				clearInterval(interval);
+		// Ajouter le message utilisateur
+		const userMsg: ChatMessage = {
+			key: crypto.randomUUID(),
+			role: 'user',
+			content: input.text
+		};
+		messages = [...messages, userMsg];
+		isLoading = true;
+
+		// Créer un message assistant vide pour le streaming
+		const assistantKey = crypto.randomUUID();
+		const assistantMsg: ChatMessage = {
+			key: assistantKey,
+			role: 'assistant',
+			content: ''
+		};
+		messages = [...messages, assistantMsg];
+
+		try {
+			// 1. Créer une nouvelle conversation si pas de threadId
+			if (!threadId) {
+				const res = await fetch(`${API_BASE}/chat/new`, { method: 'POST' });
+				const data = await res.json();
+				threadId = data.thread_id;
 			}
-		}, 500);
 
-		return () => clearInterval(interval);
-	});
+			// 2. Envoyer le message et streamer la réponse via SSE
+			const response = await fetch(`${API_BASE}/chat`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					message: input.text,
+					thread_id: threadId
+				})
+			});
 
-	function handleSubmit(message: PromptInputMessage) {
-		console.log('Submitted message:', message.text);
-		console.log('Files', message.files);
+			const reader = response.body!.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+			let currentEvent = '';
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || '';
+
+				for (const line of lines) {
+					if (line.startsWith('event: ')) {
+						currentEvent = line.slice(7).trim();
+						continue;
+					}
+					if (line.startsWith('data: ')) {
+						const data = line.slice(6);
+						// Ne traiter que les événements 'token'
+						if (currentEvent === 'token') {
+							messages = messages.map((m) =>
+								m.key === assistantKey ? { ...m, content: m.content + data } : m
+							);
+						}
+						currentEvent = '';
+					}
+				}
+			}
+		} catch (err) {
+			console.error('API Error:', err);
+			messages = messages.map((m) =>
+				m.key === assistantKey
+					? { ...m, content: '⚠️ Error: Could not reach the API. Make sure the backend is running.' }
+					: m
+			);
+		} finally {
+			isLoading = false;
+		}
 	}
 </script>
 
@@ -152,19 +104,19 @@
 	<!-- Chat area: fills all remaining space -->
 	<Conversation.Root class="flex-1 min-h-0">
 		<Conversation.Content class="gap-4">
-			{#if visibleMessages.length === 0}
+			{#if messages.length === 0}
 				<Conversation.EmptyState
-					description="Messages will appear here as the conversation progresses."
-					title="Start a conversation"
+					description="Ask a question about your dataset to get started."
+					title="Data Analyst Chat"
 				>
 					{#snippet icon()}
 						<MessageSquare class="size-6" />
 					{/snippet}
 				</Conversation.EmptyState>
 			{:else}
-				{#each visibleMessages as messageData, index (messageData.key)}
-					<Message.Root from={index % 2 === 0 ? 'user' : 'assistant'}>
-						<Message.Content>{messageData.value}</Message.Content>
+				{#each messages as msg (msg.key)}
+					<Message.Root from={msg.role}>
+						<Message.Content>{msg.content}</Message.Content>
 					</Message.Root>
 				{/each}
 			{/if}
@@ -176,7 +128,7 @@
 	<div class="shrink-0 border-t bg-background px-4 py-3">
 		<PromptInput.Root class="mx-auto max-w-2xl" onSubmit={handleSubmit}>
 			<PromptInput.Body>
-				<PromptInput.Textarea placeholder="Type your message..." />
+				<PromptInput.Textarea placeholder={isLoading ? 'Waiting for response...' : 'Ask about your dataset...'} />
 			</PromptInput.Body>
 			<PromptInput.Toolbar class="justify-end">
 				<PromptInput.Submit />

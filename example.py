@@ -16,6 +16,8 @@ Usage:
 This creates a sample dataset and explores it.
 """
 
+import uuid
+
 from dotenv import load_dotenv
 import asyncio
 import os
@@ -50,6 +52,7 @@ async def main():
     df.to_csv(path, index=False)
 
     agent = create_data_analyst()
+    thread_id = str(uuid.uuid4())
 
     print("=" * 60)
     print("Data Analyst Agent")
@@ -67,7 +70,10 @@ async def main():
     for i, q in enumerate(questions, 1):
         print(f"[{i}] User: {q}")
         print("-" * 50)
-        result = await agent.run(q)
+        result = await agent.run(
+            q,
+            config={"configurable": {"thread_id": thread_id}},
+        )
         print(f"Agent: {result.content}")
         print()
 
