@@ -776,8 +776,14 @@
 					— consider reverting the context window change or scaling the batch size down.
 				</p>
 				<div class="mt-4 flex flex-wrap items-center gap-3">
-					<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-border bg-surface-elevated px-[14px] py-[7px] text-[12.5px] font-bold text-text-primary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:border-[#3E3E3E] hover:bg-[#2E2E2E] hover:shadow-shadow-sm">View trace</button>
-					<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary">Dismiss</button>
+					<button
+						class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-border bg-surface-elevated px-[14px] py-[7px] text-[12.5px] font-bold text-text-primary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:border-[#3E3E3E] hover:bg-[#2E2E2E] hover:shadow-shadow-sm"
+						>View trace</button
+					>
+					<button
+						class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary"
+						>Dismiss</button
+					>
 				</div>
 			</div>
 		</section>
@@ -933,9 +939,18 @@
 							</tbody>
 						</table>
 						<div class="mt-3 flex gap-2">
-							<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-border bg-surface-elevated px-[14px] py-[7px] text-[12.5px] font-bold text-text-primary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:border-[#3E3E3E] hover:bg-[#2E2E2E] hover:shadow-shadow-sm">View chart</button>
-							<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary">Export</button>
-							<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary">Explore</button>
+							<button
+								class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-border bg-surface-elevated px-[14px] py-[7px] text-[12.5px] font-bold text-text-primary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:border-[#3E3E3E] hover:bg-[#2E2E2E] hover:shadow-shadow-sm"
+								>View chart</button
+							>
+							<button
+								class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary"
+								>Export</button
+							>
+							<button
+								class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-transparent px-[14px] py-[7px] text-[12.5px] font-bold text-text-secondary font-ui transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-surface hover:text-text-primary"
+								>Explore</button
+							>
 						</div>
 					</div>
 				</div>
@@ -949,7 +964,10 @@
 					placeholder="Ask something about your dataset…"
 					class="flex-1 bg-transparent font-ui text-[13.5px] text-text-primary outline-none placeholder:text-muted"
 				/>
-				<button class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">Send</button>
+				<button
+					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+					>Send</button
+				>
 			</div>
 		</section>
 
