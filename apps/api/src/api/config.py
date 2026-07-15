@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     port: int = 10000
     reload: bool = True
 
+    # Database (PostgreSQL)
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/app"
+    )
+
+    # Charts — directory inside the API package, served as static files
+    charts_dir: str = "static/charts"
+
     # LLM — matches what the Data Analyst agent picks up
     openai_base_url: str = "http://localhost:6060/v1"
     openai_api_key: str = ""

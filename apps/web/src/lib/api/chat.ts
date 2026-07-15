@@ -1,76 +1,136 @@
 /**
- * Chat API service — connects the UI to the Data Analyst agent backend.
+ * Chat API service — connects the UI to the CHU Platform analytics backend.
  *
+ * Uses the conversation-based REST API (persistent, DB-backed).
  * The development Vite proxy forwards /api → http://localhost:10000/api
  */
 
 const API_BASE = "/api/v1";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface ConversationSummary {
+    id: string;
+    title: string | null;
+    created_at: string;
+    updated_at: string;
+    message_count: number;
+}
+
 export interface ChatMessage {
+    id: number;
     role: "user" | "assistant";
     content: string;
+    created_at: string;
 }
 
-export interface ThreadInfo {
-    threadId: string;
+export interface Conversation {
+    id: string;
+    title: string | null;
+    created_at: string;
+    updated_at: string;
+    messages: ChatMessage[];
 }
 
-/** Response type for the streaming callback */
 export interface StreamCallbacks {
     onToken: (token: string) => void;
     onDone: () => void;
     onError: (error: Error) => void;
 }
 
+// ── Conversation CRUD ─────────────────────────────────────────────────────────
+
 /**
- * Create a new conversation thread.
+ * List all conversations, most recently updated first.
  */
-export async function createThread(): Promise<ThreadInfo> {
-    const res = await fetch(`${API_BASE}/chat/new`, { method: "POST" });
-    if (!res.ok) {
-        throw new Error(`Failed to create thread: ${res.status}`);
-    }
-    const data = await res.json();
-    return { threadId: data.thread_id };
+export async function listConversations(
+    limit = 50,
+    offset = 0
+): Promise<ConversationSummary[]> {
+    const res = await fetch(`${API_BASE}/conversations?limit=${limit}&offset=${offset}`);
+    if (!res.ok) throw new Error(`Failed to list conversations: ${res.status}`);
+    return res.json();
 }
 
 /**
- * Send a message and stream the assistant response via SSE.
- *
- * Returns the thread_id (useful on first message when none was set).
+ * Create a new conversation. Title is optional — auto-generated from first message if omitted.
  */
-export async function sendMessage(
-    message: string,
-    threadId: string | undefined,
-    callbacks: StreamCallbacks
-): Promise<string> {
-    const res = await fetch(`${API_BASE}/chat`, {
+export async function createConversation(title?: string): Promise<Conversation> {
+    const res = await fetch(`${API_BASE}/conversations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            message,
-            ...(threadId ? { thread_id: threadId } : {}),
-        }),
+        body: JSON.stringify(title ? { title } : {}),
     });
+    if (!res.ok) throw new Error(`Failed to create conversation: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * Fetch a single conversation with its full message history.
+ */
+export async function getConversation(id: string): Promise<Conversation> {
+    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error(`Failed to get conversation: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * Update the title of a conversation.
+ */
+export async function updateConversation(id: string, title: string): Promise<Conversation> {
+    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+    });
+    if (!res.ok) throw new Error(`Failed to update conversation: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * Delete a conversation and all its messages.
+ */
+export async function deleteConversation(id: string): Promise<void> {
+    await fetch(`${API_BASE}/conversations/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+    });
+}
+
+// ── SSE Streaming ─────────────────────────────────────────────────────────────
+
+/**
+ * Send a message inside an existing conversation and stream the assistant response via SSE.
+ *
+ * Both the user message and the complete assistant response are automatically
+ * saved to the database by the backend.
+ */
+export async function sendMessage(
+    conversationId: string,
+    message: string,
+    callbacks: StreamCallbacks,
+    datasetPath?: string
+): Promise<void> {
+    const res = await fetch(
+        `${API_BASE}/conversations/${encodeURIComponent(conversationId)}/chat`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message,
+                ...(datasetPath ? { dataset_path: datasetPath } : {}),
+            }),
+        }
+    );
 
     if (!res.ok) {
         throw new Error(`Chat request failed: ${res.status}`);
     }
 
     const reader = res.body?.getReader();
-    if (!reader) {
-        throw new Error("No response body stream");
-    }
+    if (!reader) throw new Error("No response body stream");
 
     const decoder = new TextDecoder();
     let buffer = "";
-    let resolvedThreadId = threadId ?? "";
-
-    // These must live OUTSIDE the read loop: an SSE event's "event:" and
-    // "data:" lines can be split across two separate reader.read() chunks,
-    // since chunk boundaries have nothing to do with SSE event boundaries.
-    // Resetting them per-chunk (as the old code did) silently drops any
-    // event that happens to straddle a chunk boundary.
     let currentEvent = "";
     let dataLines: string[] = [];
 
@@ -81,39 +141,31 @@ export async function sendMessage(
 
             buffer += decoder.decode(value, { stream: true });
 
-            // Parse SSE events from the buffer
             const lines = buffer.split("\n");
-            buffer = lines.pop() ?? ""; // keep incomplete line in buffer
+            buffer = lines.pop() ?? "";
 
             for (const rawLine of lines) {
-                // sse_starlette uses \r\n as its default line separator.
-                // Splitting on \n alone leaves a trailing \r on every line,
-                // which means the blank-line event boundary never matches "".
-                // Strip the trailing \r here so both \r\n and \n streams work.
                 const line = rawLine.replace(/\r$/, "");
 
                 if (line.startsWith("event: ")) {
                     currentEvent = line.slice(7).trim();
                 } else if (line.startsWith("data:")) {
-                    // SSE allows multiple "data:" lines per event; per spec they're
-                    // joined with "\n". Handle both "data: x" and bare "data:".
                     dataLines.push(line.startsWith("data: ") ? line.slice(6) : line.slice(5));
                 } else if (line.startsWith(":")) {
-                    // Comment line (e.g. ": ping ...") — ignore.
+                    // Comment / ping line — ignore
                     continue;
                 } else if (line === "") {
-                    // Empty line = end of event
+                    // End of SSE event
                     const currentData = dataLines.join("\n");
-                    if (currentEvent === "thread_id" && currentData) {
-                        resolvedThreadId = currentData;
-                    } else if (currentEvent === "token" && dataLines.length > 0) {
+
+                    if (currentEvent === "token" && dataLines.length > 0) {
                         callbacks.onToken(currentData);
                     } else if (currentEvent === "image" && currentData) {
-                        // Append a markdown image so MessageResponse renders it inline.
                         callbacks.onToken(`\n\n![chart](${currentData})\n\n`);
                     } else if (currentEvent === "done") {
                         callbacks.onDone();
                     }
+
                     currentEvent = "";
                     dataLines = [];
                 }
@@ -122,30 +174,4 @@ export async function sendMessage(
     } catch (err) {
         callbacks.onError(err instanceof Error ? err : new Error(String(err)));
     }
-
-    return resolvedThreadId;
-}
-
-/**
- * Fetch the full message history for a thread.
- */
-export async function getHistory(threadId: string): Promise<ChatMessage[]> {
-    const res = await fetch(`${API_BASE}/chat/${encodeURIComponent(threadId)}/history`);
-    if (!res.ok) {
-        throw new Error(`Failed to fetch history: ${res.status}`);
-    }
-    const data = await res.json();
-    return (data.messages ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-    }));
-}
-
-/**
- * Delete a thread session.
- */
-export async function deleteThread(threadId: string): Promise<void> {
-    await fetch(`${API_BASE}/chat/${encodeURIComponent(threadId)}`, {
-        method: "DELETE",
-    });
 }

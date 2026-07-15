@@ -15,7 +15,7 @@ To recreate this project with the same configuration:
 
 ```sh
 # recreate this project
-bun x sv@0.16.3 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:node" mdsvex --install bun web
+bun x sv@0.16.3 create --template minimal --types ts --add prettier eslint sveltekit-adapter="adapter:node" tailwindcss="plugins:typography,forms" mdsvex --install bun web
 ```
 
 ## Developing
