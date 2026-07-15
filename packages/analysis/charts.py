@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import uuid
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -62,7 +63,8 @@ def render_chart(spec: ChartSpec) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     safe_title = (spec.title or spec.chart_type).replace(" ", "_").lower()[:50]
-    filename = f"{safe_title}.png"
+    unique_id = uuid.uuid4().hex[:12]
+    filename = f"{safe_title}_{unique_id}.png"
     filepath = os.path.join(output_dir, filename)
 
     fig.savefig(filepath, format="png", dpi=120)
