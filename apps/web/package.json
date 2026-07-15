@@ -36,5 +36,12 @@
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"@tabler/icons-svelte": "^3.44.0",
+		"@types/dompurify": "^3.2.0",
+		"@types/marked": "^6.0.0",
+		"dompurify": "^3.4.12",
+		"marked": "^18.0.6"
 	}
 }

@@ -13,8 +13,8 @@
 
     /* ---- Text ---- */
     --color-text-primary: #ffffff;
-    --color-text-secondary: #b3b3b3;
-    --color-muted: #6a6a6a;
+    --color-text-secondary: #cccccc;
+    --color-muted: #888888;
 
     /* ---- Semantic colors ---- */
     --color-blue: #1db954;
@@ -52,6 +52,75 @@
     /* ---- Custom animations ---- */
     --animate-pulse-fade: pulse-fade 2s ease-in-out infinite;
     --animate-spinner: pulse-fade 1.4s ease-in-out infinite;
+
+    /* ---- Semantic aliases ---- */
+    --color-accent: var(--color-blue);
+    --color-surface-hover: #202020;
+    --color-border-subtle: #1e1e1e;
+
+    /* ---- Transitions ---- */
+    --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-enter: 200ms cubic-bezier(0, 0, 0.2, 1);
+    --transition-leave: 150ms cubic-bezier(0.4, 0, 1, 1);
+
+    /* ---- Shell dimensions ---- */
+    --sidebar-width: 240px;
+    --sidebar-collapsed-width: 56px;
+    --topbar-height: 48px;
+
+    /* ---- Z-index scale ---- */
+    --z-sidebar: 20;
+    --z-topbar: 30;
+    --z-overlay: 40;
+    --z-modal: 50;
+    --z-toast: 60;
+    --z-palette: 70;
+}
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+    :root {
+        --color-bg: #f4f4f5;
+        --color-canvas: #ffffff;
+        --color-surface: #fafafa;
+        --color-surface-elevated: #ffffff;
+        --color-surface-hover: #f0f0f0;
+        --color-sidebar: #f0f0f0;
+        --color-border: #e4e4e7;
+        --color-border-subtle: #e4e4e7;
+        --color-text-primary: #09090b;
+        --color-text-secondary: #3f3f46;
+        --color-muted: #71717a;
+    }
+}
+
+html.light {
+    --color-bg: #f4f4f5;
+    --color-canvas: #ffffff;
+    --color-surface: #fafafa;
+    --color-surface-elevated: #ffffff;
+    --color-surface-hover: #f0f0f0;
+    --color-sidebar: #f0f0f0;
+    --color-border: #e4e4e7;
+    --color-border-subtle: #e4e4e7;
+    --color-text-primary: #09090b;
+    --color-text-secondary: #3f3f46;
+    --color-muted: #71717a;
+}
+
+html.dark {
+    --color-bg: #121212;
+    --color-canvas: #181818;
+    --color-surface: #1a1a1a;
+    --color-surface-elevated: #282828;
+    --color-surface-hover: #202020;
+    --color-sidebar: #000000;
+    --color-border: #2a2a2a;
+    --color-border-subtle: #1e1e1e;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #cccccc;
+    --color-muted: #888888;
 }
 
 @keyframes pulse-fade {
