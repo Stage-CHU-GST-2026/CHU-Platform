@@ -1,31 +1,68 @@
 <script lang="ts">
     import { IconFolder, IconChevronDown, IconPlus, IconMicrophone, IconDeviceDesktop, IconSparkles } from '@tabler/icons-svelte';
+    import { createConversation } from '$lib/api/chat';
+    import { goto } from '$app/navigation';
+
+    let input = $state('');
+    let isSubmitting = $state(false);
+
+    async function submit() {
+        const text = input.trim();
+        if (!text || isSubmitting) return;
+
+        isSubmitting = true;
+        try {
+            // Create a new conversation
+            const conv = await createConversation();
+            // Navigate to conversation route with initial prompt
+            await goto(`/dashboard/conversation?id=${conv.id}&q=${encodeURIComponent(text)}`);
+        } catch (error) {
+            console.error('Failed to create conversation', error);
+            isSubmitting = false;
+        }
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+        }
+    }
 </script>
 
 <div class="flex flex-col items-center justify-center h-full w-full min-h-[calc(100vh-var(--topbar-height))]">
-    <div class="w-full max-w-[680px] flex flex-col items-center px-4 -mt-12">
+    <div class="w-full max-w-[760px] flex flex-col items-center px-4 -mt-12">
 
-        <!-- Greeting / Project Selector -->
-        <div class="flex flex-col items-center gap-3 mb-6">
-            <div class="w-11 h-11 rounded-2xl bg-accent/15 border border-accent/20 flex items-center justify-center shadow-sm">
-                <IconSparkles size={20} stroke={1.5} class="text-accent" />
+        <!-- Hero Header -->
+        <div class="flex flex-col items-center gap-5 mb-8 w-full">
+            <div class="flex items-center gap-2 text-[13px] font-medium text-success tracking-wide">
+                <span class="w-1.5 h-1.5 rounded-full bg-success opacity-80 shadow-[0_0_8px_var(--color-success)]"></span>
+                v1.0 — Analytical Workspace
             </div>
-            <button class="flex items-center text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-surface-hover gap-1.5">
-                <IconFolder size={15} stroke={1.5} />
-                <span class="text-[13px] font-medium tracking-[-0.01em]">CHU-Platform</span>
-                <IconChevronDown size={12} stroke={2} class="opacity-50" />
-            </button>
+            
+            <h1 class="text-4xl md:text-[56px] font-black tracking-[-0.03em] leading-[1.05] text-text-primary max-w-[700px] text-center">
+                The interface exists&nbsp;to support&nbsp;thinking.
+            </h1>
+            
+            <p class="text-[16px] md:text-[17px] leading-[1.65] text-text-secondary max-w-[580px] mt-2 font-light text-center">
+                A calm, focused environment where data is the primary content and AI acts as an invisible expert. Ask a question to begin.
+            </p>
         </div>
+
+
 
         <!-- Input Box -->
         <div class="w-full bg-surface border border-border-subtle rounded-2xl overflow-hidden flex flex-col shadow-sm focus-within:border-border transition-colors duration-150">
             
             <!-- Text Input Area -->
-            <div class="px-4 pt-3.5 pb-1.5">
+            <div class="px-5 pt-4 pb-2">
                 <textarea 
-                    class="w-full bg-transparent text-text-primary placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[13.5px] leading-[1.65] max-h-40 overflow-y-auto tracking-[-0.005em]"
+                    bind:value={input}
+                    onkeydown={onKeyDown}
+                    disabled={isSubmitting}
+                    class="w-full bg-transparent text-text-primary placeholder-text-secondary resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[16px] md:text-[17px] leading-[1.65] max-h-[300px] overflow-y-auto tracking-[-0.005em] min-h-[60px]"
                     placeholder="Ask anything, @ to mention, / for actions…"
-                    rows="1"
+                    rows="2"
                     oninput={(e) => {
                         const target = e.currentTarget;
                         target.style.height = 'auto';

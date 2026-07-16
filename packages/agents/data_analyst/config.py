@@ -1,4 +1,4 @@
-"""Load agent configuration from agent.yaml."""
+"""Load agent configuration from agent.yaml with env var overrides."""
 
 from __future__ import annotations
 
@@ -13,21 +13,31 @@ from ai.models.config import AgentConfig
 def load_agent_config(yaml_path: str | Path) -> AgentConfig:
     """Load an AgentConfig from an agent.yaml file.
 
+    Environment variables take priority over YAML values:
+      AGENT_MODEL, AGENT_TEMPERATURE, AGENT_MAX_ITERATIONS,
+      OPENAI_BASE_URL, OPENAI_API_KEY
+
     Args:
         yaml_path: Path to the agent.yaml file.
 
     Returns:
-        AgentConfig with model settings from the YAML.
+        AgentConfig with model settings from the YAML, overridden by env.
     """
     yaml_path = Path(yaml_path).expanduser().resolve()
     with open(yaml_path) as f:
         data = yaml.safe_load(f)
 
-    return AgentConfig(
-        model=data.get("model", "gpt-4o-mini"),
-        temperature=data.get("temperature", 0.0),
-        max_iterations=data.get("max_iterations", 15),
-    )
+    kwargs: dict = {}
+
+    # Only pull from yaml if the corresponding env var is NOT set
+    if "AGENT_MODEL" not in os.environ:
+        kwargs["model"] = data.get("model", "gpt-4o-mini")
+    if "AGENT_TEMPERATURE" not in os.environ:
+        kwargs["temperature"] = data.get("temperature", 0.0)
+    if "AGENT_MAX_ITERATIONS" not in os.environ:
+        kwargs["max_iterations"] = data.get("max_iterations", 15)
+
+    return AgentConfig(**kwargs)
 
 
 def load_prompt(prompt_path: str | Path) -> str:

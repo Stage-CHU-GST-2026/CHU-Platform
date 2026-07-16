@@ -71,17 +71,21 @@
         }
     }
 
-    onMount(() => {
-        const id = $page.url.searchParams.get('id');
-        if (id) loadConversation(id);
-    });
-
     // Re-load when URL ?id param changes (e.g. clicking a different conversation)
     $effect(() => {
         const id = $page.url.searchParams.get('id');
+        const q = $page.url.searchParams.get('q');
+        
         if (id && id !== conversationId) {
             messages = [];
-            loadConversation(id);
+            conversationId = id;
+            loadConversation(id).then(() => {
+                if (q) {
+                    input = q;
+                    goto(`/dashboard/conversation?id=${id}`, { replaceState: true });
+                    submit();
+                }
+            });
         } else if (!id && conversationId) {
             messages = [];
             conversationId = null;

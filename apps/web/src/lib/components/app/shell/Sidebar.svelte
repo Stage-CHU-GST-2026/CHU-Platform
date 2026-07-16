@@ -14,7 +14,8 @@
 		IconMoon,
 		IconMessages,
 		IconTrash,
-		IconLoader2
+		IconLoader2,
+		IconSettings
 	} from '@tabler/icons-svelte';
 
 	const currentPath = $derived($page.url.pathname);
@@ -148,25 +149,6 @@
 
 	<!-- Footer -->
 	<div class="p-4 flex flex-col gap-1 shrink-0 border-t border-border">
-		<button
-			class="w-full inline-flex items-center font-bold tracking-normal transition-all duration-150 ease-out rounded-full active:scale-[0.97] bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary py-[10px] text-[13.5px] {app.sidebarCollapsed
-				? 'justify-center px-0'
-				: 'justify-start px-3 gap-3'}"
-			onclick={() => app.toggleTheme()}
-			aria-label="Toggle theme"
-		>
-			<div class="flex items-center justify-center shrink-0">
-				{#if app.theme === 'dark'}
-					<IconSun size={16} stroke={2} />
-				{:else}
-					<IconMoon size={16} stroke={2} />
-				{/if}
-			</div>
-			{#if !app.sidebarCollapsed}
-				<span class="whitespace-nowrap overflow-hidden truncate">
-					{app.theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-				</span>
-			{/if}
-		</button>
+		<SidebarItem href="/dashboard/settings" icon={IconSettings} label="Settings" {currentPath} />
 	</div>
 </aside>

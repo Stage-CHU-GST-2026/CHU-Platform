@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { app } from '$lib/state/app.svelte';
-	import { IconDotsVertical, IconLayoutSidebarRight, IconSparkles } from '@tabler/icons-svelte';
+	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck } from '@tabler/icons-svelte';
 
 	let path = $derived($page.url.pathname);
+	let isConversation = $derived(path.startsWith('/dashboard/conversation'));
 
 	// Breadcrumb logic
 	let breadcrumbs = $derived.by(() => {
@@ -22,18 +23,23 @@
 	});
 </script>
 
-<header class="topbar bg-canvas border-b border-border-subtle flex items-center justify-between px-4 z-[var(--z-topbar)]">
-	<!-- Left: Breadcrumb -->
-	<div class="flex items-center gap-2">
-		<div class="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center">
-			<IconSparkles size={11} stroke={2} class="text-accent" />
-		</div>
+<header class="topbar bg-[#0a0a0a] border-b border-[#1f1f1f] flex items-center justify-between px-4 z-[var(--z-topbar)] text-white">
+	<!-- Left: Sidebar toggle & Breadcrumb -->
+	<div class="flex items-center gap-3">
+		<button
+			class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+			onclick={() => app.toggleSidebar()}
+			aria-label="Toggle sidebar"
+		>
+			<IconLayoutSidebar size={16} stroke={1.5} />
+		</button>
+		
 		<div class="flex items-center text-[13px]">
 			{#each breadcrumbs as crumb, i}
 				{#if i > 0}
-					<span class="mx-2 text-border opacity-60">·</span>
+					<span class="mx-2 text-gray-600 font-light">/</span>
 				{/if}
-				<span class={crumb.isLast ? 'text-text-secondary font-medium tracking-[-0.01em]' : 'text-muted'}>
+				<span class={crumb.isLast ? 'text-gray-100 font-medium' : 'text-gray-400 font-medium'}>
 					{crumb.label}
 				</span>
 			{/each}
@@ -41,21 +47,24 @@
 	</div>
 
 	<!-- Right: Actions -->
-	<div class="flex items-center gap-0.5">
+	<div class="flex items-center gap-3">
 		<button
-			class="w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors"
+			class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
 			aria-label="More options"
 		>
-			<IconDotsVertical size={14} stroke={1.5} />
+			<IconDotsVertical size={16} stroke={1.5} />
 		</button>
 		
-		<button
-			class="w-6 h-6 rounded-md flex items-center justify-center transition-colors {app.artifactOpen ? 'bg-surface-elevated text-text-primary shadow-sm' : 'text-muted hover:text-text-secondary hover:bg-surface-hover'}"
-			onclick={() => app.toggleArtifact()}
-			aria-label="Toggle right panel"
-		>
-			<IconLayoutSidebarRight size={14} stroke={1.5} />
-		</button>
+		<!-- Artifact Toggle -->
+		{#if isConversation}
+			<button 
+				class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors border border-[#262626] {app.artifactOpen ? 'bg-[#2a2a2a] text-white shadow-sm' : 'bg-[#141414] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'}"
+				onclick={() => app.toggleArtifact()}
+			>
+				<IconFileCheck size={14} stroke={1.5} />
+				Artifacts
+			</button>
+		{/if}
 	</div>
 </header>
 
