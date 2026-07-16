@@ -89,6 +89,7 @@
     /* ---- Shell dimensions ---- */
     --sidebar-width: 236px;
     --sidebar-collapsed-width: 52px;
+    --artifact-width: 480px;
     --topbar-height: 52px;
 
     /* ---- Z-index scale ---- */
@@ -239,6 +240,32 @@ html.dark {
 
     ::-webkit-scrollbar-thumb:hover {
         background: var(--color-muted);
+    }
+
+    /* PaneForge Resizer */
+    .resizer {
+        width: 8px;
+        cursor: col-resize;
+        position: relative;
+        background: transparent;
+        z-index: 50; /* Ensure it stays above panes */
+    }
+
+    .resizer::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        border-radius: var(--radius-full);
+        background: var(--color-border);
+        transition: background 150ms ease;
+    }
+
+    .resizer:hover::before,
+    .resizer[data-active]::before {
+        background: var(--color-blue);
     }
 }
 

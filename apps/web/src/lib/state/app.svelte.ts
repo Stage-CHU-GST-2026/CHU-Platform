@@ -2,6 +2,7 @@ import type { Toast } from '$lib/types';
 
 class AppState {
     sidebarCollapsed = $state(false);
+    artifactOpen = $state(false);
     theme = $state<'dark' | 'light'>('dark');
     cmdPaletteOpen = $state(false);
     activeRoute = $state('/dashboard');
@@ -11,8 +12,16 @@ class AppState {
         return this.sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)';
     }
 
+    get artifactWidth() {
+        return this.artifactOpen ? 'var(--artifact-width)' : '0px';
+    }
+
     toggleSidebar() {
         this.sidebarCollapsed = !this.sidebarCollapsed;
+    }
+
+    toggleArtifact() {
+        this.artifactOpen = !this.artifactOpen;
     }
 
     openCommandPalette() {

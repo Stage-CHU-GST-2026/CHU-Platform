@@ -70,7 +70,7 @@
 	}
 </script>
 
-<aside class="sidebar bg-sidebar border-r border-border flex flex-col z-[var(--z-sidebar)]">
+<aside class="sidebar bg-sidebar border-r border-border flex flex-col z-[var(--z-sidebar)] w-full h-screen">
 	<!-- Header: New Conversation button -->
 	<div class="pt-6 px-4 pb-5 shrink-0 border-b border-border">
 		<button
@@ -170,12 +170,3 @@
 		</button>
 	</div>
 </aside>
-
-<style>
-	.sidebar {
-		grid-area: sidebar;
-		height: 100vh;
-		overflow: hidden;
-		transition: width var(--transition-slow);
-	}
-</style>

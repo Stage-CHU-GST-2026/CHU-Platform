@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { app } from '$lib/state/app.svelte';
 	import { IconDotsVertical, IconLayoutSidebarRight, IconSparkles } from '@tabler/icons-svelte';
 
 	let path = $derived($page.url.pathname);
@@ -49,7 +50,8 @@
 		</button>
 		
 		<button
-			class="w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors"
+			class="w-6 h-6 rounded-md flex items-center justify-center transition-colors {app.artifactOpen ? 'bg-surface-elevated text-text-primary shadow-sm' : 'text-muted hover:text-text-secondary hover:bg-surface-hover'}"
+			onclick={() => app.toggleArtifact()}
 			aria-label="Toggle right panel"
 		>
 			<IconLayoutSidebarRight size={14} stroke={1.5} />
