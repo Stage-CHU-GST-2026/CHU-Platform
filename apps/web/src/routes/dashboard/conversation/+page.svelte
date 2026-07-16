@@ -12,27 +12,12 @@
     } from '$lib/api/chat';
     import { refreshConversations } from '$lib/stores/conversations';
     import {
-        IconChevronDown,
-        IconPlus,
-        IconMicrophone,
         IconSparkles,
-        IconSend
     } from '@tabler/icons-svelte';
-
-    // Configure marked for clean output
-    marked.setOptions({ breaks: true, gfm: true });
-
-    async function renderMd(content: string): Promise<string> {
-        const html = marked.parse(content) as string;
-        if (browser) {
-            const DOMPurify = (await import('dompurify')).default;
-            return DOMPurify.sanitize(html, {
-                ADD_TAGS: ['img'],
-                ADD_ATTR: ['src', 'alt', 'title', 'href', 'target', 'rel']
-            });
-        }
-        return html;
-    }
+    import ChatLoadingState from '$lib/components/app/chat/ChatLoadingState.svelte';
+    import ChatEmptyState from '$lib/components/app/chat/ChatEmptyState.svelte';
+    import ChatBubble from '$lib/components/app/chat/ChatBubble.svelte';
+    import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
 
     // ── State ────────────────────────────────────────────────────────────
     interface Message {
@@ -49,17 +34,9 @@
     let error = $state<string | null>(null);
 
     let scrollEl = $state<HTMLDivElement | null>(null);
-    let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
     function scrollToBottom() {
         if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
-    }
-
-    function resizeTextarea() {
-        if (textareaEl) {
-            textareaEl.style.height = 'auto';
-            textareaEl.style.height = textareaEl.scrollHeight + 'px';
-        }
     }
 
     // ── Load history when ?id changes ─────────────────────────────────
@@ -107,7 +84,6 @@
         error = null;
         input = '';
         await tick();
-        resizeTextarea();
 
         // Add user bubble immediately
         messages.push({ role: 'user', content: text });
@@ -167,78 +143,35 @@
             isStreaming = false;
         }
     }
-
-    function handleKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-        }
-    }
 </script>
 
 
 <div class="absolute inset-0 flex flex-col bg-canvas">
     <!-- Chat History Area -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center" bind:this={scrollEl}>
-        <div class="w-full max-w-[880px] flex flex-col gap-6 mt-4 pb-4">
+    <div class="flex-1 overflow-y-auto flex flex-col items-center px-4 md:px-8" bind:this={scrollEl}>
+        <div class="w-full max-w-[820px] pt-8 pb-6 conversation">
 
             <!-- Loading state -->
             {#if isLoading}
-                <div class="flex flex-col items-center justify-center h-48 text-center gap-3 mt-16">
-                    <span class="w-6 h-6 rounded-full border-2 border-border border-t-accent animate-spin"></span>
-                    <p class="text-muted text-[13px]">Loading conversation…</p>
-                </div>
+                <ChatLoadingState />
+
             <!-- Empty state -->
             {:else if messages.length === 0}
-                <div class="flex flex-col items-center justify-center h-48 text-center gap-3 mt-16">
-                    <div class="w-10 h-10 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-accent">
-                        <IconSparkles size={18} stroke={1.5} />
-                    </div>
-                    <p class="text-text-secondary text-[15px]">Start a conversation with the analytics agent.</p>
-                    <p class="text-muted text-[13px]">Ask about patient data, generate reports, or run analysis.</p>
-                </div>
+                <ChatEmptyState />
             {/if}
 
-
-            {#each messages as msg}
-                {#if msg.role === 'user'}
-                    <!-- User message -->
-                    <div class="w-full bg-[#202020] border border-border-subtle rounded-xl px-5 py-4 text-[15.5px] leading-relaxed whitespace-pre-wrap text-text-secondary mt-4 shadow-sm">
-                        {msg.content}
-                    </div>
-                {:else}
-                    <!-- Agent message -->
-                    <div class="w-full pt-4 pb-2 px-4">
-                        <div class="w-full min-w-0 text-[16px] leading-relaxed text-text-secondary">
-                            {#if msg.streaming}
-                                {#if msg.content}
-                                    <!-- Raw text while streaming — no Promise re-creation, no flash -->
-                                    <span class="whitespace-pre-wrap">{msg.content}</span>
-                                {:else}
-                                    <!-- Typing indicator before first token -->
-                                    <span class="inline-flex gap-1 items-center h-5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style="animation-delay: 0ms"></span>
-                                        <span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style="animation-delay: 150ms"></span>
-                                        <span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style="animation-delay: 300ms"></span>
-                                    </span>
-                                {/if}
-                            {:else if msg.content}
-                                <!-- Stream done — render full markdown once -->
-                                <div class="prose-agent">
-                                    {#await renderMd(msg.content) then html}
-                                        {@html html}
-                                    {/await}
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-                {/if}
+            {#each messages as msg, i}
+                <ChatBubble 
+                    role={msg.role} 
+                    content={msg.content} 
+                    streaming={msg.streaming} 
+                />
             {/each}
 
             <!-- Error banner -->
             {#if error}
-                <div class="w-full rounded-lg border border-danger bg-danger/10 px-4 py-3 text-[13px] text-danger flex items-center gap-2">
-                    <span class="font-medium">Error:</span> {error}
+                <div class="w-full mt-3 rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-[12.5px] text-danger flex items-center gap-2 shadow-sm">
+                    <span class="font-semibold">Error:</span> {error}
                 </div>
             {/if}
 
@@ -246,75 +179,55 @@
     </div>
 
     <!-- Pinned Input Area -->
-    <div class="w-full p-4 pb-6 flex justify-center shrink-0 border-t border-border-subtle">
-        <div class="w-full max-w-[880px] bg-surface border border-border-subtle rounded-[14px] overflow-hidden flex items-center gap-2 px-3 shadow-sm focus-within:border-border transition-colors">
-            
-            <!-- Add button -->
-            <button class="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors shrink-0" aria-label="Add attachment" disabled={isStreaming}>
-                <IconPlus size={16} stroke={2} />
-            </button>
-
-            <!-- Textarea -->
-            <textarea 
-                bind:this={textareaEl}
-                bind:value={input}
-                class="flex-1 bg-transparent text-text-primary placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[15.5px] leading-relaxed max-h-36 overflow-y-auto py-3 disabled:opacity-50"
-                placeholder="Ask anything, @ to mention, / for actions"
-                rows="1"
-                disabled={isStreaming}
-                onkeydown={handleKeydown}
-                oninput={resizeTextarea}
-            ></textarea>
-
-            <!-- Right side: model selector + send/mic -->
-            <div class="flex items-center gap-1 shrink-0">
-                <button class="flex items-center gap-1.5 px-2 h-6 rounded-md hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors text-[12px] font-medium">
-                    <IconSparkles size={13} stroke={1.5} />
-                    Gemini 3.1 Pro
-                    <IconChevronDown size={13} stroke={2} class="opacity-70" />
-                </button>
-
-                {#if isStreaming}
-                    <button class="w-6 h-6 flex items-center justify-center rounded-full bg-surface-elevated text-muted cursor-not-allowed" disabled aria-label="Sending">
-                        <span class="w-3 h-3 rounded-full border-2 border-muted border-t-transparent animate-spin"></span>
-                    </button>
-                {:else if input.trim()}
-                    <button 
-                        onclick={submit}
-                        class="w-6 h-6 flex items-center justify-center rounded-full bg-accent hover:opacity-90 text-white transition-opacity"
-                        aria-label="Send message"
-                    >
-                        <IconSend size={13} stroke={2} />
-                    </button>
-                {:else}
-                    <button class="w-6 h-6 flex items-center justify-center rounded-full bg-surface-elevated hover:bg-border text-text-secondary hover:text-text-primary transition-colors" aria-label="Voice input">
-                        <IconMicrophone size={15} stroke={1.5} />
-                    </button>
-                {/if}
-            </div>
-
-        </div>
+    <div class="w-full px-4 pb-4 pt-2.5 flex justify-center shrink-0 border-t border-border-subtle bg-canvas">
+        <ChatComposer 
+            bind:input={input} 
+            isStreaming={isStreaming} 
+            onsubmit={submit} 
+        />
     </div>
-
 </div>
 
 <style>
-    /* Scoped prose styles for agent markdown output */
+    /* Typing indicator dots */
+    .typing-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--color-muted);
+        animation: bounce-dot 1.2s ease-in-out infinite;
+        display: inline-block;
+    }
+
+    @keyframes bounce-dot {
+        0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+        40%            { transform: translateY(-4px); opacity: 0.9; }
+    }
+
+    /* ── Scoped prose styles for agent markdown output ── */
     .prose-agent :global(h1),
     .prose-agent :global(h2),
-    .prose-agent :global(h3) {
+    .prose-agent :global(h3),
+    .prose-agent :global(h4) {
         color: var(--color-text-primary);
         font-weight: 600;
-        margin-top: 1.2em;
-        margin-bottom: 0.5em;
+        letter-spacing: -0.02em;
+        margin-top: 1.4em;
+        margin-bottom: 0.45em;
+        line-height: 1.3;
     }
-    .prose-agent :global(h1) { font-size: 1.2em; }
-    .prose-agent :global(h2) { font-size: 1.05em; }
+    .prose-agent :global(h1) { font-size: 1.1em; }
+    .prose-agent :global(h2) { font-size: 1.0em; }
     .prose-agent :global(h3) { font-size: 0.95em; }
+    .prose-agent :global(h4) { font-size: 0.9em; font-weight: 500; }
 
     .prose-agent :global(p) {
-        margin: 0.5em 0;
-        color: inherit;
+        margin: 0.55em 0;
+        color: var(--color-text-primary);
+    }
+
+    .prose-agent :global(p:first-child) {
+        margin-top: 0;
     }
 
     .prose-agent :global(ul) {
@@ -327,47 +240,50 @@
 
     .prose-agent :global(ul),
     .prose-agent :global(ol) {
-        padding-left: 1.4em;
-        margin: 0.5em 0;
-        color: inherit;
+        padding-left: 1.35em;
+        margin: 0.55em 0;
+        color: var(--color-text-primary);
     }
 
     .prose-agent :global(li) {
-        margin: 0.25em 0;
+        margin: 0.3em 0;
+        line-height: 1.6;
     }
 
     .prose-agent :global(code) {
         background: var(--color-surface-elevated);
         color: var(--color-accent);
-        padding: 0.15em 0.4em;
-        border-radius: 4px;
+        padding: 0.1em 0.38em;
+        border-radius: 5px;
         font-family: var(--font-mono);
-        font-size: 0.875em;
+        font-size: 0.84em;
         border: 1px solid var(--color-border);
+        letter-spacing: 0;
     }
 
     .prose-agent :global(pre) {
         background: var(--color-surface-elevated);
-        border: 1px solid var(--color-border);
+        border: 1px solid var(--color-border-subtle);
         border-radius: 10px;
-        padding: 1em 1.2em;
+        padding: 0.9em 1.1em;
         overflow-x: auto;
-        margin: 0.75em 0;
+        margin: 0.85em 0;
     }
 
     .prose-agent :global(pre code) {
         background: transparent;
         border: none;
         padding: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.85em;
+        color: var(--color-text-primary);
+        font-size: 0.83em;
+        letter-spacing: 0;
     }
 
     .prose-agent :global(table) {
         width: 100%;
         border-collapse: collapse;
-        margin: 0.75em 0;
-        font-size: 0.9em;
+        margin: 0.85em 0;
+        font-size: 0.88em;
     }
 
     .prose-agent :global(th) {
@@ -375,15 +291,17 @@
         color: var(--color-text-secondary);
         font-weight: 600;
         text-align: left;
-        padding: 0.5em 0.75em;
+        padding: 0.5em 0.8em;
         border: 1px solid var(--color-border);
         font-size: 0.85em;
+        letter-spacing: 0.01em;
     }
 
     .prose-agent :global(td) {
-        padding: 0.45em 0.75em;
+        padding: 0.45em 0.8em;
         border: 1px solid var(--color-border-subtle);
         color: var(--color-text-primary);
+        font-size: 0.88em;
     }
 
     .prose-agent :global(tr:nth-child(even) td) {
@@ -391,43 +309,45 @@
     }
 
     .prose-agent :global(blockquote) {
-        border-left: 3px solid var(--color-accent);
-        margin: 0.75em 0;
+        border-left: 2px solid var(--color-accent);
+        margin: 0.85em 0;
         padding: 0.5em 1em;
-        background: var(--color-surface);
+        background: color-mix(in srgb, var(--color-accent) 6%, transparent);
         border-radius: 0 8px 8px 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9em;
+        color: var(--color-text-primary);
+        font-size: 0.92em;
     }
 
     .prose-agent :global(strong),
     .prose-agent :global(b) {
         color: var(--color-text-primary);
-        font-weight: 700;
+        font-weight: 650;
     }
 
     .prose-agent :global(a) {
         color: var(--color-accent);
         text-decoration: underline;
         text-underline-offset: 2px;
+        text-decoration-thickness: 1px;
     }
 
     .prose-agent :global(img) {
         max-width: 100%;
         border-radius: 10px;
         border: 1px solid var(--color-border);
-        margin: 0.75em 0;
+        margin: 0.85em 0;
         display: block;
     }
 
     .prose-agent :global(hr) {
         border: none;
         border-top: 1px solid var(--color-border-subtle);
-        margin: 1.2em 0;
+        margin: 1.4em 0;
     }
 
     .prose-agent :global(em) {
-        color: var(--color-text-secondary);
+        color: var(--color-text-primary);
         font-style: italic;
+        opacity: 0.85;
     }
 </style>

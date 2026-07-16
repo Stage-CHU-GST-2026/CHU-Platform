@@ -1,0 +1,27 @@
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-sm text-[13.5px] font-bold cursor-pointer border-none transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .btn-primary {
+        @apply bg-accent text-[#0A0A0A] hover:opacity-90 hover:-translate-y-[1px];
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.2);
+    }
+
+    .btn-primary:hover {
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .btn-secondary {
+        /* px-[15px] and py-[7px] to adjust for the 1px border */
+        @apply bg-surface-elevated text-text-primary border border-border px-[15px] py-[7px] hover:bg-[#2E2E2E] hover:border-[#3E3E3E] hover:-translate-y-[1px] hover:shadow-sm;
+    }
+
+    .btn-ghost {
+        @apply bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary;
+    }
+    
+    .btn-danger {
+        @apply bg-danger/10 text-danger hover:bg-danger/20 hover:-translate-y-[1px];
+    }
+}

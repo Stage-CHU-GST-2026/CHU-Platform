@@ -15,19 +15,29 @@
         items: DropdownItem[];
         trigger: Snippet;
         align?: 'left' | 'right';
+        direction?: 'up' | 'down';
         width?: string;
     }
 
-    let { items, trigger, align = 'left', width = 'w-48' } = $props();
+    let { items, trigger, align = 'left', direction = 'down', width = 'w-48' } = $props<Props>();
 
+    let dialogEl = $state<HTMLDialogElement | null>(null);
     let open = $state(false);
 
     function toggle() {
-        open = !open;
+        if (open) {
+            close();
+        } else {
+            open = true;
+            dialogEl?.show();
+        }
     }
 
     function close() {
-        open = false;
+        if (open) {
+            open = false;
+            dialogEl?.close();
+        }
     }
 
     function handleAction(action?: () => void) {
@@ -49,15 +59,23 @@
         {@render trigger()}
     </button>
 
-    {#if open}
-        <div 
-            class="absolute z-[var(--z-overlay)] mt-1 {width} rounded-md bg-surface-elevated border border-border shadow-md py-1 animate-in fade-in zoom-in-95 duration-100"
-            class:right-0={align === 'right'}
-            class:left-0={align === 'left'}
-            role="menu"
-            aria-orientation="vertical"
-        >
-            {#each items as item}
+    <dialog 
+        bind:this={dialogEl}
+        class="absolute z-[var(--z-overlay)] m-0 p-0 bg-transparent border-none overflow-visible {width}"
+        class:bottom-full={direction === 'up'}
+        class:mb-1={direction === 'up'}
+        class:top-full={direction === 'down'}
+        class:mt-1={direction === 'down'}
+        class:right-0={align === 'right'}
+        class:left-0={align === 'left'}
+    >
+        {#if open}
+            <div 
+                class="w-full rounded-md bg-surface-elevated border border-border shadow-md py-1 animate-in fade-in zoom-in-95 duration-100"
+                role="menu"
+                aria-orientation="vertical"
+            >
+                {#each items as item}
                 {#if item.separator}
                     <div class="h-px bg-border my-1 mx-2"></div>
                 {:else}
@@ -79,6 +97,7 @@
                     </button>
                 {/if}
             {/each}
-        </div>
-    {/if}
+            </div>
+        {/if}
+    </dialog>
 </div>
