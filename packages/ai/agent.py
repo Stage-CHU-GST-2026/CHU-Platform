@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 from langchain_core.messages import AIMessageChunk, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.store.base import BaseStore
 
 from ai.graph import build_graph
 from ai.models.config import AgentConfig
@@ -22,8 +24,15 @@ class Agent:
     - Run the LangGraph workflow
 
     Usage:
+        # In-memory (default)
         agent = Agent(config=agent_config, tools=[...], prompt="You are...")
         result = await agent.run("What's in the data?")
+
+        # Postgres — wrap in the factory context manager
+        from ai.memory import PostgresConfig, create_checkpointer
+        async with create_checkpointer(PostgresConfig()) as cp:
+            agent = Agent(config=agent_config, tools=[...], prompt="...",
+                          checkpointer=cp)
     """
 
     def __init__(
@@ -32,6 +41,7 @@ class Agent:
         tools: list[ToolProtocol],
         prompt: str = "You are a helpful assistant.",
         checkpointer: InMemorySaver | None = None,
+        store: BaseStore | None = None,
     ) -> None:
         self.config = config
         self.tools = tools
@@ -42,6 +52,7 @@ class Agent:
             tools=tools,
             prompt=prompt,
             checkpointer=self.checkpointer,
+            store=store,
         )
 
     async def run(
@@ -52,7 +63,15 @@ class Agent:
         """Send a message to the agent and return the final response."""
         state: AgentState = {
             "messages": [HumanMessage(content=message)],
+            "summary": "",
         }
+        # Auto-generate a thread_id if none is provided (required by checkpointer)
+        if config is None:
+            config = {"configurable": {"thread_id": str(uuid4())}}
+        elif "configurable" not in config or "thread_id" not in config["configurable"]:
+            config.setdefault("configurable", {})
+            config["configurable"].setdefault("thread_id", str(uuid4()))
+
         result = await self.graph.ainvoke(state, config=config)
         return result["messages"][-1]
 
@@ -64,7 +83,15 @@ class Agent:
         """Stream the agent's response token by token."""
         state: AgentState = {
             "messages": [HumanMessage(content=message)],
+            "summary": "",
         }
+        # Auto-generate a thread_id if none is provided (required by checkpointer)
+        if config is None:
+            config = {"configurable": {"thread_id": str(uuid4())}}
+        elif "configurable" not in config or "thread_id" not in config["configurable"]:
+            config.setdefault("configurable", {})
+            config["configurable"].setdefault("thread_id", str(uuid4()))
+
         async for chunk, _metadata in self.graph.astream(
             state,
             stream_mode="messages",
@@ -73,3 +100,42 @@ class Agent:
             # Only yield text tokens from the AI model, not tool-result chunks
             if isinstance(chunk, AIMessageChunk) and chunk.content:
                 yield chunk.content
+
+    async def get_memory(
+        self,
+        thread_id: str,
+    ) -> str:
+        """Inspect the agent's conversation summary for a given thread.
+
+        Args:
+            thread_id: The conversation thread ID.
+
+        Returns:
+            The current summary string, or an empty string if no summary exists.
+        """
+        state = await self.graph.aget_state(
+            {"configurable": {"thread_id": thread_id}},
+        )
+        if state is not None and state.values.get("summary"):
+            return state.values["summary"]
+        # Fallback: try a direct lookup via a dummy invocation
+        return ""
+
+    async def get_full_state(
+        self,
+        thread_id: str,
+    ) -> dict | None:
+        """Inspect the agent's full state for a given thread.
+
+        Args:
+            thread_id: The conversation thread ID.
+
+        Returns:
+            The full state dict (messages + summary), or None if not found.
+        """
+        state = await self.graph.aget_state(
+            {"configurable": {"thread_id": thread_id}},
+        )
+        if state is not None:
+            return dict(state.values)
+        return None

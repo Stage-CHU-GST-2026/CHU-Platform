@@ -7,3 +7,4 @@ from typing_extensions import TypedDict
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
+    summary: str
