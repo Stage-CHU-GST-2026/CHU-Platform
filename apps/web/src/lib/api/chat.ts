@@ -15,6 +15,17 @@ export interface ConversationSummary {
     created_at: string;
     updated_at: string;
     message_count: number;
+    artifact_count?: number;
+}
+
+export interface Artifact {
+    id: string;
+    conversation_id: string;
+    filename: string;
+    mime_type: string;
+    file_size: number;
+    url: string;
+    created_at: string;
 }
 
 export interface ChatMessage {
@@ -30,6 +41,7 @@ export interface Conversation {
     created_at: string;
     updated_at: string;
     messages: ChatMessage[];
+    artifacts: Artifact[];
 }
 
 export interface StreamCallbacks {
@@ -66,11 +78,20 @@ export async function createConversation(title?: string): Promise<Conversation> 
 }
 
 /**
- * Fetch a single conversation with its full message history.
+ * Get a specific conversation by ID
  */
 export async function getConversation(id: string): Promise<Conversation> {
-    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(id)}`);
+    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(id)}?include_artifacts=true`);
     if (!res.ok) throw new Error(`Failed to get conversation: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * List artifacts for a specific conversation
+ */
+export async function listArtifacts(conversationId: string, limit = 50, offset = 0): Promise<Artifact[]> {
+    const res = await fetch(`${API_BASE}/artifacts?conversation_id=${encodeURIComponent(conversationId)}&limit=${limit}&offset=${offset}`);
+    if (!res.ok) throw new Error(`Failed to list artifacts: ${res.status}`);
     return res.json();
 }
 

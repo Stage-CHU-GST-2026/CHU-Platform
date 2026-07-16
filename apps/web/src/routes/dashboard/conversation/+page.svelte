@@ -8,9 +8,11 @@
         sendMessage,
         createConversation,
         getConversation,
+        listArtifacts,
         type ChatMessage
     } from '$lib/api/chat';
     import { refreshConversations } from '$lib/stores/conversations';
+    import { app } from '$lib/state/app.svelte';
     import {
         IconSparkles,
     } from '@tabler/icons-svelte';
@@ -34,9 +36,18 @@
     let error = $state<string | null>(null);
 
     let scrollEl = $state<HTMLDivElement | null>(null);
+    let isAutoScrolling = $state(true);
+
+    function onScroll(e: Event) {
+        const target = e.target as HTMLElement;
+        const isAtBottom = Math.abs(target.scrollHeight - target.clientHeight - target.scrollTop) < 50;
+        isAutoScrolling = isAtBottom;
+    }
 
     function scrollToBottom() {
-        if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+        if (scrollEl && isAutoScrolling) {
+            scrollEl.scrollTop = scrollEl.scrollHeight;
+        }
     }
 
     // ── Load history when ?id changes ─────────────────────────────────
@@ -50,6 +61,7 @@
                 role: m.role as 'user' | 'assistant',
                 content: m.content
             }));
+            app.activeArtifacts = conv.artifacts || [];
             await tick();
             scrollToBottom();
         } catch (e) {
@@ -93,6 +105,7 @@
         messages.push({ role: 'assistant', content: '', streaming: true });
 
         isStreaming = true;
+        isAutoScrolling = true;
         await tick();
         scrollToBottom();
 
@@ -113,12 +126,23 @@
                     messages = messages;
                     scrollToBottom();
                 },
-                onDone() {
+                async onDone() {
                     messages[assistantIdx].streaming = false;
                     messages = messages;
                     isStreaming = false;
                     // Refresh sidebar so updated title/timestamp shows
                     refreshConversations();
+                    // Check for new artifacts
+                    if (conversationId) {
+                        try {
+                            app.activeArtifacts = await listArtifacts(conversationId);
+                            if (app.activeArtifacts.length > 0 && !app.artifactOpen) {
+                                app.artifactOpen = true;
+                            }
+                        } catch (err) {
+                            console.error("Failed to load artifacts", err);
+                        }
+                    }
                 },
                 onError(err) {
                     messages[assistantIdx].streaming = false;
@@ -148,7 +172,7 @@
 
 <div class="absolute inset-0 flex flex-col bg-canvas">
     <!-- Chat History Area -->
-    <div class="flex-1 overflow-y-auto flex flex-col items-center px-4 md:px-8" bind:this={scrollEl}>
+    <div class="flex-1 overflow-y-auto flex flex-col items-center px-4 md:px-8" bind:this={scrollEl} onscroll={onScroll}>
         <div class="w-full max-w-[820px] pt-8 pb-6 conversation">
 
             <!-- Loading state -->

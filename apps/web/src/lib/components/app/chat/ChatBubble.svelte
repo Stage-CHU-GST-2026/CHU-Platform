@@ -14,10 +14,16 @@
     // Configure marked for clean output
     marked.setOptions({ breaks: true, gfm: true });
 
-    async function renderMd(text: string): Promise<string> {
+    let DOMPurify: any = null;
+    if (browser) {
+        import('dompurify').then(module => {
+            DOMPurify = module.default;
+        });
+    }
+
+    function renderMd(text: string): string {
         const html = marked.parse(text) as string;
-        if (browser) {
-            const DOMPurify = (await import('dompurify')).default;
+        if (browser && DOMPurify) {
             return DOMPurify.sanitize(html, {
                 ADD_TAGS: ['img', 'table', 'th', 'td', 'tr', 'thead', 'tbody'],
                 ADD_ATTR: ['src', 'alt', 'title', 'href', 'target', 'rel']
@@ -25,6 +31,8 @@
         }
         return html;
     }
+
+    let tokens = $derived(content ? marked.lexer(content) : []);
 </script>
 
 <div class="msg-row {role}">
@@ -39,24 +47,21 @@
                 <span>{streaming ? 'thinking…' : 'done'}</span>
             </div>
 
-            {#if streaming}
-                {#if content}
-                    <!-- Raw text while streaming -->
-                    <span class="whitespace-pre-wrap">{content}</span>
-                {:else}
-                    <!-- Typing indicator before first token -->
-                    <span class="inline-flex gap-[5px] items-center h-5 mt-1">
-                        <span class="typing-dot" style="animation-delay: 0ms"></span>
-                        <span class="typing-dot" style="animation-delay: 160ms"></span>
-                        <span class="typing-dot" style="animation-delay: 320ms"></span>
-                    </span>
-                {/if}
+            {#if !content && streaming}
+                <!-- Typing indicator before first token -->
+                <span class="inline-flex gap-[5px] items-center h-5 mt-1">
+                    <span class="typing-dot" style="animation-delay: 0ms"></span>
+                    <span class="typing-dot" style="animation-delay: 160ms"></span>
+                    <span class="typing-dot" style="animation-delay: 320ms"></span>
+                </span>
             {:else if content}
-                <!-- Stream done — render full markdown once -->
-                <div class="prose-agent">
-                    {#await renderMd(content) then html}
-                        {@html html}
-                    {/await}
+                <!-- Progressive markdown render -->
+                <div class="prose-agent flex flex-col">
+                    {#each tokens as token, i (i)}
+                        <div class="md-block">
+                            {@html renderMd(token.raw)}
+                        </div>
+                    {/each}
                 </div>
             {/if}
         {/if}

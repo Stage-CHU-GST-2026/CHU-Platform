@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.config import settings
 from api.database import Base, engine
+from api.routers.artifacts import router as artifacts_router
 from api.routers.chat import router as chat_router
 from api.routers.conversations import router as conversations_router
 
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     # ----- Routers -----
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(conversations_router, prefix="/api/v1")
+    app.include_router(artifacts_router, prefix="/api/v1")
 
     # ----- Static files: generated charts -----
     # Mount AFTER routers so API routes take precedence.
