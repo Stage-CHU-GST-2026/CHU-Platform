@@ -10,6 +10,13 @@ from ai.models.config import AgentConfig
 from ai.state import AgentState
 from ai.tool_protocol import ToolProtocol
 
+MEMORY_PREAMBLE = """\n\n## Conversation Memory
+
+The following is a summary of our conversation so far. Use it to
+remember what the user has already asked and what you have found.
+
+{summary}"""
+
 
 def make_llm_node(
     state: AgentState,
@@ -39,8 +46,13 @@ def make_llm_node(
         max_tokens=config.max_tokens,
     )
 
-    # Prepend system prompt
-    messages = [SystemMessage(content=prompt), *state["messages"]]
+    # Build system prompt — append conversation summary if available
+    system_content = prompt
+    summary = state.get("summary")
+    if summary:
+        system_content += MEMORY_PREAMBLE.format(summary=summary)
+
+    messages = [SystemMessage(content=system_content), *state["messages"]]
 
     # Pass runnable_config so LangGraph's streaming callbacks are attached.
     # Without this, stream_mode="messages" yields the whole response as one chunk.

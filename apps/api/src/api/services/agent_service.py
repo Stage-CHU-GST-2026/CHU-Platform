@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from langchain_core.messages import AIMessageChunk, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.store.base import BaseStore
 
 from agents.data_analyst import create_data_analyst
 from ai import Agent
@@ -10,10 +12,21 @@ from tools.visualization.visualization import CHART_URL_PREFIX
 
 
 class AgentService:
-    """Thin wrapper around the Data Analyst agent."""
+    """Thin wrapper around the Data Analyst agent.
 
-    def __init__(self) -> None:
-        self._agent: Agent = create_data_analyst()
+    Accepts a pluggable checkpointer so memory backends can be
+    swapped (InMemory ↔ Postgres) without changing the service code.
+    """
+
+    def __init__(
+        self,
+        checkpointer: InMemorySaver | None = None,
+        store: BaseStore | None = None,
+    ) -> None:
+        self._agent: Agent = create_data_analyst(
+            checkpointer=checkpointer,
+            store=store,
+        )
 
     @property
     def agent(self) -> Agent:
@@ -34,7 +47,7 @@ class AgentService:
         """
         prompt = self.build_prompt(message, dataset_path)
         async for chunk, _metadata in self._agent.graph.astream(
-            {"messages": [{"role": "user", "content": prompt}]},
+            {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
