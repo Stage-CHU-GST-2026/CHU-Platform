@@ -1,0 +1,33 @@
+@layer components {
+    .conversation {
+        @apply flex flex-col gap-6 w-full;
+    }
+
+    .msg-row {
+        @apply flex w-full;
+    }
+
+    .msg-row.user {
+        @apply justify-end;
+    }
+
+    .msg-bubble {
+        @apply p-4 rounded-md text-[14.5px] leading-[1.6] text-text-primary;
+    }
+
+    .msg-bubble.user {
+        @apply max-w-[75%] bg-surface-elevated border border-border rounded-br-xs shadow-sm;
+    }
+
+    .msg-bubble.assistant {
+        @apply max-w-[95%] bg-canvas border border-border rounded-bl-xs;
+    }
+
+    .msg-meta {
+        @apply flex items-center gap-2 text-[11px] text-muted mb-2 font-mono tracking-tight;
+    }
+
+    .composer {
+        @apply w-full max-w-[820px] flex items-center gap-1.5 bg-surface-elevated border border-border rounded-[10px] pl-4 pr-2.5 py-2.5 shadow-sm transition-all duration-150;
+    }
+}

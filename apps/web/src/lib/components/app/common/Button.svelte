@@ -31,24 +31,24 @@
 	} = $props();
 
 	const variants = {
-		primary: 'bg-accent text-white hover:brightness-110 active:brightness-90',
-		secondary: 'bg-surface-elevated text-text-primary border border-border hover:bg-surface-hover',
-		ghost: 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover',
-		danger: 'bg-danger text-white hover:brightness-110 active:brightness-90',
+		primary: 'bg-accent text-[#0A0A0A] shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,var(--shadow-sm)] hover:bg-[#1ED760] hover:-translate-y-[1px] hover:shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,var(--shadow-md)]',
+		secondary: 'bg-surface-elevated text-text-primary border border-border hover:bg-[#2E2E2E] hover:border-[#3E3E3E] hover:shadow-sm hover:-translate-y-[1px]',
+		ghost: 'bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary',
+		danger: 'bg-danger/10 text-[#FF9498] border border-danger/25 hover:bg-danger/20 hover:shadow-sm hover:-translate-y-[1px]',
 		outline: 'bg-transparent border border-border text-text-primary hover:bg-surface-hover'
 	};
 
 	const sizes = {
-		sm: 'h-8 px-3 text-[12px]',
-		md: 'h-9 px-4 text-[13px]',
-		lg: 'h-11 px-6 text-[14px]',
-		icon: 'h-9 w-9 p-0 flex justify-center'
+		sm: 'py-[7px] px-[14px] text-[12.5px]',
+		md: 'py-[10px] px-[22px] text-[13.5px]',
+		lg: 'py-[12px] px-[28px] text-[15px]',
+		icon: 'h-[38px] w-[38px] p-0 flex justify-center items-center'
 	};
 </script>
 
 <button
 	{type}
-	class="inline-flex items-center justify-center font-medium transition-all rounded-md active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 {variants[
+	class="inline-flex items-center justify-center font-bold tracking-normal transition-all duration-150 ease-out rounded-full active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 {variants[
 		variant
 	]} {sizes[size]} {className}"
 	{disabled}

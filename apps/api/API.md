@@ -12,6 +12,23 @@ Base URL: `http://localhost:10000/api/v1`
 
 ---
 
+## Database migrations
+
+Migrations are managed with **Alembic** and stored in `apps/api/alembic/versions/`.
+
+```bash
+# Apply all pending migrations
+uv run --directory apps/api alembic upgrade head
+
+# Auto-generate a new migration (after model changes)
+uv run --directory apps/api alembic revision --autogenerate -m "description"
+
+# Roll back one step
+uv run --directory apps/api alembic downgrade -1
+```
+
+---
+
 ## Configuration
 
 All settings are read from the root `.env` file via `pydantic-settings`.
@@ -52,6 +69,18 @@ All settings are read from the root `.env` file via `pydantic-settings`.
 | `content` | `TEXT` | Message body |
 | `created_at` | `TIMESTAMPTZ` | Server default `now()` |
 
+### `artifacts`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `UUID` (PK) | Auto-generated |
+| `conversation_id` | `UUID` (FK → conversations) | Indexed, cascading delete |
+| `filename` | `VARCHAR(255)` | Original filename on disk |
+| `filepath` | `VARCHAR(512)` | Absolute path to the file |
+| `mime_type` | `VARCHAR(128)` | MIME type (e.g. `image/png`) |
+| `file_size` | `INTEGER` | File size in bytes (nullable) |
+| `created_at` | `TIMESTAMPTZ` | Server default `now()` |
+
 ---
 
 ## Conversations CRUD
@@ -76,7 +105,8 @@ Returns all conversations, most recently updated first.
     "title": "Show me sales by category…",
     "created_at": "2026-07-15T12:00:00Z",
     "updated_at": "2026-07-15T12:05:00Z",
-    "message_count": 4
+    "message_count": 4,
+    "artifact_count": 2
   }
 ]
 ```
@@ -109,7 +139,13 @@ Returns all conversations, most recently updated first.
 
 ### `GET /conversations/{id}` — Get a conversation
 
-Returns the conversation with all its messages.
+Returns the conversation with all its messages (and optionally artifacts).
+
+**Query parameters:**
+
+| Param | Default | Description |
+|---|---|---|
+| `include_artifacts` | `true` | Set to `false` to exclude artifact data |
 
 **Response `200`:**
 
@@ -255,9 +291,153 @@ curl -s -N -X POST "http://localhost:10000/api/v1/conversations/$CONV_ID/chat" \
 # 6. List conversations
 curl -s http://localhost:10000/api/v1/conversations | jq
 
-# 7. View saved messages
+# 7. View saved messages (with artifacts)
 curl -s "http://localhost:10000/api/v1/conversations/$CONV_ID" | jq '.messages'
+
+# 8. List artifacts for the conversation
+curl -s "http://localhost:10000/api/v1/artifacts?conversation_id=$CONV_ID" | jq
+
+# 9. Download the first artifact (if any)
+ARTIFACT_ID=$(curl -s "http://localhost:10000/api/v1/artifacts?conversation_id=$CONV_ID" | jq -r '.[0].id // empty')
+if [ -n "$ARTIFACT_ID" ]; then
+  curl -s -o chart.png "http://localhost:10000/api/v1/artifacts/$ARTIFACT_ID/file"
+  echo "Downloaded chart to chart.png"
+fi
+
+# 10. Check artifact counts in the list
+curl -s "http://localhost:10000/api/v1/conversations" | jq '.[] | {id, title, artifact_count}'
 ```
+
+---
+
+## Artifacts (generated plots)
+
+When the data analyst agent generates a chart during a conversation, it is automatically saved as an **Artifact** record linked to the conversation. Artifacts are persisted in the `artifacts` database table and the files are served from the `static/charts/` directory.
+
+Database model:
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `UUID` (PK) | Auto-generated |
+| `conversation_id` | `UUID` (FK → conversations) | Indexed, cascading delete |
+| `filename` | `VARCHAR(255)` | Original filename (e.g. `sales_by_category.png`) |
+| `filepath` | `VARCHAR(512)` | Absolute path on disk |
+| `mime_type` | `VARCHAR(128)` | MIME type (e.g. `image/png`, `image/svg+xml`) |
+| `file_size` | `INTEGER` | File size in bytes (nullable) |
+| `created_at` | `TIMESTAMPTZ` | Server default `now()` |
+
+---
+
+### `GET /artifacts?conversation_id=UUID` — List artifacts
+
+Returns all artifacts for a conversation, newest first.
+
+**Query parameters:**
+
+| Param | Required | Default | Description |
+|---|---|---|---|
+| `conversation_id` | ✅ Yes | — | Filter by conversation UUID |
+| `limit` | ❌ No | `50` | Max results (max 200) |
+| `offset` | ❌ No | `0` | Pagination offset |
+
+**Response `200`:**
+
+```json
+[
+  {
+    "id": "a1b2c3d4-...",
+    "conversation_id": "c6cb9ca8-...",
+    "filename": "sales_by_category.png",
+    "mime_type": "image/png",
+    "file_size": 48215,
+    "url": "/api/v1/charts/sales_by_category.png",
+    "created_at": "2026-07-16T12:00:00Z"
+  }
+]
+```
+
+**Response `404`:**
+
+```json
+{ "detail": "Conversation not found" }
+```
+
+---
+
+### `GET /artifacts/{id}` — Get artifact metadata
+
+Returns metadata for a single artifact.
+
+**Response `200`:** Same shape as a list item above.
+
+**Response `404`:**
+
+```json
+{ "detail": "Artifact not found" }
+```
+
+---
+
+### `GET /artifacts/{id}/file` — Download / view the artifact file
+
+Returns the actual file (image) with the correct `Content-Type` header. Browsers display images inline; use this URL for `<img>` tags or direct downloads.
+
+**Response `200`:** Binary file (image/png, image/svg+xml, etc.)
+
+**Response `404`:** If the artifact record doesn't exist or the file is missing from disk.
+
+---
+
+### Artifacts in conversation responses
+
+When you retrieve a conversation, artifacts are included automatically (controlled by the `include_artifacts` query parameter, defaults to `true`).
+
+**Updated `GET /conversations/{id}` response** includes an `artifacts` array:
+
+```json
+{
+  "id": "c6cb9ca8-...",
+  "title": "Sales Analysis",
+  "created_at": "...",
+  "updated_at": "...",
+  "messages": [ ... ],
+  "artifacts": [
+    {
+      "id": "a1b2c3d4-...",
+      "conversation_id": "c6cb9ca8-...",
+      "filename": "sales_by_category.png",
+      "mime_type": "image/png",
+      "file_size": 48215,
+      "url": "/api/v1/charts/sales_by_category.png",
+      "created_at": "2026-07-16T12:00:00Z"
+    }
+  ]
+}
+```
+
+**`GET /conversations`** list responses now include `artifact_count`:
+
+```json
+{
+  "id": "c6cb9ca8-...",
+  "title": "Sales Analysis",
+  "message_count": 4,
+  "artifact_count": 2,
+  ...
+}
+```
+
+---
+
+### How artifacts are created (automatic)
+
+Artifacts are created automatically during the chat streaming workflow (`POST /conversations/{id}/chat`). When the agent generates a chart:
+
+1. The visualization tool saves the PNG file to `static/charts/`
+2. The streaming layer detects the `CHART_URL:` prefix in the tool output and emits an `image` SSE event
+3. After the stream completes, the system scans the collected chart URLs, resolves each filename to its absolute path, determines the MIME type from the file extension, and inserts an `Artifact` row into the database
+
+This means you don't need to call a separate endpoint to register artifacts — they're persisted automatically whenever a chart is generated.
 
 ---
 

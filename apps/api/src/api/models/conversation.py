@@ -41,6 +41,12 @@ class Conversation(Base):
         order_by="Message.created_at",
     )
 
+    artifacts: Mapped[list[Artifact]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Artifact.created_at",
+    )
+
     def __repr__(self) -> str:
         return f"<Conversation {self.id!r}>"
 

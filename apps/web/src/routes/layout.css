@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import '../lib/css/button.css';
+@import '../lib/css/chat.css';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
@@ -6,28 +8,37 @@
     /* ---- Surface palette ---- */
     --color-bg: #121212;
     --color-canvas: #181818;
-    --color-surface: #1a1a1a;
+    --color-surface: #1A1A1A;
     --color-surface-elevated: #282828;
     --color-sidebar: #000000;
-    --color-border: #2a2a2a;
+    --color-border: #2A2A2A;
 
     /* ---- Text ---- */
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #cccccc;
-    --color-muted: #888888;
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #B3B3B3;
+    --color-muted: #6A6A6A;
 
     /* ---- Semantic colors ---- */
-    --color-blue: #1db954;
+    --color-blue: #0a66c2;
     --color-indigo: #8d87ff;
     --color-success: #34d399;
     --color-warning: #f0a23e;
     --color-danger: #f0555c;
 
     /* ---- Radii ---- */
+    --radius-xs: 4px;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
-    --radius-btn: 500px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* ---- Container widths ---- */
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1440px;
 
     /* ---- Shadows ---- */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.36), 0 1px 1px rgba(0, 0, 0, 0.2);
@@ -35,19 +46,30 @@
     --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.32);
 
     /* ---- Spacing scale (8‑pt rhythm) ---- */
+    --spacing-0: 0px;
     --spacing-1: 4px;
     --spacing-2: 8px;
     --spacing-3: 12px;
     --spacing-4: 16px;
-    --spacing-5: 24px;
-    --spacing-6: 32px;
-    --spacing-7: 48px;
-    --spacing-8: 64px;
-    --spacing-9: 96px;
+    --spacing-5: 20px;
+    --spacing-6: 24px;
+    --spacing-8: 32px;
+    --spacing-10: 40px;
+    --spacing-12: 48px;
+    --spacing-16: 64px;
+
+    /* ---- Type scale ---- */
+    --font-size-2xs: 10px;
+    --font-size-xs:  11px;
+    --font-size-sm:  12.5px;
+    --font-size-base: 14px;
+    --font-size-md:  15px;
+    --font-size-lg:  16.5px;
+    --font-size-xl:  18px;
 
     /* ---- Fonts ---- */
-    --font-ui: 'Inter', -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
     /* ---- Custom animations ---- */
     --animate-pulse-fade: pulse-fade 2s ease-in-out infinite;
@@ -55,19 +77,20 @@
 
     /* ---- Semantic aliases ---- */
     --color-accent: var(--color-blue);
-    --color-surface-hover: #202020;
-    --color-border-subtle: #1e1e1e;
+    --color-surface-hover: #1f1f1f;
+    --color-border-subtle: #1d1d1d;
 
     /* ---- Transitions ---- */
     --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-enter: 200ms cubic-bezier(0, 0, 0.2, 1);
     --transition-leave: 150ms cubic-bezier(0.4, 0, 1, 1);
 
     /* ---- Shell dimensions ---- */
-    --sidebar-width: 240px;
-    --sidebar-collapsed-width: 56px;
-    --topbar-height: 48px;
+    --sidebar-width: 236px;
+    --sidebar-collapsed-width: 52px;
+    --artifact-width: 480px;
+    --topbar-height: 52px;
 
     /* ---- Z-index scale ---- */
     --z-sidebar: 20;
@@ -81,58 +104,57 @@
 /* Light mode overrides */
 @media (prefers-color-scheme: light) {
     :root {
-        --color-bg: #f4f4f5;
+        --color-bg: #f3f3f4;
         --color-canvas: #ffffff;
-        --color-surface: #fafafa;
+        --color-surface: #f8f8f9;
         --color-surface-elevated: #ffffff;
-        --color-surface-hover: #f0f0f0;
-        --color-sidebar: #f0f0f0;
-        --color-border: #e4e4e7;
-        --color-border-subtle: #e4e4e7;
-        --color-text-primary: #09090b;
-        --color-text-secondary: #3f3f46;
-        --color-muted: #71717a;
+        --color-surface-hover: #ebebec;
+        --color-sidebar: #ebebec;
+        --color-border: #e0e0e2;
+        --color-border-subtle: #e8e8ea;
+        --color-text-primary: #111112;
+        --color-text-secondary: #3a3a3e;
+        --color-muted: #8a8a8f;
     }
 }
 
 html.light {
-    --color-bg: #f4f4f5;
+    --color-bg: #f3f3f4;
     --color-canvas: #ffffff;
-    --color-surface: #fafafa;
+    --color-surface: #f8f8f9;
     --color-surface-elevated: #ffffff;
-    --color-surface-hover: #f0f0f0;
-    --color-sidebar: #f0f0f0;
-    --color-border: #e4e4e7;
-    --color-border-subtle: #e4e4e7;
-    --color-text-primary: #09090b;
-    --color-text-secondary: #3f3f46;
-    --color-muted: #71717a;
+    --color-surface-hover: #ebebec;
+    --color-sidebar: #ebebec;
+    --color-border: #e0e0e2;
+    --color-border-subtle: #e8e8ea;
+    --color-text-primary: #111112;
+    --color-text-secondary: #3a3a3e;
+    --color-muted: #8a8a8f;
 }
 
 html.dark {
     --color-bg: #121212;
     --color-canvas: #181818;
-    --color-surface: #1a1a1a;
+    --color-surface: #1A1A1A;
     --color-surface-elevated: #282828;
     --color-surface-hover: #202020;
     --color-sidebar: #000000;
-    --color-border: #2a2a2a;
+    --color-border: #2A2A2A;
     --color-border-subtle: #1e1e1e;
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #cccccc;
-    --color-muted: #888888;
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #B3B3B3;
+    --color-muted: #6A6A6A;
 }
 
 @keyframes pulse-fade {
-
     0%,
-    100% {
-        opacity: 1;
-    }
+    100% { opacity: 1; }
+    50%  { opacity: 0.3; }
+}
 
-    50% {
-        opacity: 0.35;
-    }
+@keyframes bounce-dot {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40%            { transform: translateY(-4px); opacity: 1; }
 }
 
 /* Backward-compatible aliases so existing var(--bg) etc. still work */
@@ -164,6 +186,11 @@ html.dark {
 
 @layer base {
 
+    html {
+        font-size: 15px;
+        -webkit-text-size-adjust: 100%;
+    }
+
     html,
     body {
         margin: 0;
@@ -171,15 +198,23 @@ html.dark {
         background: var(--color-bg);
         color: var(--color-text-primary);
         font-family: var(--font-ui);
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        font-optical-sizing: auto;
+        line-height: 1.6;
+        letter-spacing: -0.01em;
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
     }
 
     ::selection {
-        background: rgba(29, 185, 84, 0.32);
+        background: rgba(29, 185, 84, 0.28);
+        color: var(--color-text-primary);
     }
 
     * {
         box-sizing: border-box;
+        min-width: 0;
     }
 
     :focus-visible {
@@ -187,4 +222,50 @@ html.dark {
         outline-offset: 2px;
         border-radius: 4px;
     }
+
+    /* Refined scrollbar */
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-muted);
+    }
+
+    /* PaneForge Resizer */
+    .resizer {
+        width: 8px;
+        cursor: col-resize;
+        position: relative;
+        background: transparent;
+        z-index: 50; /* Ensure it stays above panes */
+    }
+
+    .resizer::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        border-radius: var(--radius-full);
+        background: var(--color-border);
+        transition: background 150ms ease;
+    }
+
+    .resizer:hover::before,
+    .resizer[data-active]::before {
+        background: var(--color-blue);
+    }
 }
+

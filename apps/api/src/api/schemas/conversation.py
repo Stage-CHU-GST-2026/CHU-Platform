@@ -7,6 +7,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from .artifact import ArtifactItem
+
 
 # ── Nested ────────────────────────────────────────────────────────────
 
@@ -31,18 +33,20 @@ class ConversationSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+    artifact_count: int = 0
 
     model_config = {"from_attributes": True}
 
 
 class ConversationDetail(BaseModel):
-    """Full conversation with messages."""
+    """Full conversation with messages (and optionally artifacts)."""
 
     id: uuid.UUID
     title: str | None
     created_at: datetime
     updated_at: datetime
     messages: list[MessageItem]
+    artifacts: list[ArtifactItem] = []
 
     model_config = {"from_attributes": True}
 
