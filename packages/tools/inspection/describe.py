@@ -105,3 +105,48 @@ class ColumnInfoTool(BaseTool):
     def _run(self, path: str, column: str) -> str:
         df = _engine.load(path)
         return _engine.column_info(df, column)
+
+
+# ---------------------------------------------------------------------------
+# Dataset discovery
+# ---------------------------------------------------------------------------
+
+
+class _NoArgs(BaseModel):
+    """Placeholder schema — no arguments needed."""
+    pass
+
+
+class ListDatasetsTool(BaseTool):
+    name: str = "list_datasets"
+    description: str = (
+        "List all available dataset files in the project's data/ folder. "
+        "Use this first when the user hasn't told you which dataset to use. "
+        "Returns file names, sizes, and last modified dates."
+    )
+    args_schema: type[BaseModel] = _NoArgs
+
+    def _run(self, **kwargs: str) -> str:
+        from analysis.engine import _list_datasets, _find_data_dir
+
+        data_dir = _find_data_dir()
+        if data_dir is None:
+            return "No data/ folder found in the project."
+
+        datasets = _list_datasets(data_dir)
+        if not datasets:
+            return f"The data/ folder ({data_dir}) exists but contains no supported dataset files."
+
+        lines = [f"Found {len(datasets)} dataset(s) in {data_dir}:\n"]
+        for ds in datasets:
+            size = ds.stat().st_size
+            if size < 1024:
+                size_str = f"{size} B"
+            elif size < 1024**2:
+                size_str = f"{size / 1024:.1f} KB"
+            else:
+                size_str = f"{size / 1024**2:.1f} MB"
+            lines.append(f"  📄 {ds.name}  ({size_str})")
+        lines.append("\nUse a dataset by referencing its path, e.g.:")
+        lines.append(f"  `data/{datasets[0].name}`")
+        return "\n".join(lines)

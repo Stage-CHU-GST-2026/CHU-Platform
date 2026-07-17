@@ -10,6 +10,7 @@ from tools.inspection import (
     DatasetSummaryTool,
     DescribeDatasetTool,
     ListColumnsTool,
+    ListDatasetsTool,
 )
 from tools.statistics import (
     MaxTool,
@@ -33,9 +34,11 @@ from tools.relationships import (
     CorrelationTool,
     OutlierDetectionTool,
 )
-from tools.visualization import GenerateChartTool
+from tools.visualization import GenerateChartTool, CorrelationHeatmapTool
 
 DATA_ANALYST_TOOLS = [
+    # Discovery — call this first when no dataset is known
+    ListDatasetsTool(),
     # Inspection
     DescribeDatasetTool(),
     DatasetSummaryTool(),
@@ -63,4 +66,5 @@ DATA_ANALYST_TOOLS = [
     OutlierDetectionTool(),
     # Visualization
     GenerateChartTool(),
+    CorrelationHeatmapTool(),
 ]

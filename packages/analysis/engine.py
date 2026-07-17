@@ -11,6 +11,30 @@ from .profiler import ProfileResult, profile
 from .statistics import correlation_matrix, describe, quantiles
 
 
+def _find_data_dir() -> Path | None:
+    """Find a ``data/`` directory by walking up from CWD."""
+    cwd = Path.cwd().resolve()
+    for ancestor in [cwd] + list(cwd.parents):
+        candidate = ancestor / "data"
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def _list_datasets(data_dir: Path | None = None) -> list[Path]:
+    """Return paths of supported dataset files in a given directory."""
+    SUPPORTED_EXTENSIONS = {".csv", ".tsv", ".xlsx",
+                            ".xls", ".parquet", ".json", ".feather"}
+    if data_dir is None:
+        data_dir = _find_data_dir()
+    if data_dir is None:
+        return []
+    return sorted(
+        p for p in data_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
+    )
+
+
 class AnalysisEngine:
     """Executes analysis operations on datasets.
 
@@ -38,7 +62,18 @@ class AnalysisEngine:
         """Load a dataset, cache it, and return the DataFrame."""
         p = Path(path).expanduser().resolve()
         if not p.exists():
-            raise FileNotFoundError(f"File not found: {p}")
+            # Build a helpful message listing available datasets
+            available = _list_datasets()
+            msg = f"File not found: {p}"
+            if available:
+                items = "\n".join(f"  - {d.name}" for d in available)
+                msg += (
+                    f"\n\nAvailable datasets in the data/ folder:\n{items}"
+                    "\n\nUse the `list_datasets` tool to see all available datasets, "
+                    "then call the desired tool with the correct path "
+                    "(e.g. 'data/dataset_name.csv')."
+                )
+            raise FileNotFoundError(msg)
         ext = p.suffix.lower()
         loader = self.LOADERS.get(ext)
         if loader is None:

@@ -1,6 +1,7 @@
 """Chart generation — produces PNG chart files.
 
 No AI dependencies. Uses matplotlib (and optionally seaborn) under the hood.
+Styling is left entirely to matplotlib defaults (no custom colours or themes).
 
 Supported chart types
 ---------------------
@@ -18,62 +19,17 @@ from __future__ import annotations
 import os
 import tempfile
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from typing import Literal
 
 import matplotlib
 import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")
-
-# ---------------------------------------------------------------------------
-# Premium global aesthetics — applied once at import time
-# ---------------------------------------------------------------------------
-
-PALETTE = [
-    "#6366f1",  # indigo
-    "#ec4899",  # pink
-    "#14b8a6",  # teal
-    "#f59e0b",  # amber
-    "#3b82f6",  # blue
-    "#10b981",  # emerald
-    "#f43f5e",  # rose
-    "#8b5cf6",  # violet
-    "#06b6d4",  # cyan
-    "#84cc16",  # lime
-]
-
-_STYLE: dict = {
-    "figure.facecolor": "#0f172a",
-    "axes.facecolor": "#1e293b",
-    "axes.edgecolor": "#334155",
-    "axes.labelcolor": "#e2e8f0",
-    "axes.titlecolor": "#f8fafc",
-    "axes.titlesize": 14,
-    "axes.titleweight": "bold",
-    "axes.titlepad": 14,
-    "axes.grid": True,
-    "axes.prop_cycle": matplotlib.cycler(color=PALETTE),
-    "grid.color": "#334155",
-    "grid.linestyle": "--",
-    "grid.linewidth": 0.6,
-    "grid.alpha": 0.5,
-    "xtick.color": "#94a3b8",
-    "ytick.color": "#94a3b8",
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.facecolor": "#1e293b",
-    "legend.edgecolor": "#334155",
-    "legend.labelcolor": "#e2e8f0",
-    "legend.fontsize": 9,
-    "text.color": "#e2e8f0",
-    "figure.dpi": 150,
-}
-
-matplotlib.rcParams.update(_STYLE)
 
 
 # ---------------------------------------------------------------------------
@@ -81,25 +37,30 @@ matplotlib.rcParams.update(_STYLE)
 # ---------------------------------------------------------------------------
 
 ChartType = Literal[
-    # ── original ──────────────────────────────────────────────────────────
+    # ── basic ──────────────────────────────────────────────────────────────
     "bar",
     "line",
     "histogram",
     "scatter",
     "pie",
     "box",
-    # ── newly added ───────────────────────────────────────────────────────
-    "heatmap",
+    # ── distribution ───────────────────────────────────────────────────────
     "area",
     "kde",
     "violin",
+    # ── comparison ─────────────────────────────────────────────────────────
     "stacked_bar",
     "grouped_bar",
     "count_bar",
+    # ── relational ─────────────────────────────────────────────────────────
     "bubble",
     "pair_plot",
+    # ── sequence / flow ────────────────────────────────────────────────────
     "funnel",
     "waterfall",
+    # ── correlation ────────────────────────────────────────────────────────
+    "heatmap",
+    # ── multi-series ───────────────────────────────────────────────────────
     "multi_line",
 ]
 
@@ -120,17 +81,13 @@ class ChartSpec:
     title: str = ""
     xlabel: str = ""
     ylabel: str = ""
-    figsize: tuple[int, int] = (11, 6)
+    figsize: tuple[int, int] = (10, 6)
     output_dir: str | None = None
 
-    # --- extended parameters ------------------------------------------------
-    # grouping / hue column (violin, grouped_bar, stacked_bar)
-    hue: str | None = None
-    # third numeric column driving bubble size
-    size_col: str | None = None
-    # bins for histogram / kde
-    bins: int | None = None
-    # extra kwargs forwarded to the underlying plot call
+    # extended parameters
+    hue: str | None = None          # grouping column (violin, stacked_bar, grouped_bar)
+    size_col: str | None = None     # column driving bubble size
+    bins: int | None = None         # bins for histogram / kde
     kwargs: dict = field(default_factory=dict)
 
 
@@ -157,10 +114,10 @@ def render_chart(spec: ChartSpec) -> str:
         _draw(ax, spec)
         ax.set_title(spec.title or _default_title(spec))
         if spec.xlabel:
-            ax.set_xlabel(spec.xlabel, fontsize=11)
+            ax.set_xlabel(spec.xlabel)
         if spec.ylabel:
-            ax.set_ylabel(spec.ylabel, fontsize=11)
-        fig.tight_layout(pad=2.0)
+            ax.set_ylabel(spec.ylabel)
+        fig.tight_layout()
     finally:
         plt.close(fig)
 
@@ -174,8 +131,8 @@ def render_chart(spec: ChartSpec) -> str:
 
 def _draw(ax: plt.Axes, spec: ChartSpec) -> None:  # noqa: PLR0912
     """Dispatch to the correct plotting function."""
-    df = spec.data
     ct = spec.chart_type
+    df = spec.data
 
     if ct == "bar":
         _bar(ax, df, spec)
@@ -216,78 +173,58 @@ def _draw(ax: plt.Axes, spec: ChartSpec) -> None:  # noqa: PLR0912
 
 
 # ---------------------------------------------------------------------------
-# Chart implementations
+# Chart implementations (matplotlib defaults — no forced colours)
 # ---------------------------------------------------------------------------
 
 
 def _bar(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_x = _require(spec.x, "x", "bar")
     col_y = _require(spec.y, "y", "bar")
-    bars = ax.bar(df[col_x].astype(str), df[col_y], color=PALETTE[0],
-                  edgecolor="#0f172a", linewidth=0.8)
-    _label_bars(ax, bars, orientation="v")
+    ax.bar(df[col_x].astype(str), df[col_y])
     ax.tick_params(axis="x", rotation=35)
 
 
 def _line(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_x = _require(spec.x, "x", "line")
     col_y = _require(spec.y, "y", "line")
-    ax.plot(df[col_x], df[col_y], color=PALETTE[0], linewidth=2,
-            marker="o", markersize=4, markerfacecolor="#0f172a")
-    ax.fill_between(df[col_x], df[col_y], alpha=0.15, color=PALETTE[0])
+    ax.plot(df[col_x], df[col_y], marker="o", markersize=4)
 
 
 def _histogram(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col = spec.y or spec.x
     col = _require(col, "x or y", "histogram")
     bins = spec.bins or "auto"
-    n, bins_out, patches = ax.hist(df[col], bins=bins, color=PALETTE[0],
-                                   edgecolor="#0f172a", linewidth=0.6)
-    # gradient fill
-    for i, patch in enumerate(patches):
-        patch.set_facecolor(PALETTE[i % len(PALETTE)])
+    ax.hist(df[col], bins=bins, edgecolor="white", linewidth=0.5)
 
 
 def _scatter(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_x = _require(spec.x, "x", "scatter")
     col_y = _require(spec.y, "y", "scatter")
-    ax.scatter(df[col_x], df[col_y], color=PALETTE[0], alpha=0.75,
-               edgecolors="#0f172a", linewidths=0.5, s=60)
+    ax.scatter(df[col_x], df[col_y], alpha=0.7)
 
 
 def _pie(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_label = _require(spec.x, "x", "pie")
     col_val = _require(spec.y, "y", "pie")
-    wedges, texts, autotexts = ax.pie(
+    ax.pie(
         df[col_val],
         labels=df[col_label].astype(str),
-        colors=PALETTE[: len(df)],
         autopct="%1.1f%%",
         startangle=140,
-        wedgeprops={"edgecolor": "#0f172a", "linewidth": 1.2},
     )
-    for at in autotexts:
-        at.set_color("#f8fafc")
-        at.set_fontsize(9)
     ax.set_aspect("equal")
 
 
 def _box(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     cols = spec.y or spec.x
-    cols = [cols] if isinstance(cols, str) else list(
-        cols)  # type: ignore[arg-type]
+    cols = [cols] if isinstance(cols, str) else list(cols)  # type: ignore[arg-type]
     data = [df[c].dropna() for c in cols]
-    bp = ax.boxplot(data, tick_labels=cols, patch_artist=True,
-                    medianprops={"color": "#f8fafc", "linewidth": 2})
-
-    for i, patch in enumerate(bp["boxes"]):
-        patch.set_facecolor(PALETTE[i % len(PALETTE)])
-        patch.set_alpha(0.8)
+    ax.boxplot(data, tick_labels=cols, patch_artist=True)
 
 
 def _heatmap(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     numeric_df = df.select_dtypes(include="number")
-    img = ax.imshow(numeric_df.values, cmap="plasma", aspect="auto")
+    img = ax.imshow(numeric_df.values, cmap="viridis", aspect="auto")
     plt.colorbar(img, ax=ax, fraction=0.03, pad=0.02)
     ax.set_xticks(range(len(numeric_df.columns)))
     ax.set_xticklabels(numeric_df.columns, rotation=40, ha="right", fontsize=9)
@@ -295,8 +232,10 @@ def _heatmap(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     ax.set_yticklabels(numeric_df.index, fontsize=9)
     for i in range(len(numeric_df.index)):
         for j in range(len(numeric_df.columns)):
-            ax.text(j, i, f"{numeric_df.values[i, j]:.2f}",
-                    ha="center", va="center", fontsize=7.5, color="#f8fafc")
+            ax.text(
+                j, i, f"{numeric_df.values[i, j]:.2f}",
+                ha="center", va="center", fontsize=7.5,
+            )
 
 
 def _area(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
@@ -304,11 +243,9 @@ def _area(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     cols_y = [spec.y] if isinstance(spec.y, str) else list(spec.y or [])
     if not cols_y:
         raise ValueError("area chart requires at least one y column")
-    for i, col in enumerate(cols_y):
-        ax.fill_between(df[col_x], df[col], alpha=0.55,
-                        color=PALETTE[i % len(PALETTE)], label=col)
-        ax.plot(df[col_x], df[col], color=PALETTE[i % len(PALETTE)],
-                linewidth=1.5, alpha=0.9)
+    for col in cols_y:
+        ax.fill_between(df[col_x], df[col], alpha=0.5, label=col)
+        ax.plot(df[col_x], df[col], linewidth=1.5)
     if len(cols_y) > 1:
         ax.legend()
 
@@ -317,50 +254,43 @@ def _kde(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col = spec.y or spec.x
     col = _require(col, "x or y", "kde")
     try:
-        import seaborn as sns  # optional soft dependency
-        sns.kdeplot(data=df, x=col, ax=ax,
-                    fill=True, color=PALETTE[0], alpha=0.5, linewidth=2)
+        import seaborn as sns
+        sns.kdeplot(data=df, x=col, ax=ax, fill=True, linewidth=2)
     except ImportError:
-        # pure-numpy fallback using a Gaussian kernel
         from scipy.stats import gaussian_kde  # type: ignore[import]
         vals = df[col].dropna().values
         kde = gaussian_kde(vals)
         xs = np.linspace(vals.min(), vals.max(), 300)
-        ax.plot(xs, kde(xs), color=PALETTE[0], linewidth=2)
-        ax.fill_between(xs, kde(xs), alpha=0.35, color=PALETTE[0])
+        ax.plot(xs, kde(xs), linewidth=2)
+        ax.fill_between(xs, kde(xs), alpha=0.35)
 
 
 def _violin(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_y = _require(spec.y, "y", "violin")
     try:
         import seaborn as sns
-        sns.violinplot(
-            data=df,
-            x=spec.hue if spec.hue else None,
-            y=col_y,
-            hue=spec.hue if spec.hue else None,
-            ax=ax,
-            palette=PALETTE[: df[spec.hue].nunique(
-            )] if spec.hue and spec.hue in df.columns else None,
-            inner="box",
-            linewidth=1.2,
-            legend=False,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            sns.violinplot(
+                data=df,
+                x=spec.hue if spec.hue else None,
+                y=col_y,
+                hue=spec.hue if spec.hue else None,
+                ax=ax,
+                inner="box",
+                linewidth=1.2,
+                legend=False,
+            )
     except ImportError:
-        # fallback: grouped matplotlib violinplot
         if spec.hue and spec.hue in df.columns:
-            groups = [grp[col_y].dropna().values
-                      for _, grp in df.groupby(spec.hue)]
+            groups = [grp[col_y].dropna().values for _, grp in df.groupby(spec.hue)]
             labels = [str(k) for k, _ in df.groupby(spec.hue)]
         else:
             groups = [df[col_y].dropna().values]
             labels = [col_y]
-        vp = ax.violinplot(groups, showmedians=True)
+        ax.violinplot(groups, showmedians=True)
         ax.set_xticks(range(1, len(labels) + 1))
         ax.set_xticklabels(labels, rotation=30)
-        for i, body in enumerate(vp["bodies"]):
-            body.set_facecolor(PALETTE[i % len(PALETTE)])
-            body.set_alpha(0.75)
 
 
 def _stacked_bar(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
@@ -370,11 +300,8 @@ def _stacked_bar(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     pivot = df.pivot_table(index=col_x, columns=hue_col,
                            values=val_col, aggfunc="sum", fill_value=0)
     bottom = np.zeros(len(pivot))
-    for i, col in enumerate(pivot.columns):
-        bars = ax.bar(pivot.index.astype(str), pivot[col],
-                      bottom=bottom, label=str(col),
-                      color=PALETTE[i % len(PALETTE)],
-                      edgecolor="#0f172a", linewidth=0.6)
+    for col in pivot.columns:
+        ax.bar(pivot.index.astype(str), pivot[col], bottom=bottom, label=str(col))
         bottom += pivot[col].values
     ax.legend(title=hue_col)
     ax.tick_params(axis="x", rotation=35)
@@ -392,9 +319,7 @@ def _grouped_bar(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     xs = np.arange(n_groups)
     for i, col in enumerate(pivot.columns):
         offset = (i - n_bars / 2 + 0.5) * width
-        ax.bar(xs + offset, pivot[col], width=width * 0.9,
-               label=str(col), color=PALETTE[i % len(PALETTE)],
-               edgecolor="#0f172a", linewidth=0.6)
+        ax.bar(xs + offset, pivot[col], width=width * 0.9, label=str(col))
     ax.set_xticks(xs)
     ax.set_xticklabels(pivot.index.astype(str), rotation=35)
     ax.legend(title=hue_col)
@@ -404,14 +329,7 @@ def _count_bar(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col = spec.x or spec.y
     col = _require(col, "x", "count_bar")
     counts = df[col].value_counts().sort_values(ascending=True)
-    bars = ax.barh(counts.index.astype(str), counts.values,
-                   color=[PALETTE[i % len(PALETTE)]
-                          for i in range(len(counts))],
-                   edgecolor="#0f172a", linewidth=0.6)
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(width + counts.max() * 0.01, bar.get_y() + bar.get_height() / 2,
-                f"{int(width):,}", va="center", fontsize=8.5, color="#e2e8f0")
+    ax.barh(counts.index.astype(str), counts.values)
 
 
 def _bubble(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
@@ -423,9 +341,7 @@ def _bubble(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
         sizes = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9) * 900 + 30
     else:
         sizes = 80
-    sc = ax.scatter(df[col_x], df[col_y], s=sizes,
-                    c=PALETTE[0], alpha=0.7, edgecolors="#0f172a",
-                    linewidths=0.5)
+    ax.scatter(df[col_x], df[col_y], s=sizes, alpha=0.7)
     if size_col:
         ax.set_title((spec.title or "Bubble Chart") + f"  (size ∝ {size_col})")
 
@@ -435,16 +351,14 @@ def _funnel(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     col_val = _require(spec.y, "y", "funnel")
     data = df[[col_label, col_val]].sort_values(col_val, ascending=False)
     max_val = data[col_val].max()
+    prop_cycle = plt.rcParams["axes.prop_cycle"]
+    colours = [c["color"] for c in prop_cycle]
     for i, (_, row) in enumerate(data.iterrows()):
         width = row[col_val] / max_val
-        center = 0.5
-        left = center - width / 2
-        ax.barh(i, width, left=left, height=0.7,
-                color=PALETTE[i % len(PALETTE)],
-                edgecolor="#0f172a", linewidth=0.8)
-        ax.text(center, i, f"{row[col_label]}  ({row[col_val]:,.0f})",
-                ha="center", va="center", fontsize=9.5, color="#f8fafc",
-                fontweight="bold")
+        left = (1 - width) / 2
+        ax.barh(i, width, left=left, height=0.7, color=colours[i % len(colours)])
+        ax.text(0.5, i, f"{row[col_label]}  ({row[col_val]:,.0f})",
+                ha="center", va="center", fontsize=9.5, fontweight="bold")
     ax.set_yticks([])
     ax.set_xticks([])
     ax.set_xlim(0, 1)
@@ -465,26 +379,25 @@ def _waterfall(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
         if v >= 0:
             bottoms.append(running)
             tops.append(v)
-            colors.append(PALETTE[2])   # teal = positive
+            colors.append("steelblue")
         else:
             bottoms.append(running + v)
             tops.append(-v)
-            colors.append(PALETTE[6])   # rose = negative
+            colors.append("tomato")
         running += v
 
-    ax.bar(labels, tops, bottom=bottoms, color=colors,
-           edgecolor="#0f172a", linewidth=0.8, width=0.6)
+    ax.bar(labels, tops, bottom=bottoms, color=colors, width=0.6)
 
     # connector lines
     running2 = 0.0
     for i, v in enumerate(values[:-1]):
         running2 += v
         ax.plot([i + 0.3, i + 0.7], [running2, running2],
-                color="#94a3b8", linewidth=1, linestyle="--")
+                color="grey", linewidth=1, linestyle="--")
 
-    pos_patch = mpatches.Patch(color=PALETTE[2], label="Positive")
-    neg_patch = mpatches.Patch(color=PALETTE[6], label="Negative")
-    ax.legend(handles=[pos_patch, neg_patch], loc="upper right")
+    pos_patch = mpatches.Patch(color="steelblue", label="Positive")
+    neg_patch = mpatches.Patch(color="tomato", label="Negative")
+    ax.legend(handles=[pos_patch, neg_patch])
     ax.tick_params(axis="x", rotation=35)
 
 
@@ -493,37 +406,32 @@ def _multi_line(ax: plt.Axes, df: pd.DataFrame, spec: ChartSpec) -> None:
     cols_y = [spec.y] if isinstance(spec.y, str) else list(spec.y or [])
     if not cols_y:
         raise ValueError("multi_line chart requires at least one y column")
-    for i, col in enumerate(cols_y):
-        ax.plot(df[col_x], df[col], color=PALETTE[i % len(PALETTE)],
-                linewidth=2, label=col,
-                marker="o", markersize=3, markerfacecolor="#0f172a")
+    for col in cols_y:
+        ax.plot(df[col_x], df[col], label=col, marker="o", markersize=3)
     ax.legend()
 
 
 def _render_pair_plot(spec: ChartSpec) -> str:
     """Render a seaborn pair plot and save it."""
-    import warnings
     try:
         import seaborn as sns
-        sns.set_theme(style="darkgrid", rc={
-            "axes.facecolor": "#1e293b",
-            "figure.facecolor": "#0f172a",
-            "axes.labelcolor": "#e2e8f0",
-            "text.color": "#e2e8f0",
-            "grid.color": "#334155",
-        })
-        cols = ([spec.x, spec.y] if spec.x and spec.y
-                else spec.data.select_dtypes(include="number").columns.tolist()[:5])
+        cols = (
+            [spec.x, spec.y] if spec.x and spec.y
+            else spec.data.select_dtypes(include="number").columns.tolist()[:5]
+        )
         hue = spec.hue if spec.hue and spec.hue in spec.data.columns else None
-        palette = PALETTE[:4] if hue else None
+        palette = None if hue is None else None  # let seaborn choose
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            g = sns.pairplot(spec.data[cols + ([hue] if hue else [])],
-                             hue=hue, palette=palette,
-                             plot_kws={"alpha": 0.6, "edgecolor": "none"},
-                             diag_kind="kde")
-        g.figure.suptitle(spec.title or "Pair Plot", y=1.02,
-                          color="#f8fafc", fontsize=14, fontweight="bold")
+            g = sns.pairplot(
+                spec.data[cols + ([hue] if hue else [])],
+                hue=hue,
+                palette=palette,
+                plot_kws={"alpha": 0.6},
+                diag_kind="kde",
+            )
+        if spec.title:
+            g.figure.suptitle(spec.title, y=1.02)
         g.figure.tight_layout()
         return _save(g.figure, spec)
     except ImportError:
@@ -543,21 +451,6 @@ def _require(val, name: str, chart: str):
     return val
 
 
-def _label_bars(ax: plt.Axes, bars, orientation: str = "v") -> None:
-    """Add value labels to bar charts."""
-    for bar in bars:
-        if orientation == "v":
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h * 1.01,
-                    f"{h:,.1f}", ha="center", va="bottom", fontsize=8,
-                    color="#e2e8f0")
-        else:
-            w = bar.get_width()
-            ax.text(w * 1.01, bar.get_y() + bar.get_height() / 2,
-                    f"{w:,.1f}", ha="left", va="center", fontsize=8,
-                    color="#e2e8f0")
-
-
 def _default_title(spec: ChartSpec) -> str:
     parts = [spec.chart_type.replace("_", " ").title()]
     if spec.y:
@@ -573,6 +466,5 @@ def _save(fig: plt.Figure, spec: ChartSpec) -> str:
     safe_title = (spec.title or spec.chart_type).replace(" ", "_").lower()[:50]
     unique_id = uuid.uuid4().hex[:12]
     filepath = os.path.join(output_dir, f"{safe_title}_{unique_id}.png")
-    fig.savefig(filepath, format="png", dpi=150, bbox_inches="tight",
-                facecolor=fig.get_facecolor())
+    fig.savefig(filepath, format="png", dpi=120, bbox_inches="tight")
     return os.path.abspath(filepath)

@@ -12,6 +12,9 @@ from langchain_openai import ChatOpenAI
 
 from ai.models.config import AgentConfig
 from ai.state import AgentState
+from ai.logger import get_logger
+
+logger = get_logger(__name__)
 
 SUMMARY_PROMPT = """You are a memory manager. Your job is to maintain a concise
 running summary of the conversation so far.
@@ -68,7 +71,10 @@ def make_summary_node(config: AgentConfig) -> callable:
             user_message=str(last_user)[:2000],
             assistant_message=str(last_ai)[:2000],
         )
+        
+        logger.info("Generating conversation summary")
         new_summary = model.invoke([SystemMessage(content=prompt)]).content
+        logger.info("Conversation summary updated", length=len(new_summary))
         return {"summary": new_summary.strip()}
 
     return summarize

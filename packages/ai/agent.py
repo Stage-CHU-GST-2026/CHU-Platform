@@ -12,6 +12,9 @@ from ai.graph import build_graph
 from ai.models.config import AgentConfig
 from ai.state import AgentState
 from ai.tool_protocol import ToolProtocol
+from ai.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class Agent:
@@ -72,8 +75,16 @@ class Agent:
             config.setdefault("configurable", {})
             config["configurable"].setdefault("thread_id", str(uuid4()))
 
-        result = await self.graph.ainvoke(state, config=config)
-        return result["messages"][-1]
+        thread_id = config["configurable"]["thread_id"]
+        logger.info("Starting agent run", thread_id=thread_id)
+
+        try:
+            result = await self.graph.ainvoke(state, config=config)
+            logger.info("Agent run completed", thread_id=thread_id)
+            return result["messages"][-1]
+        except Exception as e:
+            logger.error("Agent run failed", thread_id=thread_id, error=str(e), exc_info=True)
+            raise
 
     async def astream(
         self,
@@ -92,14 +103,22 @@ class Agent:
             config.setdefault("configurable", {})
             config["configurable"].setdefault("thread_id", str(uuid4()))
 
-        async for chunk, _metadata in self.graph.astream(
-            state,
-            stream_mode="messages",
-            config=config,
-        ):
-            # Only yield text tokens from the AI model, not tool-result chunks
-            if isinstance(chunk, AIMessageChunk) and chunk.content:
-                yield chunk.content
+        thread_id = config["configurable"]["thread_id"]
+        logger.info("Starting agent stream", thread_id=thread_id)
+
+        try:
+            async for chunk, _metadata in self.graph.astream(
+                state,
+                stream_mode="messages",
+                config=config,
+            ):
+                # Only yield text tokens from the AI model, not tool-result chunks
+                if isinstance(chunk, AIMessageChunk) and chunk.content:
+                    yield chunk.content
+            logger.info("Agent stream completed", thread_id=thread_id)
+        except Exception as e:
+            logger.error("Agent stream failed", thread_id=thread_id, error=str(e), exc_info=True)
+            raise
 
     async def get_memory(
         self,

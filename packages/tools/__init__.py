@@ -38,7 +38,7 @@ from .relationships import (
     CorrelationTool,
     OutlierDetectionTool,
 )
-from .visualization import GenerateChartTool
+from .visualization import GenerateChartTool, CorrelationHeatmapTool
 
 # ---------------------------------------------------------------------------
 # Register all tools so they can be discovered by name
@@ -72,6 +72,7 @@ _TOOL_CLASSES = [
     OutlierDetectionTool,
     # Visualization
     GenerateChartTool,
+    CorrelationHeatmapTool,
 ]
 
 for cls in _TOOL_CLASSES:
@@ -100,6 +101,7 @@ __all__ = [
     "CorrelationTool",
     "OutlierDetectionTool",
     "GenerateChartTool",
+    "CorrelationHeatmapTool",
     "TOOL_REGISTRY",
     "register_tool",
 ]

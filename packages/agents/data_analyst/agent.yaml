@@ -8,6 +8,9 @@ max_iterations: 15
 prompt: prompt.md
 
 tools:
+  # Dataset discovery — call this first when no dataset is known
+  - list_datasets
+
   # Dataset inspection
   - describe_dataset
   - dataset_summary

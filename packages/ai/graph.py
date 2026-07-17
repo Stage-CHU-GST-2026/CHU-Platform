@@ -13,6 +13,9 @@ from ai.nodes.memory import make_summary_node
 from ai.nodes.tools import make_tools_node
 from ai.state import AgentState
 from ai.tool_protocol import ToolProtocol
+from ai.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def build_graph(
@@ -47,7 +50,10 @@ def build_graph(
     def should_continue(state: AgentState) -> str:
         last = state["messages"][-1]
         if getattr(last, "tool_calls", None):
+            tool_names = [tc["name"] for tc in last.tool_calls]
+            logger.info("Agent requested tools", tools=tool_names)
             return "tools"
+        logger.info("Agent finished thinking, moving to summarize")
         return "summarize"
 
     tools_node = make_tools_node(tools)
@@ -55,7 +61,14 @@ def build_graph(
 
     builder = StateGraph(AgentState)
     builder.add_node("agent", call_model)
-    builder.add_node("tools", tools_node)
+    
+    def wrapped_tools_node(state: AgentState):
+        logger.info("Executing tools step")
+        result = tools_node.invoke(state)
+        logger.info("Tools execution completed")
+        return result
+        
+    builder.add_node("tools", wrapped_tools_node)
     builder.add_node("summarize", summarize_node)
     builder.add_edge(START, "agent")
     builder.add_conditional_edges("agent", should_continue, {

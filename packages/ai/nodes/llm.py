@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from langchain_core.messages import SystemMessage
+from openai import APIError as OpenAIAPIError
+
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 
 from ai.models.config import AgentConfig
 from ai.state import AgentState
 from ai.tool_protocol import ToolProtocol
+from ai.logger import get_logger
+
+logger = get_logger(__name__)
 
 MEMORY_PREAMBLE = """\n\n## Conversation Memory
 
@@ -16,6 +21,11 @@ The following is a summary of our conversation so far. Use it to
 remember what the user has already asked and what you have found.
 
 {summary}"""
+
+_FALLBACK_CONTENT = (
+    "I encountered an issue while processing your request. "
+    "Please try rephrasing your question or ask me to perform a simpler action."
+)
 
 
 def make_llm_node(
@@ -56,5 +66,29 @@ def make_llm_node(
 
     # Pass runnable_config so LangGraph's streaming callbacks are attached.
     # Without this, stream_mode="messages" yields the whole response as one chunk.
-    response = model.bind_tools(tools).invoke(messages, config=runnable_config)
-    return {"messages": [response]}
+    try:
+        logger.info("Calling LLM", model=config.model)
+        response = model.bind_tools(tools).invoke(
+            messages, config=runnable_config)
+        logger.info("LLM responded")
+        return {"messages": [response]}
+    except OpenAIAPIError as exc:
+        # The LLM server rejected a function call (e.g. malformed args or
+        # incompatible schema). Return a fallback message so the stream
+        # doesn't crash — the agent will recover on the next iteration.
+        error_detail = getattr(exc, "message", str(exc))
+        logger.warning(
+            "LLM API error (likely rejected tool call)", error=error_detail)
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        f"{_FALLBACK_CONTENT}\n\n"
+                        f"(Internal note: tool call failed — {error_detail})"
+                    )
+                )
+            ]
+        }
+    except Exception as exc:
+        logger.error("Unexpected error during LLM call", error=str(exc))
+        raise

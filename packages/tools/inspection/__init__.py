@@ -7,6 +7,7 @@ from .describe import (
     DatasetSummaryTool,
     DescribeDatasetTool,
     ListColumnsTool,
+    ListDatasetsTool,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "DatasetShapeTool",
     "ListColumnsTool",
     "ColumnInfoTool",
+    "ListDatasetsTool",
 ]

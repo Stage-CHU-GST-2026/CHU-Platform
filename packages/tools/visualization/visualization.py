@@ -58,38 +58,74 @@ _CHART_TYPE = Literal[
     "multi_line",   # multiple lines on one axes (x=x-axis, y=list of cols)
 ]
 
-_DESCRIPTION = (
-    "Generate a publication-quality chart from a dataset and return its URL. "
-    "Choose the chart type that best matches the user's analytical intent:\n"
-    "  bar/grouped_bar/stacked_bar → compare categories\n"
-    "  line/multi_line/area        → show trends or time series\n"
-    "  histogram/kde               → explore a numeric distribution\n"
-    "  scatter/bubble              → reveal correlations between two (or three) numeric columns\n"
-    "  pie/funnel                  → show proportions or conversion stages\n"
-    "  box/violin                  → compare distributions across groups\n"
-    "  heatmap                     → visualize a correlation matrix or 2-D numeric table\n"
-    "  waterfall                   → show cumulative effect of sequential positive/negative values\n"
-    "  count_bar                   → rank-order the frequency of a categorical column\n"
-    "  pair_plot                   → pairwise relationships across many numeric columns\n"
-    "Returns the URL of the generated chart image."
-)
+_DESCRIPTION = """Generate a chart from a dataset file and return its URL for display.
+
+WHEN TO USE THIS TOOL
+─────────────────────
+Call this tool whenever the user asks to "plot", "visualise", "show a chart/graph/figure",
+or whenever a visual summary would make data clearer than a table or plain text.
+Always prefer a chart over a raw table when the user is asking about trends,
+distributions, comparisons, or proportions.
+
+CHOOSING THE RIGHT CHART TYPE
+──────────────────────────────
+Goal                                   → Best chart type(s)
+─────────────────────────────────────────────────────────────
+Compare values across categories       → bar, grouped_bar, count_bar
+Compare values split by a sub-group   → grouped_bar (hue=sub-group col)
+Show part-to-whole proportions        → pie, stacked_bar (hue=sub-group)
+Show a trend over time / ordered x    → line, multi_line, area
+Show multiple trends on one plot      → multi_line (y = list of columns)
+Explore how one numeric col is spread → histogram, kde, box, violin
+Compare spreads across groups         → box (y = list of cols) or violin (hue=group col)
+Find correlation between two numerics → scatter
+Three-variable relationship           → bubble (size_col = 3rd column)
+Pairwise relationships, many cols     → pair_plot
+Show a conversion / pipeline funnel   → funnel
+Show running total with +/– steps     → waterfall
+Visualise a correlation matrix        → heatmap (pass the correlation DataFrame)
+Frequency count of a category col     → count_bar (only x is required)
+
+REQUIRED COLUMNS PER CHART TYPE
+────────────────────────────────
+bar, line, scatter, area, bubble, funnel, waterfall  → x AND y
+histogram, kde                                        → x or y (one numeric col)
+pie                                                   → x (label col) AND y (value col)
+box, violin                                           → y (one or more numeric cols); hue optional
+stacked_bar, grouped_bar                              → x, y, AND hue
+count_bar                                             → x (categorical col, no y needed)
+multi_line                                            → x AND y (list of numeric cols)
+pair_plot                                             → y (list of numeric cols); hue optional
+heatmap                                               → no x/y — uses all numeric columns
+
+WORKFLOW
+────────
+1. Inspect the dataset with describe_dataset or list_columns if you do not already know column names.
+2. Pick the chart type from the table above.
+3. Map the correct dataset columns to x, y, hue, and size_col.
+4. Set a clear, descriptive title.
+5. Call this tool — the returned URL is automatically rendered as an inline image.
+
+Returns the URL of the generated PNG chart."""
 
 
 class GenerateChartSchema(BaseModel):
-    path: str = Field(description="Path to the dataset file (CSV, Excel, Parquet, JSON, …).")
-    chart_type: _CHART_TYPE = Field(  # type: ignore[valid-type]
-        description="Type of chart. See tool description for selection guidance."
+    path: str = Field(
+        description="Path to the dataset file (CSV, Excel, Parquet, JSON, …).")
+    chart_type: str = Field(
+        description="Type of chart. Options: bar, line, histogram, scatter, pie, box, area, kde, violin, stacked_bar, grouped_bar, count_bar, bubble, pair_plot, funnel, waterfall, heatmap, multi_line. See tool description for selection guidance."
     )
     x: str | None = Field(
         default=None,
         description="Column for the x-axis / category labels / funnel labels.",
     )
-    y: str | list[str] | None = Field(
+    y: str | None = Field(
         default=None,
-        description=(
-            "Column(s) for the y-axis / values. "
-            "Pass a list for multi_line, area, box, or pair_plot."
-        ),
+        description="Column name for the y-axis / values. For multi-column charts (multi_line, area, box, pair_plot), use y_columns instead.",
+    )
+    y_columns: list[str] | None = Field(
+        default=None,
+        description="List of column names for multi-column chart types: multi_line, area, box, or pair_plot. Use this instead of y for multiple columns.",
     )
     hue: str | None = Field(
         default=None,
@@ -102,7 +138,8 @@ class GenerateChartSchema(BaseModel):
         default=None,
         description="Numeric column that controls bubble size (bubble chart only).",
     )
-    title: str = Field(default="", description="Chart title. Auto-generated if omitted.")
+    title: str = Field(
+        default="", description="Chart title. Auto-generated if omitted.")
     bins: int | None = Field(
         default=None,
         description="Number of bins for histogram or kde. Defaults to auto.",
@@ -124,7 +161,8 @@ class GenerateChartTool(BaseTool):
         path: str,
         chart_type: str = "bar",
         x: str | None = None,
-        y: str | list[str] | None = None,
+        y: str | None = None,
+        y_columns: list[str] | None = None,
         hue: str | None = None,
         size_col: str | None = None,
         title: str = "",
@@ -132,16 +170,20 @@ class GenerateChartTool(BaseTool):
     ) -> str:
         df = _engine.load(path)
 
+        # Use y_columns for multi-column chart types, otherwise use y
+        resolved_y: str | list[str] | None = y_columns if y_columns else y
+
         spec = ChartSpec(
             chart_type=chart_type,  # type: ignore[arg-type]
             data=df,
             x=x,
-            y=y,
+            y=resolved_y,
             hue=hue,
             size_col=size_col,
             title=title or f"{chart_type.replace('_', ' ').title()} Chart",
             xlabel=x or "",
-            ylabel=(y if isinstance(y, str) else (y[0] if y else "")),
+            ylabel=(y if isinstance(y, str) else (
+                y_columns[0] if y_columns else "")),
             output_dir=_get_output_dir(),
             bins=bins,
         )
@@ -151,3 +193,63 @@ class GenerateChartTool(BaseTool):
         # The CHART_URL: prefix is detected by AgentService.stream() which
         # emits a dedicated 'image' SSE event so the UI can render it inline.
         return f"{CHART_URL_PREFIX}{api_url}\nChart saved to {filepath}"
+
+
+# ---------------------------------------------------------------------------
+# Correlation Heatmap — dedicated tool (load + correlate + plot in one step)
+# ---------------------------------------------------------------------------
+
+
+class CorrelationHeatmapSchema(BaseModel):
+    path: str = Field(
+        description="Path to the dataset file (CSV, Excel, Parquet, JSON, …).")
+    columns: str | None = Field(
+        default=None,
+        description=(
+            "Optional comma-separated list of numeric column names to include, "
+            "e.g. 'age,income,score'. If omitted, all numeric columns are used."
+        ),
+    )
+    title: str = Field(
+        default="Correlation Heatmap",
+        description="Chart title.",
+    )
+
+
+class CorrelationHeatmapTool(BaseTool):
+    name: str = "correlation_heatmap"
+    description: str = (
+        "Compute the Pearson correlation matrix for a dataset and render it as an "
+        "annotated heatmap image. "
+        "Use this tool whenever the user asks for a 'correlation heatmap', "
+        "'correlation matrix', or wants to see how numeric columns relate to each other. "
+        "Returns the URL of the generated heatmap — displayed inline in the chat. "
+        "Do NOT write Python code; call this tool directly."
+    )
+    args_schema: type[BaseModel] = CorrelationHeatmapSchema
+
+    def _run(
+        self,
+        path: str,
+        columns: str | None = None,
+        title: str = "Correlation Heatmap",
+    ) -> str:
+        df = _engine.load(path)
+
+        # Select columns
+        cols: list[str] | None = (
+            [c.strip() for c in columns.split(",") if c.strip()]
+            if columns else None
+        )
+        corr_df = _engine.correlation(df, cols)
+
+        spec = ChartSpec(
+            chart_type="heatmap",
+            data=corr_df,
+            title=title,
+            output_dir=_get_output_dir(),
+        )
+        filepath = render_chart(spec)
+        filename = os.path.basename(filepath)
+        api_url = f"/api/v1/charts/{filename}"
+        return f"{CHART_URL_PREFIX}{api_url}\nCorrelation heatmap saved to {filepath}"
