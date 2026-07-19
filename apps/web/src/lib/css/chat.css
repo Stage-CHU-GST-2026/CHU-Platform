@@ -12,15 +12,15 @@
     }
 
     .msg-bubble {
-        @apply p-4 rounded-md text-[14.5px] leading-[1.6] text-text-primary;
+        @apply p-5 rounded-xl text-[16px] leading-[1.75] text-text-primary;
     }
 
     .msg-bubble.user {
-        @apply max-w-[75%] bg-surface-elevated border border-border rounded-br-xs shadow-sm;
+        @apply max-w-[85%] bg-surface-elevated border border-border rounded-br-sm shadow-md;
     }
 
     .msg-bubble.assistant {
-        @apply max-w-[95%] bg-canvas border border-border rounded-bl-xs;
+        @apply max-w-[95%] bg-canvas border border-border rounded-bl-sm shadow-sm;
     }
 
     .msg-meta {

@@ -96,13 +96,14 @@
         margin-bottom: 0.45em;
         line-height: 1.3;
     }
-    .prose-agent :global(h1) { font-size: 1.25em; }
-    .prose-agent :global(h2) { font-size: 1.15em; }
-    .prose-agent :global(h3) { font-size: 1.05em; }
-    .prose-agent :global(h4) { font-size: 1em; font-weight: 500; }
+    .prose-agent :global(h1) { font-size: 1.4em; }
+    .prose-agent :global(h2) { font-size: 1.25em; }
+    .prose-agent :global(h3) { font-size: 1.15em; }
+    .prose-agent :global(h4) { font-size: 1.05em; font-weight: 500; }
 
     .prose-agent :global(p) {
-        margin: 0.65em 0;
+        margin: 0.8em 0;
+        line-height: 1.75;
         color: var(--color-text-primary);
     }
 
@@ -126,17 +127,17 @@
     }
 
     .prose-agent :global(li) {
-        margin: 0.3em 0;
-        line-height: 1.6;
+        margin: 0.4em 0;
+        line-height: 1.75;
     }
 
     .prose-agent :global(code) {
         background: var(--color-surface-elevated);
         color: var(--color-accent);
-        padding: 0.15em 0.4em;
-        border-radius: 5px;
+        padding: 0.2em 0.45em;
+        border-radius: 6px;
         font-family: var(--font-mono);
-        font-size: 0.88em;
+        font-size: 0.9em;
         border: 1px solid var(--color-border);
     }
 

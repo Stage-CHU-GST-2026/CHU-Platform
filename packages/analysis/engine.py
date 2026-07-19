@@ -49,14 +49,55 @@ class AnalysisEngine:
     # ------------------------------------------------------------------
 
     LOADERS: dict[str, Any] = {
-        ".csv": lambda p, **kw: pd.read_csv(p, **kw),
-        ".tsv": lambda p, **kw: pd.read_csv(p, sep="\t", **kw),
+        ".csv": lambda p, **kw: AnalysisEngine._load_csv_with_fallback(p, **kw),
+        ".tsv": lambda p, **kw: AnalysisEngine._load_csv_with_fallback(p, sep="\t", **kw),
         ".xlsx": pd.read_excel,
         ".xls": pd.read_excel,
         ".parquet": pd.read_parquet,
         ".json": pd.read_json,
         ".feather": pd.read_feather,
     }
+
+    # Encodings to try when UTF-8 fails on text-based files
+    _FALLBACK_ENCODINGS = ["latin-1", "cp1252", "iso-8859-15"]
+
+    @staticmethod
+    def _load_csv_with_fallback(path: Path, **kwargs: Any) -> pd.DataFrame:
+        """Read a CSV, auto-detecting encoding and delimiter.
+
+        Tries UTF-8 first, then common fallback encodings (latin-1, cp1252, …).
+        When no explicit ``sep`` is given and comma-separated parsing fails,
+        also tries ``;``, ``\\t`` and ``|`` as delimiters.
+        """
+        user_sep = "sep" in kwargs or "delimiter" in kwargs
+
+        encodings = (
+            [kwargs.pop("encoding")]
+            if "encoding" in kwargs
+            else ["utf-8", *AnalysisEngine._FALLBACK_ENCODINGS]
+        )
+
+        # First pass: try each encoding with the user-provided separator (default comma)
+        for enc in encodings:
+            try:
+                return pd.read_csv(path, encoding=enc, **kwargs)
+            except UnicodeDecodeError:
+                continue
+            except pd.errors.ParserError:
+                # Encoding is fine but delimiter is wrong — break out to try other delimiters
+                break
+
+        # Second pass: try other delimiters if the user didn't specify one
+        if not user_sep:
+            for enc in encodings:
+                for sep in (";", "\t", "|"):
+                    try:
+                        return pd.read_csv(path, encoding=enc, sep=sep, **kwargs)
+                    except (UnicodeDecodeError, pd.errors.ParserError):
+                        continue
+
+        # Last resort: let pandas raise the original error
+        return pd.read_csv(path, encoding="utf-8", **kwargs)
 
     def load(self, path: str, **kwargs) -> pd.DataFrame:
         """Load a dataset, cache it, and return the DataFrame."""

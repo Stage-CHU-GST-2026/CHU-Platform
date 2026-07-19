@@ -48,7 +48,7 @@
     <textarea 
         bind:this={textareaEl}
         bind:value={input}
-        class="flex-1 bg-transparent text-white placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[14.5px] leading-[1.65] max-h-40 overflow-y-auto disabled:opacity-40 tracking-[-0.005em]"
+        class="flex-1 bg-transparent text-white placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[16px] leading-[1.65] max-h-40 overflow-y-auto disabled:opacity-40 tracking-[-0.005em]"
         placeholder="Ask anything…"
         rows="1"
         disabled={isStreaming}

@@ -7,7 +7,7 @@ findings, and user preferences across turns.
 
 from __future__ import annotations
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
 from ai.models.config import AgentConfig
@@ -71,9 +71,9 @@ def make_summary_node(config: AgentConfig) -> callable:
             user_message=str(last_user)[:2000],
             assistant_message=str(last_ai)[:2000],
         )
-        
+
         logger.info("Generating conversation summary")
-        new_summary = model.invoke([SystemMessage(content=prompt)]).content
+        new_summary = model.invoke([HumanMessage(content=prompt)]).content
         logger.info("Conversation summary updated", length=len(new_summary))
         return {"summary": new_summary.strip()}
 

@@ -265,15 +265,14 @@ async def chat_in_conversation(
                 assistant_content += str(data)
             elif event_type == "image":
                 chart_urls.append(str(data))
+                # Embed chart markdown at the exact position it appeared
+                # in the stream, so the persisted content matches what the
+                # client builds during live streaming.
+                assistant_content += f"\n\n![chart]({data})\n\n"
             yield {"event": event_type, "data": data}
 
-        # ── Save assistant response (with chart URLs embedded) ──
+        # ── Save assistant response (chart URLs already embedded above) ──
         full_content = assistant_content
-        if chart_urls:
-            charts_md = "\n\n" + "\n".join(
-                f"![chart]({url})" for url in chart_urls
-            )
-            full_content += charts_md
 
         async with AsyncSessionLocal() as db:
             # Save assistant message
