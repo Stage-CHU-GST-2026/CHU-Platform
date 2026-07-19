@@ -16,6 +16,11 @@
 		if (!exists) {
 			app.activeArtifacts = [...app.activeArtifacts, planArtifact];
 		}
+
+		if (!app.openArtifactTabs.includes(planArtifact.id)) {
+			app.openArtifactTabs = [...app.openArtifactTabs, planArtifact.id];
+		}
+		app.activeArtifactTabId = planArtifact.id;
 		app.artifactOpen = true;
 	}
 </script>

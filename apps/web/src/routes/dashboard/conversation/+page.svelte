@@ -207,7 +207,7 @@
 		bind:this={scrollEl}
 		onscroll={onScroll}
 	>
-		<div class="w-full max-w-[820px] pt-8 pb-6 conversation">
+		<div class="w-full max-w-[1024px] pt-8 pb-6 conversation">
 			<!-- Loading state -->
 			{#if isLoading}
 				<ChatLoadingState />

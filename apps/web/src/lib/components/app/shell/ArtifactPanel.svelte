@@ -20,21 +20,18 @@
         return html;
     }
 
-    let activeTabId = $state('overview');
-    let openTabs = $state<string[]>([]);
-
     function openArtifactTab(id: string) {
-        if (!openTabs.includes(id)) {
-            openTabs.push(id);
+        if (!app.openArtifactTabs.includes(id)) {
+            app.openArtifactTabs = [...app.openArtifactTabs, id];
         }
-        activeTabId = id;
+        app.activeArtifactTabId = id;
     }
 
     function closeArtifactTab(id: string, event: Event) {
         event.stopPropagation();
-        openTabs = openTabs.filter(t => t !== id);
-        if (activeTabId === id) {
-            activeTabId = 'overview';
+        app.openArtifactTabs = app.openArtifactTabs.filter(t => t !== id);
+        if (app.activeArtifactTabId === id) {
+            app.activeArtifactTabId = 'overview';
         }
     }
 </script>
@@ -59,21 +56,21 @@
     <div class="flex items-center overflow-x-auto border-b border-border bg-surface-elevated shrink-0 scrollbar-hide">
         <!-- Overview Tab -->
         <button 
-            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 {activeTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
-            onclick={() => activeTabId = 'overview'}
+            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 {app.activeArtifactTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
+            onclick={() => app.activeArtifactTabId = 'overview'}
         >
             <IconTable size={14} />
             Overview
         </button>
         
         <!-- Artifact Tabs -->
-        {#each openTabs as tabId}
+        {#each app.openArtifactTabs as tabId}
             {@const artifact = app.activeArtifacts.find(a => a.id === tabId)}
             {#if artifact}
-                <div class="flex items-center border-r border-border group {activeTabId === tabId ? 'bg-canvas' : 'bg-surface-elevated hover:bg-surface'}">
+                <div class="flex items-center border-r border-border group {app.activeArtifactTabId === tabId ? 'bg-canvas' : 'bg-surface-elevated hover:bg-surface'}">
                     <button 
-                        class="pl-4 pr-2 py-2 text-[13px] font-medium transition-colors flex items-center gap-2 {activeTabId === tabId ? 'text-text-primary' : 'text-muted'}"
-                        onclick={() => activeTabId = tabId}
+                        class="pl-4 pr-2 py-2 text-[13px] font-medium transition-colors flex items-center gap-2 {app.activeArtifactTabId === tabId ? 'text-text-primary' : 'text-muted'}"
+                        onclick={() => app.activeArtifactTabId = tabId}
                     >
                         <IconPhoto size={14} />
                         <span class="truncate max-w-[120px]">{artifact.filename}</span>
@@ -92,7 +89,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto bg-canvas relative">
-        {#if activeTabId === 'overview'}
+        {#if app.activeArtifactTabId === 'overview'}
             <div class="p-4 flex flex-col gap-2">
                 {#if app.activeArtifacts.length === 0}
                     <div class="h-full flex flex-col items-center justify-center text-center p-6 mt-10">
@@ -129,7 +126,7 @@
             </div>
         {:else}
             <!-- Detail View -->
-            {@const activeArtifact = app.activeArtifacts.find(a => a.id === activeTabId)}
+            {@const activeArtifact = app.activeArtifacts.find(a => a.id === app.activeArtifactTabId)}
             {#if activeArtifact}
                 <div class="absolute inset-0 flex flex-col">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface">

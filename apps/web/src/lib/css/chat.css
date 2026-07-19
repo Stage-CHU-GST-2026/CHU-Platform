@@ -1,6 +1,7 @@
 @layer components {
     .conversation {
         @apply flex flex-col gap-6 w-full;
+        font-family: var(--font-ui);
     }
 
     .msg-row {
@@ -28,7 +29,7 @@
     }
 
     .composer {
-        @apply w-full max-w-[820px] flex items-center gap-1.5 bg-surface-elevated border border-border rounded-[10px] pl-4 pr-2.5 py-2.5 shadow-sm transition-all duration-150;
+        @apply w-full max-w-[1024px] flex flex-col items-stretch gap-1.5 bg-surface-elevated border border-border rounded-[14px] p-2 sm:p-3 shadow-sm transition-all duration-150;
     }
 
     /* ── Scoped prose styles for agent markdown output ── */
