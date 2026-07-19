@@ -62,6 +62,15 @@
                             {@html renderMd(token.raw)}
                         </div>
                     {/each}
+                    {#if streaming}
+                        <div class="mt-2 flex">
+                            <span class="inline-flex gap-[5px] items-center h-5 px-1">
+                                <span class="typing-dot" style="animation-delay: 0ms"></span>
+                                <span class="typing-dot" style="animation-delay: 160ms"></span>
+                                <span class="typing-dot" style="animation-delay: 320ms"></span>
+                            </span>
+                        </div>
+                    {/if}
                 </div>
             {/if}
         {/if}
