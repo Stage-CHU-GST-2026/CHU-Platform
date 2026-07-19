@@ -20,12 +20,16 @@
     import ChatEmptyState from '$lib/components/app/chat/ChatEmptyState.svelte';
     import ChatBubble from '$lib/components/app/chat/ChatBubble.svelte';
     import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
+    import PlanCard from '$lib/components/app/chat/PlanCard.svelte';
+    import type { Artifact } from '$lib/api/chat';
 
     // ── State ────────────────────────────────────────────────────────────
     interface Message {
         role: 'user' | 'assistant';
         content: string;
         streaming?: boolean;
+        /** If set, this message is rendered as a PlanCard instead of a ChatBubble. */
+        artifact?: Artifact;
     }
 
     let messages = $state<Message[]>([]);
@@ -92,6 +96,14 @@
         }
     });
 
+    // ── Proceed with a plan ────────────────────────────────────────────
+    async function proceedWithPlan(artifact: Artifact) {
+        if (isStreaming) return;
+        input = `Proceed with the plan from ${artifact.filename}`;
+        await tick();
+        submit();
+    }
+
     // ── Send message ───────────────────────────────────────────────────
     async function submit() {
         const text = input.trim();
@@ -130,6 +142,21 @@
                     messages = messages;
                     scrollToBottom();
                 },
+                onArtifact(artifact) {
+                    // Generate a temporary ID for real-time rendering;
+                    // the real DB id will be populated on page reload.
+                    const planArtifact = {
+                        ...artifact,
+                        id: artifact.id || crypto.randomUUID(),
+                        conversation_id: artifact.conversation_id || conversationId || '',
+                        created_at: artifact.created_at || new Date().toISOString()
+                    };
+                    // Add to ArtifactPanel store
+                    app.activeArtifacts = [...app.activeArtifacts, planArtifact];
+                    // Insert a PlanCard message after the streaming slot
+                    messages.push({ role: 'assistant', content: '', artifact: planArtifact, streaming: false });
+                    messages = messages;
+                },
                 async onDone() {
                     messages[assistantIdx].streaming = false;
                     messages = messages;
@@ -140,9 +167,6 @@
                     if (conversationId) {
                         try {
                             app.activeArtifacts = await listArtifacts(conversationId);
-                            if (app.activeArtifacts.length > 0 && !app.artifactOpen) {
-                                app.artifactOpen = true;
-                            }
                         } catch (err) {
                             console.error("Failed to load artifacts", err);
                         }
@@ -189,11 +213,18 @@
             {/if}
 
             {#each messages as msg, i}
-                <ChatBubble 
-                    role={msg.role} 
-                    content={msg.content} 
-                    streaming={msg.streaming} 
-                />
+                {#if msg.artifact}
+                    <PlanCard 
+                        planArtifact={msg.artifact}
+                        onproceed={() => proceedWithPlan(msg.artifact!)}
+                    />
+                {:else}
+                    <ChatBubble 
+                        role={msg.role} 
+                        content={msg.content} 
+                        streaming={msg.streaming} 
+                    />
+                {/if}
             {/each}
 
             <!-- Error banner -->

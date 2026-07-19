@@ -1,6 +1,24 @@
 <script lang="ts">
     import { app } from '$lib/state/app.svelte';
     import { IconCode, IconX, IconDownload, IconPhoto, IconTable } from '@tabler/icons-svelte';
+    import { marked } from 'marked';
+    import { browser } from '$app/environment';
+
+    let DOMPurify: any = null;
+    if (browser) {
+        import('dompurify').then(module => {
+            DOMPurify = module.default;
+        });
+    }
+
+    function renderMd(text: string): string {
+        if (!text) return '';
+        const html = marked.parse(text) as string;
+        if (browser && DOMPurify) {
+            return DOMPurify.sanitize(html);
+        }
+        return html;
+    }
 
     let activeTabId = $state('overview');
     let openTabs = $state<string[]>([]);
@@ -131,11 +149,24 @@
                             <span>Download</span>
                         </a>
                     </div>
-                    <div class="flex-1 overflow-auto p-6 flex items-start justify-center bg-canvas">
+                    <div class="flex-1 overflow-auto p-6 flex flex-col bg-canvas items-center">
                         {#if activeArtifact.mime_type.startsWith('image/')}
                             <img src={activeArtifact.url} alt={activeArtifact.filename} class="max-w-full rounded-md shadow-sm border border-border-subtle" />
+                        {:else if activeArtifact.mime_type === 'text/markdown'}
+                            <div class="w-full max-w-[800px] prose-agent">
+                                {#await fetch(activeArtifact.url).then(r => r.text())}
+                                    <div class="flex items-center gap-2 text-muted justify-center py-10">
+                                        <span class="w-4 h-4 rounded-full border-2 border-muted border-t-transparent animate-spin"></span>
+                                        <span class="text-[13px]">Loading content...</span>
+                                    </div>
+                                {:then text}
+                                    {@html renderMd(text)}
+                                {:catch error}
+                                    <div class="text-danger">Failed to load content.</div>
+                                {/await}
+                            </div>
                         {:else}
-                            <div class="text-text-secondary text-[13px] flex items-center gap-2 mt-10">
+                            <div class="text-text-secondary text-[13px] flex items-center justify-center gap-2 mt-10">
                                 <IconCode size={16} />
                                 <span>{activeArtifact.mime_type} preview not supported yet.</span>
                             </div>
