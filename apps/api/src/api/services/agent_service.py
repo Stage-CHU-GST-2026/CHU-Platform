@@ -48,13 +48,18 @@ class AgentService:
           ("artifact", json)   — plan artifact metadata JSON
         """
         prompt = self.build_prompt(message, dataset_path)
-        async for chunk, _metadata in self._agent.graph.astream(
+        async for chunk, metadata in self._agent.graph.astream(
             {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
-            # Text tokens from the LLM
-            if isinstance(chunk, AIMessageChunk) and chunk.content:
+            # Text tokens from the LLM — only yield from the "agent" node
+            # to avoid leaking the "summarize" node's output into the stream.
+            if (
+                isinstance(chunk, AIMessageChunk)
+                and chunk.content
+                and metadata.get("langgraph_node") == "agent"
+            ):
                 yield ("token", chunk.content)
 
             # Tool results — inspect for chart URLs and artifact URLs
