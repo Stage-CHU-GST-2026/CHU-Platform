@@ -35,61 +35,60 @@
 </script>
 
 <div class="composer">
-    <!-- Add button -->
-    <button
-        class="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors shrink-0"
-        aria-label="Add attachment"
-        disabled={isStreaming}
-    >
-        <IconPlus size={14} stroke={2} />
-    </button>
-
-    <!-- Textarea -->
+    <!-- Textarea at the top -->
     <textarea 
         bind:this={textareaEl}
         bind:value={input}
-        class="flex-1 bg-transparent text-white placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none p-0 text-[16px] leading-[1.65] max-h-40 overflow-y-auto disabled:opacity-40 tracking-[-0.005em]"
-        placeholder="Ask anything…"
+        class="w-full bg-transparent text-white placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none px-2 py-1 text-[16px] leading-[1.65] min-h-[30px] max-h-40 overflow-y-auto disabled:opacity-40 tracking-[-0.005em]"
+        placeholder="Ask anything, @ to mention, / for actions"
         rows="1"
         disabled={isStreaming}
         onkeydown={handleKeydown}
         oninput={resizeTextarea}
     ></textarea>
 
-    <!-- Right side: model selector + send/mic -->
-    <div class="flex items-center gap-0.5 shrink-0">
-        <Dropdown items={modelItems} align="left" direction="up" width="w-36">
-            {#snippet trigger()}
-                <div class="flex items-center gap-1 px-2 h-6 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[11.5px] font-medium tracking-[-0.01em]">
-                    {#if selectedModel === 'Gemini'}
-                        <IconSparkles size={11} stroke={1.5} class="text-accent" />
-                    {:else if selectedModel === 'Claude'}
-                        <IconBrain size={11} stroke={1.5} />
-                    {:else}
-                        <IconMessageCircle size={11} stroke={1.5} />
-                    {/if}
-                    <span>{selectedModel}</span>
-                    <IconChevronDown size={10} stroke={2} class="opacity-50" />
-                </div>
-            {/snippet}
-        </Dropdown>
-
-        {#if isStreaming}
-            <button class="w-6 h-6 flex items-center justify-center rounded-full bg-surface-elevated text-muted cursor-not-allowed" disabled aria-label="Sending">
-                <span class="w-2.5 h-2.5 rounded-full border border-muted border-t-transparent animate-spin"></span>
-            </button>
-        {:else if input.trim()}
-            <button 
-                onclick={onsubmit}
-                class="flex items-center justify-center h-6 px-2.5 rounded-md bg-accent hover:opacity-90 text-white transition-opacity"
-                aria-label="Send message"
+    <!-- Toolbar row at the bottom -->
+    <div class="flex items-center justify-between w-full px-1">
+        <!-- Left side: + button & Model selector -->
+        <div class="flex items-center gap-1.5">
+            <button
+                class="w-7 h-7 flex items-center justify-center rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors shrink-0"
+                aria-label="Add attachment"
+                disabled={isStreaming}
             >
-                <IconArrowRight size={13} stroke={2} />
+                <IconPlus size={16} stroke={2} />
             </button>
-        {:else}
-            <button class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors" aria-label="Voice input">
-                <IconMicrophone size={13} stroke={1.5} />
+
+            <Dropdown items={modelItems} align="left" direction="up" width="w-48">
+                {#snippet trigger()}
+                    <div class="flex items-center gap-1.5 px-2 h-7 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[13.5px] font-medium tracking-[-0.01em]">
+                        <span>{selectedModel} 3.1 Pro (High)</span>
+                        <IconChevronDown size={14} stroke={2} class="opacity-50" />
+                    </div>
+                {/snippet}
+            </Dropdown>
+        </div>
+
+        <!-- Right side: Mic & Send button -->
+        <div class="flex items-center gap-3">
+            <button class="flex items-center justify-center text-muted hover:text-text-secondary transition-colors" aria-label="Voice input">
+                <IconMicrophone size={16} stroke={1.5} />
             </button>
-        {/if}
+
+            {#if isStreaming}
+                <button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface hover:bg-surface-hover text-muted cursor-not-allowed" disabled aria-label="Sending">
+                    <span class="w-3.5 h-3.5 rounded-full border-[2px] border-muted border-t-transparent animate-spin"></span>
+                </button>
+            {:else}
+                <button 
+                    onclick={onsubmit}
+                    disabled={!input.trim()}
+                    class="flex items-center justify-center w-8 h-8 rounded-full transition-colors {input.trim() ? 'bg-surface hover:bg-accent text-text-primary hover:text-white' : 'bg-surface text-muted opacity-60 cursor-not-allowed'}"
+                    aria-label="Send message"
+                >
+                    <IconArrowRight size={16} stroke={2} />
+                </button>
+            {/if}
+        </div>
     </div>
 </div>

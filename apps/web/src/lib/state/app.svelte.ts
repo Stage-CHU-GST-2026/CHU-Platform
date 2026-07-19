@@ -5,6 +5,8 @@ class AppState {
     sidebarCollapsed = $state(false);
     _artifactOpen = $state(false);
     activeArtifacts = $state<Artifact[]>([]);
+    _activeArtifactTabId = $state<string>('overview');
+    _openArtifactTabs = $state<string[]>([]);
     theme = $state<'dark' | 'light'>('dark');
     cmdPaletteOpen = $state(false);
     activeRoute = $state('/dashboard');
@@ -16,6 +18,34 @@ class AppState {
             if (savedArtifactOpen !== null) {
                 this._artifactOpen = savedArtifactOpen === 'true';
             }
+            
+            const savedTabId = localStorage.getItem('app-activeArtifactTabId');
+            if (savedTabId) {
+                this._activeArtifactTabId = savedTabId;
+            }
+            
+            const savedTabs = localStorage.getItem('app-openArtifactTabs');
+            if (savedTabs) {
+                try {
+                    this._openArtifactTabs = JSON.parse(savedTabs);
+                } catch (e) {}
+            }
+        }
+    }
+
+    get activeArtifactTabId() { return this._activeArtifactTabId; }
+    set activeArtifactTabId(val: string) {
+        this._activeArtifactTabId = val;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('app-activeArtifactTabId', val);
+        }
+    }
+
+    get openArtifactTabs() { return this._openArtifactTabs; }
+    set openArtifactTabs(val: string[]) {
+        this._openArtifactTabs = val;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('app-openArtifactTabs', JSON.stringify(val));
         }
     }
 

@@ -26,6 +26,9 @@ export interface Artifact {
     file_size: number;
     url: string;
     created_at: string;
+    /** Optional fields for plan artifacts (from create_plan tool). */
+    title?: string;
+    description?: string;
 }
 
 export interface ChatMessage {
@@ -46,6 +49,7 @@ export interface Conversation {
 
 export interface StreamCallbacks {
     onToken: (token: string) => void;
+    onArtifact: (artifact: Artifact) => void;
     onDone: () => void;
     onError: (error: Error) => void;
 }
@@ -183,6 +187,13 @@ export async function sendMessage(
                         callbacks.onToken(currentData);
                     } else if (currentEvent === "image" && currentData) {
                         callbacks.onToken(`\n\n![chart](${currentData})\n\n`);
+                    } else if (currentEvent === "artifact" && currentData) {
+                        try {
+                            const artifact = JSON.parse(currentData);
+                            callbacks.onArtifact(artifact);
+                        } catch (e) {
+                            console.warn("Failed to parse artifact event", e);
+                        }
                     } else if (currentEvent === "done") {
                         callbacks.onDone();
                     }

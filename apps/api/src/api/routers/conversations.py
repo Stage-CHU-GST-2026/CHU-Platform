@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -24,6 +26,7 @@ from api.schemas.conversation import (
     UpdateConversationRequest,
 )
 from api.services.session import SessionManager
+from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 sessions = SessionManager()
@@ -253,9 +256,10 @@ async def chat_in_conversation(
         # ── Emit thread_id ──
         yield {"event": "thread_id", "data": thread_id}
 
-        # ── Stream agent tokens & collect chart URLs ──
+        # ── Stream agent tokens & collect chart/artifact URLs ──
         assistant_content = ""
         chart_urls: list[str] = []
+        artifact_metas: list[dict] = []
         async for event_type, data in service.stream(
             message=body.message,
             thread_id=thread_id,
@@ -269,6 +273,14 @@ async def chat_in_conversation(
                 # in the stream, so the persisted content matches what the
                 # client builds during live streaming.
                 assistant_content += f"\n\n![chart]({data})\n\n"
+            elif event_type == "artifact":
+                meta = json.loads(str(data))
+                artifact_metas.append(meta)
+                # Yield immediately during the stream so the PlanCard
+                # appears in real-time. The DB id will be populated on
+                # page reload via the onDone artifact refresh.
+                yield {"event": event_type, "data": str(data)}
+                continue  # skip the generic yield below
             yield {"event": event_type, "data": data}
 
         # ── Save assistant response (chart URLs already embedded above) ──
@@ -320,6 +332,24 @@ async def chat_in_conversation(
                     mime_type=mime_type,
                     file_size=file_size,
                 ))
+
+            # ── Persist plan artifacts as Artifact records ──
+            artifact_ids: list[str] = []
+            for meta in artifact_metas:
+                filename = meta.get("filename", "")
+                filepath = os.path.join(charts_abs_dir, filename)
+                file_size = meta.get("file_size")
+                art = Artifact(
+                    conversation_id=conversation_id,
+                    filename=filename,
+                    filepath=filepath,
+                    mime_type="text/markdown",
+                    file_size=file_size,
+                )
+                db.add(art)
+                await db.flush()
+                await db.refresh(art)
+                artifact_ids.append(str(art.id))
 
             # ── Schedule title generation in the background ──
             if not conv.title:
