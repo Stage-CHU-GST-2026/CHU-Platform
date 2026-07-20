@@ -133,6 +133,32 @@
                     {/if}
                 </div>
             {/if}
+
+            <!-- Actions Bar -->
+            {#if !streaming}
+                <div class="flex items-center justify-end gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                        class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+                        title="Copy response"
+                        onclick={copyText}
+                    >
+                        {#if copied}
+                            <IconCheck size={15} stroke={2} class="text-success" />
+                        {:else}
+                            <IconCopy size={15} stroke={1.5} />
+                        {/if}
+                    </button>
+                    {#if onregenerate}
+                        <button 
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+                            title="Regenerate response"
+                            onclick={onregenerate}
+                        >
+                            <IconRefresh size={15} stroke={1.5} />
+                        </button>
+                    {/if}
+                </div>
+            {/if}
         {/if}
     </div>
 </div>
