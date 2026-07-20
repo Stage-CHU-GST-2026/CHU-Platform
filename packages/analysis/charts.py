@@ -1,4 +1,4 @@
-"""Chart generation — produces PNG chart files.
+"""Chart generation — produces PNG chart files and ChartArtifact objects.
 
 No AI dependencies. Uses matplotlib (and optionally seaborn) under the hood.
 Styling is left entirely to matplotlib defaults (no custom colours or themes).
@@ -12,6 +12,13 @@ Relational:   bubble, pair_plot
 Sequence:     funnel, waterfall
 Correlation:  heatmap
 Multi-series: multi_line
+
+Public API
+----------
+- ChartSpec          — input specification for render_chart()
+- ChartArtifact      — output evidence object produced by render_chart_artifact()
+- render_chart()     — render a chart and return the file path
+- render_chart_artifact() — render a chart and return a ChartArtifact
 """
 
 from __future__ import annotations
@@ -30,6 +37,9 @@ import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")
+
+# URL prefix served by the API
+_API_CHART_PREFIX = "/api/v1/charts"
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +76,7 @@ ChartType = Literal[
 
 
 # ---------------------------------------------------------------------------
-# Spec dataclass
+# Spec and Artifact dataclasses
 # ---------------------------------------------------------------------------
 
 
@@ -91,9 +101,121 @@ class ChartSpec:
     kwargs: dict = field(default_factory=dict)
 
 
+@dataclass
+class ChartArtifact:
+    """First-class evidence object produced every time a chart is generated.
+
+    The artifact travels through the graph state so the synthesizer can
+    reference charts by title and insight, producing research-paper-style
+    reports where every figure is cited in context.
+    """
+
+    id: str                  # e.g. "chart_1", "chart_2"
+    title: str               # human-readable chart title
+    description: str         # what the chart is showing (from the caller)
+    chart_type: str          # bar, scatter, heatmap, …
+    image_path: str          # absolute path on disk
+    api_url: str             # "/api/v1/charts/<filename>"
+    insight: str             # 1-2 sentence interpretation (from the caller)
+    step_id: int             # which plan step produced this chart
+    columns: list[str]       # dataset columns used in the chart
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "chart_type": self.chart_type,
+            "image_path": self.image_path,
+            "api_url": self.api_url,
+            "insight": self.insight,
+            "step_id": self.step_id,
+            "columns": self.columns,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ChartArtifact":
+        return cls(
+            id=data["id"],
+            title=data["title"],
+            description=data.get("description", ""),
+            chart_type=data["chart_type"],
+            image_path=data["image_path"],
+            api_url=data["api_url"],
+            insight=data.get("insight", ""),
+            step_id=data.get("step_id", 0),
+            columns=data.get("columns", []),
+        )
+
+    def evidence_summary(self) -> str:
+        """Return a concise evidence reference for inclusion in the evidence manifest."""
+        cols = ", ".join(self.columns) if self.columns else "—"
+        return (
+            f"[Chart: {self.title} ({self.chart_type}) "
+            f"| Columns: {cols} "
+            f"| Insight: {self.insight}]\n"
+            f"    Markdown: ![{self.title}]({self.api_url})"
+        )
+
+
 # ---------------------------------------------------------------------------
-# Public render function
+# Public render functions
 # ---------------------------------------------------------------------------
+
+# Counter used to generate sequential chart IDs within a process lifetime.
+_chart_counter: list[int] = [0]
+
+
+def render_chart_artifact(
+    spec: ChartSpec,
+    insight: str,
+    description: str = "",
+    step_id: int = 0,
+) -> ChartArtifact:
+    """Render a chart and return a ChartArtifact evidence object.
+
+    Args:
+        spec:        Chart specification (same as render_chart).
+        insight:     1-2 sentence interpretation of what the chart shows.
+                     The caller (LLM tool) MUST provide this before generating
+                     the chart.
+        description: What question or analysis this chart supports.
+        step_id:     The plan step index that requested this chart.
+
+    Returns:
+        A ChartArtifact with all metadata needed for the evidence manifest.
+    """
+    image_path = render_chart(spec)
+    filename = os.path.basename(image_path)
+    api_url = f"{_API_CHART_PREFIX}/{filename}"
+
+    _chart_counter[0] += 1
+    chart_id = f"chart_{_chart_counter[0]}"
+
+    # Collect column references
+    columns: list[str] = []
+    if spec.x:
+        columns.append(spec.x)
+    if isinstance(spec.y, str) and spec.y:
+        columns.append(spec.y)
+    elif isinstance(spec.y, list):
+        columns.extend(spec.y)
+    if spec.hue:
+        columns.append(spec.hue)
+    if spec.size_col:
+        columns.append(spec.size_col)
+
+    return ChartArtifact(
+        id=chart_id,
+        title=spec.title or _default_title(spec),
+        description=description,
+        chart_type=spec.chart_type,
+        image_path=image_path,
+        api_url=api_url,
+        insight=insight,
+        step_id=step_id,
+        columns=list(dict.fromkeys(columns)),  # deduplicate, preserve order
+    )
 
 
 def render_chart(spec: ChartSpec) -> str:

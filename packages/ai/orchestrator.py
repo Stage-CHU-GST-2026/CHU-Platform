@@ -23,7 +23,8 @@ from ai.models.config import AgentConfig
 from ai.planner import ExecutionPlan, PlanStep, generate_plan
 from ai.logger import get_logger
 from ai.state import AgentState
-from tools.visualization.visualization import CHART_URL_PREFIX
+from analysis.charts import ChartArtifact
+from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
 
 logger = get_logger(__name__)
@@ -45,26 +46,44 @@ Do NOT try to do everything at once. Other steps will handle other tasks.
 - Be thorough but focused.
 - Report what you found clearly and concisely.
 - If a tool call fails, note it and move on.
-- Do NOT make a plan or list next steps — just execute this step."""
+- Do NOT make a plan or list next steps — just execute this step.
 
-SYNTHESIS_SYSTEM_PROMPT = """You are an expert data analyst writing a final report.
+## Chart Lifecycle (when this step requires visualization)
+1. COMPUTE FIRST — run the relevant statistics or aggregation tool.
+2. DECIDE — would a chart add information the numbers alone cannot convey?
+3. INSIGHT FIRST — form a 1-2 sentence interpretation of what the chart will show.
+4. GENERATE — call generate_chart with the insight in the `insight` parameter.
+5. REFERENCE — mention the chart by title in your narrative.
+Never generate a chart without first computing the underlying data.
+Never generate a chart without providing a meaningful insight."""
 
-## Context
-All analysis steps have been completed. Below is the evidence gathered from each step.
-Your job is to synthesize this evidence into a clear, comprehensive final answer.
+SYNTHESIS_SYSTEM_PROMPT = """You are an expert data analyst writing a final analytical report.
 
-## Evidence Gathered
+## Evidence Manifest
+All analysis steps have been completed. The evidence below contains statistics,
+findings, and chart references gathered step by step. Chart references appear as:
+    [Chart: <Title> (<type>) | Columns: <cols> | Insight: <insight>]
+    Markdown: ![<Title>](<api_url>)
+
+## Evidence
 {evidence}
 
-## Rules
-- Every conclusion MUST be supported by the evidence above.
-- Never fabricate or guess statistics not present in the evidence.
-- Present findings in a logical order.
-- Use markdown formatting for clarity (headings, lists, tables).
-- Any generated charts are automatically displayed above your text, so you do NOT need to embed image links yourself. Refer to them as "the chart above".
-- Include specific numbers and statistics where available.
-- If evidence is insufficient for any conclusion, explicitly say so.
-- Do NOT call any more tools — just write the final report."""
+## Report Structure
+Write a professional, research-paper-style report. For each analytical section:
+
+1. Open with a paragraph describing the findings (cite specific numbers).
+2. Embed the chart's Markdown exactly where it is most relevant.
+3. Provide the interpretation and business impact.
+
+Do NOT dump all charts at the top. Charts must be embedded in the flow of the text where they are discussed, exactly like Figures in a scientific paper.
+
+## Hard Rules
+- Every conclusion MUST be traceable to evidence above.
+- Never fabricate statistics or trends not present in the evidence.
+- When referencing a chart, you MUST output its EXACT Markdown image tag.
+- Use markdown: headings, tables, lists, inline code.
+- Do NOT call any more tools — just write the final report.
+- If evidence for any section is insufficient, explicitly say so."""
 
 # ── Orchestrator ───────────────────────────────────────────────────────
 
@@ -165,14 +184,29 @@ class Orchestrator:
             f"Use tools to gather the needed information and report your findings "
             f"concisely when done."
         )
+        # If the planner determined this step needs a visualization, append the
+        # chart lifecycle directive with the specific rationale so the step agent
+        # knows what kind of chart to generate and why.
+        if getattr(step, "needs_visualization", False):
+            rationale = getattr(step, "visualization_rationale", "") or "A chart would clarify the findings."
+            step_instruction += (
+                f"\n\n## Visualization Required\n"
+                f"{rationale}\n"
+                f"After computing the statistics, generate the appropriate chart.\n"
+                f"Follow the chart lifecycle:\n"
+                f"1. Compute the data first.\n"
+                f"2. Form a 1-2 sentence insight.\n"
+                f"3. Call generate_chart with that insight in the `insight` parameter.\n"
+                f"4. Reference the chart by title in your narrative."
+            )
         if dataset_path:
             step_instruction = f"[Dataset: {dataset_path}]\n{step_instruction}"
 
         await self._emit("step_update", f"{step.title}...")
 
         evidence_tokens: list[str] = []
-        buffered_images: list[str] = []
-        buffered_artifacts: list[str] = []
+        buffered_artifacts: list[ChartArtifact] = []
+        buffered_plan_artifacts: list[str] = []
 
         step_config = {"configurable": {"thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
 
@@ -196,18 +230,39 @@ class Orchestrator:
                 elif isinstance(chunk, ToolMessage) and chunk.content:
                     content = str(chunk.content)
                     for line in content.splitlines():
-                        if line.startswith(CHART_URL_PREFIX):
-                            buffered_images.append(line[len(CHART_URL_PREFIX):])
+                        if line.startswith(CHART_ARTIFACT_PREFIX):
+                            # Parse the ChartArtifact JSON payload
+                            raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+                            try:
+                                artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                                buffered_artifacts.append(artifact)
+                                # Emit image immediately so the UI can display inline
+                                await self._emit("image", artifact.api_url)
+                                # Emit the full artifact for rich UI rendering
+                                await self._emit("chart_artifact", artifact.to_dict())
+                            except Exception as parse_err:
+                                logger.warning(
+                                    "Failed to parse ChartArtifact",
+                                    error=str(parse_err),
+                                    raw=raw_json[:200],
+                                )
+                        elif line.startswith(CHART_URL_PREFIX):
+                            # Legacy fallback: bare URL with no metadata
+                            url = line[len(CHART_URL_PREFIX):]
+                            await self._emit("image", url)
                         elif line.startswith(ARTIFACT_URL_PREFIX):
-                            buffered_artifacts.append(line[len(ARTIFACT_URL_PREFIX):])
+                            buffered_plan_artifacts.append(line[len(ARTIFACT_URL_PREFIX):])
 
+            # Build evidence string: LLM narrative + inline chart summaries
             full_evidence = "".join(evidence_tokens)
-            for img_url in buffered_images:
-                full_evidence += f"\n\n[Generated Chart URL: {img_url}]\n\n"
-            for artifact_data in buffered_artifacts:
+            # Append chart evidence summaries inline so the synthesizer
+            # knows the title, columns, and insight for each chart
+            for art in buffered_artifacts:
+                full_evidence += f"\n\n{art.evidence_summary()}\n"
+            for artifact_data in buffered_plan_artifacts:
                 try:
                     meta = json.loads(artifact_data)
-                    full_evidence += f"\n\n[Generated Artifact: {meta.get('filename')}]\n\n"
+                    full_evidence += f"\n\n[Generated Artifact: {meta.get('filename')}]\n"
                 except Exception:
                     pass
 
@@ -218,23 +273,23 @@ class Orchestrator:
                 step_evidence_str = ""
                 await self._emit("step_update", f"{step.title} — no findings.")
 
-            for img_url in buffered_images:
-                await self._emit("image", img_url)
-            for artifact_data in buffered_artifacts:
+            for artifact_data in buffered_plan_artifacts:
                 await self._emit("artifact", artifact_data)
 
             result_evidence = step_evidence_str
+            result_charts = [art.to_dict() for art in buffered_artifacts]
 
         except Exception as e:
             logger.error("Step execution error", step_id=step.id, error=str(e))
             await self._emit("step_update", f"Error in step: {str(e)}")
             result_evidence = f"\n## Step {step.id}: {step.title}\n(Execution failed: {str(e)})"
+            result_charts = []
 
         await self._emit("step_finished", json.dumps({"id": step.id}))
 
         return {
             "evidence": result_evidence,
-            "generated_charts": buffered_images,
+            "generated_charts": result_charts,
             "current_step": current_step_idx + 1
         }
 
@@ -249,11 +304,10 @@ class Orchestrator:
 
     async def _synthesizer_node(self, state: AgentState, config: RunnableConfig) -> dict:
         logger.info("Phase 3: Synthesizing final answer")
-        
-        generated_charts = state.get("generated_charts", [])
-        for chart_url in generated_charts:
-            await self._emit("token", f"![Generated Chart]({chart_url})\n\n")
-            
+        # Charts are already displayed inline by the UI as they are emitted
+        # during execution. The synthesizer does NOT pre-dump charts at the top;
+        # instead the evidence manifest contains [Chart: ...] references inline
+        # with each step so the LLM can reference them in context.
         evidence = state.get("evidence", "").strip()
         if not evidence:
             evidence = "No evidence gathered."
@@ -293,7 +347,18 @@ class Orchestrator:
                 elif isinstance(chunk, ToolMessage) and chunk.content:
                     content = str(chunk.content)
                     for line in content.splitlines():
-                        if line.startswith(CHART_URL_PREFIX):
+                        if line.startswith(CHART_ARTIFACT_PREFIX):
+                            raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+                            try:
+                                artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                                await self._emit("image", artifact.api_url)
+                                await self._emit("chart_artifact", artifact.to_dict())
+                            except Exception as parse_err:
+                                logger.warning(
+                                    "Synthesizer: failed to parse ChartArtifact",
+                                    error=str(parse_err),
+                                )
+                        elif line.startswith(CHART_URL_PREFIX):
                             await self._emit("image", line[len(CHART_URL_PREFIX):])
                         elif line.startswith(ARTIFACT_URL_PREFIX):
                             await self._emit("artifact", line[len(ARTIFACT_URL_PREFIX):])
@@ -393,7 +458,15 @@ class Orchestrator:
             elif isinstance(chunk, ToolMessage) and chunk.content:
                 content = str(chunk.content)
                 for line in content.splitlines():
-                    if line.startswith(CHART_URL_PREFIX):
+                    if line.startswith(CHART_ARTIFACT_PREFIX):
+                        raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+                        try:
+                            artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                            yield ("image", artifact.api_url)
+                            yield ("chart_artifact", artifact.to_dict())
+                        except Exception:
+                            pass
+                    elif line.startswith(CHART_URL_PREFIX):
                         yield ("image", line[len(CHART_URL_PREFIX):])
                     elif line.startswith(ARTIFACT_URL_PREFIX):
                         yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])

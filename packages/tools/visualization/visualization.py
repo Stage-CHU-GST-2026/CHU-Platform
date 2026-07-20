@@ -1,14 +1,30 @@
-"""Visualization tools — bridge between LLM and AnalysisEngine charts."""
+"""Visualization tools — bridge between LLM and AnalysisEngine charts.
+
+Chart lifecycle enforced by these tools:
+  1. LLM computes statistics / aggregation first
+  2. LLM decides a chart is needed
+  3. LLM writes a 1-2 sentence insight *before* calling the tool
+  4. Tool generates the chart and returns a ChartArtifact JSON payload
+  5. Orchestrator parses the artifact and adds it to the evidence manifest
+  6. Synthesizer references the chart by title in the final report
+
+The tool output format is:
+    CHART_ARTIFACT:<json>
+
+where <json> is the serialised ChartArtifact dict. The orchestrator
+detects this prefix from ToolMessage content and handles rendering /
+state accumulation.
+"""
 
 from __future__ import annotations
 
-import os
+import json
 from typing import Literal
 
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from analysis.charts import ChartSpec, render_chart
+from analysis.charts import ChartArtifact, ChartSpec, render_chart_artifact
 from analysis.engine import AnalysisEngine
 
 _engine = AnalysisEngine()
@@ -17,11 +33,16 @@ _engine = AnalysisEngine()
 # The API mounts this directory at /api/v1/charts.
 CHARTS_DIR = "/tmp/chu_charts"
 
-# Prefix embedded in tool output so the streaming layer can detect chart URLs.
-CHART_URL_PREFIX = "CHART_URL:"
+# ── Event prefixes ────────────────────────────────────────────────────────────
+# CHART_ARTIFACT_PREFIX is the new canonical prefix for structured artifact payloads.
+# CHART_URL_PREFIX is kept for backward compatibility with code that may still
+# scan raw ToolMessage output for chart URLs; it is not written by these tools.
+CHART_ARTIFACT_PREFIX = "CHART_ARTIFACT:"
+CHART_URL_PREFIX = "CHART_URL:"   # legacy — no longer written by tools
 
 
 def _get_output_dir() -> str:
+    import os
     os.makedirs(CHARTS_DIR, exist_ok=True)
     return CHARTS_DIR
 
@@ -58,17 +79,24 @@ _CHART_TYPE = Literal[
     "multi_line",   # multiple lines on one axes (x=x-axis, y=list of cols)
 ]
 
-_DESCRIPTION = """Generate a chart from a dataset file and return its URL for display.
+_DESCRIPTION = """\
+Generate a chart from a dataset file and return a ChartArtifact.
 
-WHEN TO USE THIS TOOL
-─────────────────────
-Call this tool whenever the user asks to "plot", "visualise", "show a chart/graph/figure",
-or whenever a visual summary would make data clearer than a table or plain text.
-Always prefer a chart over a raw table when the user is asking about trends,
-distributions, comparisons, or proportions.
+## CHART LIFECYCLE — follow this protocol every time
 
-CHOOSING THE RIGHT CHART TYPE
-──────────────────────────────
+1. COMPUTE FIRST — run the relevant statistics or aggregation before calling this tool.
+2. DECIDE — only call this tool if a chart conveys information the numbers alone cannot.
+3. INSIGHT FIRST — write your insight in the `insight` field BEFORE calling the tool.
+   Example: "Electronics leads at $1.82M (36%), nearly double the lowest category."
+4. GENERATE — call this tool with the insight.
+5. REFERENCE — in your narrative, refer to the chart by its title in context.
+
+Never generate a chart without first computing the underlying statistics.
+Never generate a chart without providing a meaningful insight.
+Never generate multiple charts at once for the same variable.
+
+## CHOOSING THE RIGHT CHART TYPE
+
 Goal                                   → Best chart type(s)
 ─────────────────────────────────────────────────────────────
 Compare values across categories       → bar, grouped_bar, count_bar
@@ -86,8 +114,8 @@ Show running total with +/– steps     → waterfall
 Visualise a correlation matrix        → heatmap (pass the correlation DataFrame)
 Frequency count of a category col     → count_bar (only x is required)
 
-REQUIRED COLUMNS PER CHART TYPE
-────────────────────────────────
+## REQUIRED COLUMNS PER CHART TYPE
+
 bar, line, scatter, area, bubble, funnel, waterfall  → x AND y
 histogram, kde                                        → x or y (one numeric col)
 pie                                                   → x (label col) AND y (value col)
@@ -98,22 +126,20 @@ multi_line                                            → x AND y (list of numer
 pair_plot                                             → y (list of numeric cols); hue optional
 heatmap                                               → no x/y — uses all numeric columns
 
-WORKFLOW
-────────
-1. Inspect the dataset with describe_dataset or list_columns if you do not already know column names.
-2. Pick the chart type from the table above.
-3. Map the correct dataset columns to x, y, hue, and size_col.
-4. Set a clear, descriptive title.
-5. Call this tool — the returned URL is automatically rendered as an inline image.
-
-Returns the URL of the generated PNG chart."""
+Returns a JSON ChartArtifact payload (title, insight, api_url, columns, …).
+"""
 
 
 class GenerateChartSchema(BaseModel):
     path: str = Field(
         description="Path to the dataset file (CSV, Excel, Parquet, JSON, …).")
     chart_type: str = Field(
-        description="Type of chart. Options: bar, line, histogram, scatter, pie, box, area, kde, violin, stacked_bar, grouped_bar, count_bar, bubble, pair_plot, funnel, waterfall, heatmap, multi_line. See tool description for selection guidance."
+        description=(
+            "Type of chart. Options: bar, line, histogram, scatter, pie, box, "
+            "area, kde, violin, stacked_bar, grouped_bar, count_bar, bubble, "
+            "pair_plot, funnel, waterfall, heatmap, multi_line. "
+            "See tool description for selection guidance."
+        )
     )
     x: str | None = Field(
         default=None,
@@ -121,11 +147,17 @@ class GenerateChartSchema(BaseModel):
     )
     y: str | None = Field(
         default=None,
-        description="Column name for the y-axis / values. For multi-column charts (multi_line, area, box, pair_plot), use y_columns instead.",
+        description=(
+            "Column name for the y-axis / values. For multi-column charts "
+            "(multi_line, area, box, pair_plot), use y_columns instead."
+        ),
     )
     y_columns: list[str] | None = Field(
         default=None,
-        description="List of column names for multi-column chart types: multi_line, area, box, or pair_plot. Use this instead of y for multiple columns.",
+        description=(
+            "List of column names for multi-column chart types: multi_line, area, "
+            "box, or pair_plot. Use this instead of y for multiple columns."
+        ),
     )
     hue: str | None = Field(
         default=None,
@@ -143,6 +175,25 @@ class GenerateChartSchema(BaseModel):
     bins: int | None = Field(
         default=None,
         description="Number of bins for histogram or kde. Defaults to auto.",
+    )
+    insight: str = Field(
+        description=(
+            "REQUIRED. A 1-2 sentence interpretation of what this chart shows, "
+            "written AFTER you have computed the underlying statistics. "
+            "Example: 'Electronics leads all categories at $1.82M (36% of revenue), "
+            "nearly double the lowest-performing category.'"
+        )
+    )
+    description: str = Field(
+        default="",
+        description=(
+            "Optional. Describe what analytical question this chart answers, "
+            "e.g. 'Distribution of patient ages across hospital departments'."
+        ),
+    )
+    step_id: int = Field(
+        default=0,
+        description="Plan step index that is requesting this chart (used for evidence tracking).",
     )
 
 
@@ -167,6 +218,9 @@ class GenerateChartTool(BaseTool):
         size_col: str | None = None,
         title: str = "",
         bins: int | None = None,
+        insight: str = "",
+        description: str = "",
+        step_id: int = 0,
     ) -> str:
         df = _engine.load(path)
 
@@ -187,12 +241,13 @@ class GenerateChartTool(BaseTool):
             output_dir=_get_output_dir(),
             bins=bins,
         )
-        filepath = render_chart(spec)
-        filename = os.path.basename(filepath)
-        api_url = f"/api/v1/charts/{filename}"
-        # The CHART_URL: prefix is detected by AgentService.stream() which
-        # emits a dedicated 'image' SSE event so the UI can render it inline.
-        return f"{CHART_URL_PREFIX}{api_url}\nChart saved to {filepath}"
+        artifact = render_chart_artifact(
+            spec,
+            insight=insight or "No insight provided.",
+            description=description,
+            step_id=step_id,
+        )
+        return f"{CHART_ARTIFACT_PREFIX}{json.dumps(artifact.to_dict())}"
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +269,22 @@ class CorrelationHeatmapSchema(BaseModel):
         default="Correlation Heatmap",
         description="Chart title.",
     )
+    insight: str = Field(
+        description=(
+            "REQUIRED. A 1-2 sentence interpretation of the correlation pattern "
+            "observed AFTER you have computed the correlation coefficients. "
+            "Example: 'Revenue and discount show a moderate negative correlation "
+            "(r = -0.34), suggesting higher discounts associate with lower revenue.'"
+        )
+    )
+    description: str = Field(
+        default="",
+        description="Optional. Describe what question this heatmap answers.",
+    )
+    step_id: int = Field(
+        default=0,
+        description="Plan step index that is requesting this chart.",
+    )
 
 
 class CorrelationHeatmapTool(BaseTool):
@@ -222,9 +293,11 @@ class CorrelationHeatmapTool(BaseTool):
         "Compute the Pearson correlation matrix for a dataset and render it as an "
         "annotated heatmap image. "
         "Use this tool whenever the user asks for a 'correlation heatmap', "
-        "'correlation matrix', or wants to see how numeric columns relate to each other. "
-        "Returns the URL of the generated heatmap — displayed inline in the chat. "
-        "Do NOT write Python code; call this tool directly."
+        "'correlation matrix', or wants to see how numeric columns relate to each other.\n\n"
+        "REQUIRED: compute correlations with the `correlation` tool first, then "
+        "provide the findings as the `insight` parameter before calling this tool.\n\n"
+        "Returns a JSON ChartArtifact payload — the image is automatically displayed "
+        "inline. Do NOT write Python code; call this tool directly."
     )
     args_schema: type[BaseModel] = CorrelationHeatmapSchema
 
@@ -233,6 +306,9 @@ class CorrelationHeatmapTool(BaseTool):
         path: str,
         columns: str | None = None,
         title: str = "Correlation Heatmap",
+        insight: str = "",
+        description: str = "",
+        step_id: int = 0,
     ) -> str:
         df = _engine.load(path)
 
@@ -249,7 +325,10 @@ class CorrelationHeatmapTool(BaseTool):
             title=title,
             output_dir=_get_output_dir(),
         )
-        filepath = render_chart(spec)
-        filename = os.path.basename(filepath)
-        api_url = f"/api/v1/charts/{filename}"
-        return f"{CHART_URL_PREFIX}{api_url}\nCorrelation heatmap saved to {filepath}"
+        artifact = render_chart_artifact(
+            spec,
+            insight=insight or "Correlation matrix computed.",
+            description=description or "Pearson correlation matrix of numeric columns.",
+            step_id=step_id,
+        )
+        return f"{CHART_ARTIFACT_PREFIX}{json.dumps(artifact.to_dict())}"

@@ -270,7 +270,20 @@ async def chat_in_conversation(
             if event_type == "token":
                 assistant_content += str(data)
             elif event_type == "image":
-                chart_urls.append(str(data))
+                url = str(data)
+                if url not in chart_urls:
+                    chart_urls.append(url)
+            elif event_type == "chart_artifact":
+                # Rich ChartArtifact payload — extract the api_url for persistence.
+                # The image event is always emitted alongside this, but we guard
+                # against duplication so double-registration cannot occur.
+                try:
+                    art_data = data if isinstance(data, dict) else json.loads(str(data))
+                    url = art_data.get("api_url", "")
+                    if url and url not in chart_urls:
+                        chart_urls.append(url)
+                except Exception:
+                    pass
             elif event_type == "artifact":
                 meta = json.loads(str(data))
                 artifact_metas.append(meta)

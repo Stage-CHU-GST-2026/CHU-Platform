@@ -28,6 +28,9 @@ break down a user's request into a clear, ordered list of execution steps.
 3. Steps should be in logical order (inspect before analyze, clean before stats).
 4. Include a final "Synthesize findings" step.
 5. Keep step titles short (2-5 words) and descriptions clear (1 sentence).
+6. Visualization is evidence, NOT a standalone step. If an analytical step
+   benefits from a chart, set `needs_visualization: true` and explain why
+   in `visualization_rationale`. DO NOT add a separate "Generate charts" step.
 
 ## Output Format
 
@@ -40,7 +43,9 @@ Return ONLY a JSON object with this exact structure:
       "id": 1,
       "title": "Inspect dataset",
       "description": "Load the dataset and examine its structure, columns, and types.",
-      "tool_hint": "inspection"
+      "tool_hint": "inspection",
+      "needs_visualization": false,
+      "visualization_rationale": ""
     }
   ]
 }
@@ -54,9 +59,19 @@ Return ONLY a JSON object with this exact structure:
 - statistics: mean, median, min, max, std, quantiles
 - aggregation: aggregate, filter, sort
 - relationships: correlation, outliers
-- visualization: generate_chart, bar_chart, histogram, scatter_plot
+- visualization: generate_chart, correlation_heatmap (use ONLY when the step is PURELY visual)
 - planning: create_blueprint
 - synthesis: no tools needed (just thinking/writing)
+
+## When to set needs_visualization: true
+
+Set `needs_visualization: true` when a chart would reveal patterns the numbers alone cannot:
+- Comparing values across categories → bar chart (combine with aggregation step)
+- Showing a distribution → histogram or KDE (combine with statistics step)
+- Revealing a relationship between two numeric columns → scatter (combine with correlation step)
+- Showing a correlation matrix → heatmap (combine with relationships step)
+
+Never set needs_visualization for inspection or quality steps.
 
 ## Examples
 
@@ -65,12 +80,12 @@ User: "Analyze sales.csv"
 {
   "plan_title": "Sales Data Analysis",
   "steps": [
-    {"id": 1, "title": "Inspect dataset", "description": "Load sales.csv and examine its structure, columns, and row count.", "tool_hint": "inspection"},
-    {"id": 2, "title": "Check data quality", "description": "Scan for missing values, duplicates, and outliers.", "tool_hint": "quality"},
-    {"id": 3, "title": "Compute statistics", "description": "Calculate key statistics: mean, median, std for numeric columns.", "tool_hint": "statistics"},
-    {"id": 4, "title": "Analyze relationships", "description": "Check correlations between numeric variables.", "tool_hint": "relationships"},
-    {"id": 5, "title": "Generate charts", "description": "Create visualizations for key findings.", "tool_hint": "visualization"},
-    {"id": 6, "title": "Synthesize findings", "description": "Compile all evidence into a clear summary report.", "tool_hint": "synthesis"}
+    {"id": 1, "title": "Inspect dataset", "description": "Load sales.csv and examine its structure, columns, and row count.", "tool_hint": "inspection", "needs_visualization": false, "visualization_rationale": ""},
+    {"id": 2, "title": "Check data quality", "description": "Scan for missing values, duplicates, and outliers.", "tool_hint": "quality", "needs_visualization": false, "visualization_rationale": ""},
+    {"id": 3, "title": "Compute statistics", "description": "Calculate key statistics: mean, median, std for numeric columns and visualize their distributions.", "tool_hint": "statistics", "needs_visualization": true, "visualization_rationale": "Histograms will show whether numeric columns are skewed or normally distributed."},
+    {"id": 4, "title": "Category comparison", "description": "Aggregate revenue by category and compare them visually.", "tool_hint": "aggregation", "needs_visualization": true, "visualization_rationale": "A bar chart will make relative category sizes immediately clear."},
+    {"id": 5, "title": "Analyze relationships", "description": "Check correlations between numeric variables and visualize the correlation matrix.", "tool_hint": "relationships", "needs_visualization": true, "visualization_rationale": "A correlation heatmap will reveal which variables are strongly related."},
+    {"id": 6, "title": "Synthesize findings", "description": "Compile all evidence into a clear summary report.", "tool_hint": "synthesis", "needs_visualization": false, "visualization_rationale": ""}
   ]
 }
 ```
@@ -80,8 +95,8 @@ User: "What columns are in the dataset?"
 {
   "plan_title": "Dataset Inspection",
   "steps": [
-    {"id": 1, "title": "Inspect dataset", "description": "Load the dataset and list all columns with their types.", "tool_hint": "inspection"},
-    {"id": 2, "title": "Synthesize findings", "description": "Present the column listing clearly.", "tool_hint": "synthesis"}
+    {"id": 1, "title": "Inspect dataset", "description": "Load the dataset and list all columns with their types.", "tool_hint": "inspection", "needs_visualization": false, "visualization_rationale": ""},
+    {"id": 2, "title": "Synthesize findings", "description": "Present the column listing clearly.", "tool_hint": "synthesis", "needs_visualization": false, "visualization_rationale": ""}
   ]
 }
 ```"""
@@ -90,11 +105,21 @@ User: "What columns are in the dataset?"
 class PlanStep:
     """A single execution step in a plan."""
 
-    def __init__(self, id: int, title: str, description: str, tool_hint: str = "") -> None:
+    def __init__(
+        self,
+        id: int,
+        title: str,
+        description: str,
+        tool_hint: str = "",
+        needs_visualization: bool = False,
+        visualization_rationale: str = "",
+    ) -> None:
         self.id = id
         self.title = title
         self.description = description
         self.tool_hint = tool_hint
+        self.needs_visualization = needs_visualization
+        self.visualization_rationale = visualization_rationale
 
     def to_dict(self) -> dict:
         return {
@@ -102,6 +127,8 @@ class PlanStep:
             "title": self.title,
             "description": self.description,
             "tool_hint": self.tool_hint,
+            "needs_visualization": self.needs_visualization,
+            "visualization_rationale": self.visualization_rationale,
         }
 
     @classmethod
@@ -111,6 +138,8 @@ class PlanStep:
             title=data["title"],
             description=data.get("description", ""),
             tool_hint=data.get("tool_hint", ""),
+            needs_visualization=data.get("needs_visualization", False),
+            visualization_rationale=data.get("visualization_rationale", ""),
         )
 
 

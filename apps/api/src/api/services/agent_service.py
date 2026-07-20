@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import AsyncGenerator
 
+import json
+
 from langchain_core.messages import AIMessageChunk, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.base import BaseStore
@@ -19,7 +21,8 @@ from langgraph.store.base import BaseStore
 from agents.data_analyst import create_data_analyst
 from ai import Agent
 from ai.orchestrator import Orchestrator
-from tools.visualization.visualization import CHART_URL_PREFIX
+from analysis.charts import ChartArtifact
+from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
 
 
@@ -112,7 +115,15 @@ class AgentService:
             elif isinstance(chunk, ToolMessage) and chunk.content:
                 content = str(chunk.content)
                 for line in content.splitlines():
-                    if line.startswith(CHART_URL_PREFIX):
+                    if line.startswith(CHART_ARTIFACT_PREFIX):
+                        raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+                        try:
+                            artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                            yield ("image", artifact.api_url)
+                            yield ("chart_artifact", artifact.to_dict())
+                        except Exception:
+                            pass
+                    elif line.startswith(CHART_URL_PREFIX):
                         yield ("image", line[len(CHART_URL_PREFIX):])
                     elif line.startswith(ARTIFACT_URL_PREFIX):
                         yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])
