@@ -103,16 +103,13 @@ class AgentService:
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
-<<<<<<< Updated upstream
             # Text tokens from the LLM
-            if isinstance(chunk, AIMessageChunk) and chunk.content:
-=======
             if (
                 isinstance(chunk, AIMessageChunk)
                 and chunk.content
-                and metadata.get("langgraph_node") == "agent"
+                and _metadata.get("langgraph_node") == "agent"
             ):
->>>>>>> Stashed changes
+
                 yield ("token", chunk.content)
             elif isinstance(chunk, ToolMessage) and chunk.content:
                 content = str(chunk.content)
