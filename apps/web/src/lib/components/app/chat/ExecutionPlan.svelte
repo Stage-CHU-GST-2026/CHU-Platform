@@ -1,15 +1,49 @@
 <script lang="ts">
 	import { IconChevronDown, IconChevronRight, IconCheck } from '@tabler/icons-svelte';
 	import type { PlanData, PlanStepData } from '$lib/api/chat';
+	import { marked } from 'marked';
+	import { browser } from '$app/environment';
 
 	interface Props {
 		plan: PlanData;
 		completedSteps: Set<number>;
 		activeStepId: number | null;
-		activeStepMessage: string;
+		stepMessages: Record<number, string>;
 	}
 
-	let { plan, completedSteps, activeStepId, activeStepMessage }: Props = $props();
+	let { plan, completedSteps, activeStepId, stepMessages }: Props = $props();
+
+	// Configure marked for clean output
+	marked.setOptions({ breaks: true, gfm: true });
+
+	let DOMPurify: any = null;
+	if (browser) {
+		import('dompurify').then((module) => {
+			DOMPurify = module.default;
+		});
+	}
+
+	function renderMd(text: string): string {
+		if (!text) return '';
+		const html = marked.parse(text) as string;
+		if (browser && DOMPurify) {
+			return DOMPurify.sanitize(html, {
+				ADD_TAGS: ['img', 'table', 'th', 'td', 'tr', 'thead', 'tbody'],
+				ADD_ATTR: ['src', 'alt', 'title', 'href', 'target', 'rel']
+			});
+		}
+		return html;
+	}
+
+	let expandedSteps = $state(new Set<number>());
+	function toggleStep(id: number) {
+		if (expandedSteps.has(id)) {
+			expandedSteps.delete(id);
+		} else {
+			expandedSteps.add(id);
+		}
+		expandedSteps = expandedSteps;
+	}
 
 	// Auto-expand while running, auto-collapse when done
 	const allDone = $derived(plan.steps.every((s: PlanStepData) => completedSteps.has(s.id)));
@@ -37,74 +71,89 @@
 
 <!-- Claude-style thinking block — lives inside the assistant bubble -->
 <div class="thinking-block">
-		<!-- Trigger row -->
-		<button
-			class="trigger"
-			onclick={() => (expanded = !expanded)}
-			aria-expanded={expanded}
-		>
-
-			<span class="trigger-label">
-				{#if !allDone}
-					{activeStepId != null
-						? (plan.steps.find((s) => s.id === activeStepId)?.title ?? 'Working…')
-						: 'Planning…'}
-				{:else}
-					{plan.plan_title || 'Execution complete'}
-				{/if}
-			</span>
-
-			<!-- Progress badge -->
-			{#if !allDone && totalCount > 0}
-				<span class="progress-badge">{completedCount}/{totalCount}</span>
-			{:else if allDone}
-				<span class="done-badge">
-					<IconCheck size={10} stroke={2.5} />
-					done
-				</span>
+	<!-- Trigger row -->
+	<button class="trigger" onclick={() => (expanded = !expanded)} aria-expanded={expanded}>
+		<span class="trigger-label">
+			{#if !allDone}
+				{activeStepId != null
+					? (plan.steps.find((s) => s.id === activeStepId)?.title ?? 'Working…')
+					: 'Planning…'}
+			{:else}
+				{plan.plan_title || 'Execution complete'}
 			{/if}
+		</span>
 
-			<!-- Chevron -->
-			<span class="chevron" class:rotated={expanded}>
-				<IconChevronRight size={13} stroke={2} />
+		<!-- Progress badge -->
+		{#if !allDone && totalCount > 0}
+			<span class="progress-badge">{completedCount}/{totalCount}</span>
+		{:else if allDone}
+			<span class="done-badge">
+				<IconCheck size={10} stroke={2.5} />
+				done
 			</span>
-		</button>
-
-		<!-- Collapsible step log -->
-		{#if expanded}
-			<div class="step-log">
-				<div class="step-track">
-					{#each plan.steps as step (step.id)}
-						{@const status = stepStatus(step)}
-						<div class="step-row" class:active={status === 'active'} class:done={status === 'done'}>
-							<!-- Timeline node -->
-							<div class="node-col">
-								{#if status === 'done'}
-									<span class="node-done"><IconCheck size={9} stroke={3} /></span>
-								{:else if status === 'active'}
-									<span class="node-active" aria-hidden="true"></span>
-								{:else}
-									<span class="node-pending"></span>
-								{/if}
-							</div>
-
-							<!-- Content -->
-							<div class="step-content">
-								<span class="step-title" class:muted={status === 'pending'}>{step.title}</span>
-
-								{#if status === 'active' && activeStepMessage}
-									<p class="step-message">{activeStepMessage}</p>
-								{:else if status === 'done'}
-									<p class="step-desc done-desc">{step.description}</p>
-								{:else if status === 'pending'}
-									<p class="step-desc">{step.description}</p>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
 		{/if}
+
+		<!-- Chevron -->
+		<span class="chevron" class:rotated={expanded}>
+			<IconChevronRight size={13} stroke={2} />
+		</span>
+	</button>
+
+	<!-- Collapsible step log -->
+	{#if expanded}
+		<div class="step-log">
+			<div class="step-track">
+				{#each plan.steps as step (step.id)}
+					{@const status = stepStatus(step)}
+					{@const isExpanded = expandedSteps.has(step.id) || status === 'active'}
+
+					<div class="step-row" class:active={status === 'active'} class:done={status === 'done'}>
+						<!-- Timeline node -->
+						<div class="node-col">
+							{#if status === 'done'}
+								<span class="node-done"><IconCheck size={9} stroke={3} /></span>
+							{:else if status === 'active'}
+								<span class="node-active" aria-hidden="true"></span>
+							{:else}
+								<span class="node-pending"></span>
+							{/if}
+						</div>
+
+						<!-- Content -->
+						<div class="step-content">
+							<button
+								class="step-title-btn"
+								class:muted={status === 'pending'}
+								onclick={() => toggleStep(step.id)}
+								disabled={!stepMessages[step.id] && status !== 'active'}
+							>
+								<span class="step-title">{step.title}</span>
+								{#if stepMessages[step.id] || status === 'active'}
+									<span class="step-toggle-icon">
+										{#if expandedSteps.has(step.id) || (status === 'active' && !expandedSteps.has(step.id))}
+											<IconChevronDown size={14} />
+										{:else}
+											<IconChevronRight size={14} />
+										{/if}
+									</span>
+								{/if}
+							</button>
+
+							{#if isExpanded && stepMessages[step.id]}
+								<div class="step-message prose-agent md-small">
+									{@html renderMd(stepMessages[step.id])}
+								</div>
+							{:else if status === 'done'}
+								<p class="step-desc done-desc">{step.description}</p>
+							{:else if status === 'pending' || (status === 'active' && !stepMessages[step.id])}
+								<p class="step-desc">{step.description}</p>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -127,7 +176,9 @@
 		font-size: 12.5px;
 		font-family: var(--font-ui);
 		line-height: 1;
-		transition: background 120ms ease, color 120ms ease;
+		transition:
+			background 120ms ease,
+			color 120ms ease;
 		user-select: none;
 		width: auto;
 		max-width: 100%;
@@ -270,6 +321,22 @@
 		padding-top: 1px;
 	}
 
+	.step-title-btn {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		text-align: left;
+		background: transparent;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+	}
+
+	.step-title-btn:disabled {
+		cursor: default;
+	}
+
 	.step-title {
 		display: block;
 		font-size: 12.5px;
@@ -279,17 +346,45 @@
 		line-height: 1.4;
 	}
 
-	.step-title.muted {
+	.step-title-btn.muted .step-title {
 		color: var(--color-text-secondary);
 	}
 
+	.step-toggle-icon {
+		color: var(--color-muted);
+		display: flex;
+		align-items: center;
+	}
+
 	.step-message {
-		margin: 3px 0 0;
-		font-size: 11.5px;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-		font-family: var(--font-mono);
-		letter-spacing: 0;
+		margin: 5px 0 0;
+		background: color-mix(in srgb, var(--color-surface-elevated) 50%, transparent);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: 8px;
+		padding: 8px 12px;
+	}
+
+	/* Scale down the markdown for the step logs */
+	.md-small :global(*) {
+		font-size: 11.5px !important;
+	}
+	.md-small :global(h1),
+	.md-small :global(h2),
+	.md-small :global(h3),
+	.md-small :global(h4) {
+		margin-top: 0.8em !important;
+		margin-bottom: 0.3em !important;
+	}
+	.md-small :global(table) {
+		margin: 0.5em 0 !important;
+	}
+	.md-small :global(th),
+	.md-small :global(td) {
+		padding: 0.3em 0.4em !important;
+	}
+	.md-small :global(pre) {
+		padding: 0.5em !important;
+		margin: 0.5em 0 !important;
 	}
 
 	.step-desc {

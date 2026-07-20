@@ -10,6 +10,7 @@ render a live step-progress UI.
 from __future__ import annotations
 
 import json
+import uuid
 from typing import AsyncGenerator
 
 from langchain_core.messages import AIMessageChunk, HumanMessage, ToolMessage
@@ -55,6 +56,7 @@ Your job is to synthesize this evidence into a clear, comprehensive final answer
 - Never fabricate or guess statistics not present in the evidence.
 - Present findings in a logical order.
 - Use markdown formatting for clarity (headings, lists, tables).
+- Any generated charts are automatically displayed above your text, so you do NOT need to embed image links yourself. Refer to them as "the chart above".
 - Include specific numbers and statistics where available.
 - If evidence is insufficient for any conclusion, explicitly say so.
 - Do NOT call any more tools — just write the final report."""
@@ -114,8 +116,14 @@ class Orchestrator:
 
         yield ("plan", json.dumps(plan.to_dict()))
 
+        # A unique ID for this specific run (user query). We use this to isolate
+        # step memory so that step 1 of this plan doesn't inherit the LangGraph
+        # state of step 1 from a previous plan in the same conversation.
+        run_id = uuid.uuid4().hex[:8]
+
         # ── Phase 2: Execute each step ─────────────────────────────────
         evidence_parts: list[str] = []
+        all_generated_charts: list[str] = []
 
         for step in plan.steps:
             logger.info("Phase 2: Executing step",
@@ -136,14 +144,20 @@ class Orchestrator:
                 async for event_type, data in self._execute_step(
                     step=step,
                     thread_id=thread_id,
+                    run_id=run_id,
+                    original_message=message,
                     dataset_path=dataset_path,
                 ):
                     if event_type == "step_evidence":
                         # Internal: collect evidence for the synthesis prompt
                         step_evidence += str(data)
+                    elif event_type == "step_token":
+                        # Live text token from the step — forward to frontend
+                        yield ("step_token", str(data))
                     elif event_type == "step_update":
                         yield ("step_update", str(data))
                     elif event_type == "image":
+                        all_generated_charts.append(str(data))
                         yield ("image", str(data))
                     elif event_type == "artifact":
                         yield ("artifact", str(data))
@@ -166,6 +180,12 @@ class Orchestrator:
 
         # ── Phase 3: Synthesize final answer ────────────────────────────
         logger.info("Phase 3: Synthesizing final answer")
+
+        # Pre-inject any generated charts as standard text tokens so they appear 
+        # properly formatted at the top of the final response bubble.
+        for chart_url in all_generated_charts:
+            yield ("token", f"![Generated Chart]({chart_url})\n\n")
+
         combined_evidence = "\n\n".join(
             evidence_parts) if evidence_parts else "No evidence gathered."
 
@@ -257,6 +277,8 @@ class Orchestrator:
         self,
         step: PlanStep,
         thread_id: str,
+        run_id: str,
+        original_message: str = "",
         dataset_path: str | None = None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Execute a single plan step via the agent.
@@ -264,17 +286,31 @@ class Orchestrator:
         Yields:
             ("step_evidence", str) — internal: step findings for the synthesis prompt
             ("step_update", str)   — progress message for the frontend
+            ("step_token", str)    — live text token streamed during step execution
             ("image", str)         — chart URL
             ("artifact", str)      — plan artifact JSON
         """
-        config = {"configurable": {"thread_id": f"{thread_id}_step_{step.id}"}}
+        config = {"configurable": {"thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
+
+        # Each step runs in its own isolated thread (no shared memory), so the
+        # original user request MUST be embedded in the instruction — otherwise
+        # the agent has no idea which dataset or scope the user intended and will
+        # fall back to listing and inspecting every available dataset.
+        user_context = (
+            f"## User's Original Request\n{original_message}\n\n"
+            if original_message.strip()
+            else ""
+        )
 
         # Build step-specific instruction
         step_instruction = (
+            f"{user_context}"
             f"## Current Step: {step.title}\n"
             f"{step.description}\n\n"
-            f"Focus ONLY on this step. Use tools to gather the needed information. "
-            f"Report your findings concisely when done."
+            f"Focus ONLY on this step and ONLY on the dataset(s) mentioned in the "
+            f"user's request above. Do not inspect or analyse any other datasets. "
+            f"Use tools to gather the needed information and report your findings "
+            f"concisely when done."
         )
 
         if dataset_path:
@@ -282,39 +318,67 @@ class Orchestrator:
 
         yield ("step_update", f"{step.title}...")
 
+        evidence_tokens: list[str] = []
+        # Images/artifacts are buffered and emitted AFTER all step text has
+        # streamed.  This is required because LangGraph's execution order is
+        # always:  agent (tool-call decision) → tools (ToolMessage) → agent
+        # (interpretation text).  The ToolMessage — which carries the image
+        # URL — is therefore produced BEFORE the LLM has written a single word
+        # of interpretation, so emitting images immediately would place them
+        # above the text that describes them.  Buffering and flushing after the
+        # astream loop guarantees text → images order every time.
+        buffered_images: list[str] = []
+        buffered_artifacts: list[str] = []
+
         try:
-            result = await self._agent.graph.ainvoke(
+            async for chunk, metadata in self._agent.graph.astream(
                 {
                     "messages": [HumanMessage(content=step_instruction)],
                     "summary": "",
                 },
+                stream_mode="messages",
                 config=config,
-            )
+            ):
+                if (
+                    isinstance(chunk, AIMessageChunk)
+                    and chunk.content
+                    and metadata.get("langgraph_node") == "agent"
+                ):
+                    # Stream interpretation text live as it is generated.
+                    evidence_tokens.append(chunk.content)
+                    yield ("step_token", chunk.content)
 
-            # Extract the last AI message as evidence
-            messages = result.get("messages", [])
-            last_ai = None
-            for msg in reversed(messages):
-                if hasattr(msg, "type") and msg.type == "ai" and msg.content:
-                    last_ai = msg
-                    break
+                elif isinstance(chunk, ToolMessage) and chunk.content:
+                    # Buffer images/artifacts — do NOT emit yet.
+                    content = str(chunk.content)
+                    for line in content.splitlines():
+                        if line.startswith(CHART_URL_PREFIX):
+                            buffered_images.append(line[len(CHART_URL_PREFIX):])
+                        elif line.startswith(ARTIFACT_URL_PREFIX):
+                            buffered_artifacts.append(line[len(ARTIFACT_URL_PREFIX):])
 
-            if last_ai:
-                yield ("step_evidence", str(last_ai.content))
-                # Also stream as step_update so the frontend can show progress
+            full_evidence = "".join(evidence_tokens)
+            for img_url in buffered_images:
+                full_evidence += f"\n\n[Generated Chart URL: {img_url}]\n\n"
+            for artifact_data in buffered_artifacts:
+                try:
+                    meta = json.loads(artifact_data)
+                    full_evidence += f"\n\n[Generated Artifact: {meta.get('filename')}]\n\n"
+                except Exception:
+                    pass
+
+            if full_evidence.strip():
+                yield ("step_evidence", full_evidence)
                 yield ("step_update", f"{step.title} — complete.")
             else:
                 yield ("step_update", f"{step.title} — no findings.")
 
-            # Extract any images/artifacts from tool messages
-            for msg in messages:
-                if isinstance(msg, ToolMessage) and msg.content:
-                    content = str(msg.content)
-                    for line in content.splitlines():
-                        if line.startswith(CHART_URL_PREFIX):
-                            yield ("image", line[len(CHART_URL_PREFIX):])
-                        elif line.startswith(ARTIFACT_URL_PREFIX):
-                            yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])
+            # Flush buffered images and artifacts now that all text has
+            # been streamed, so they appear below their textual context.
+            for img_url in buffered_images:
+                yield ("image", img_url)
+            for artifact_data in buffered_artifacts:
+                yield ("artifact", artifact_data)
 
         except Exception as e:
             logger.error("Step execution error", step_id=step.id, error=str(e))

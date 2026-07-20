@@ -35,7 +35,7 @@ from tools.relationships import (
     OutlierDetectionTool,
 )
 from tools.visualization import GenerateChartTool, CorrelationHeatmapTool
-from tools.planning import CreatePlanTool
+from tools.planning import CreateBlueprintTool
 
 DATA_ANALYST_TOOLS = [
     # Discovery — call this first when no dataset is known
@@ -69,5 +69,5 @@ DATA_ANALYST_TOOLS = [
     GenerateChartTool(),
     CorrelationHeatmapTool(),
     # Planning
-    CreatePlanTool(),
+    CreateBlueprintTool(),
 ]

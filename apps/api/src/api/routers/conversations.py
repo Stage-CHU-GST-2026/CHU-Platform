@@ -271,7 +271,6 @@ async def chat_in_conversation(
                 assistant_content += str(data)
             elif event_type == "image":
                 chart_urls.append(str(data))
-                assistant_content += f"\n\n![chart]({data})\n\n"
             elif event_type == "artifact":
                 meta = json.loads(str(data))
                 artifact_metas.append(meta)

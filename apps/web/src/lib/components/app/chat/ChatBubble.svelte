@@ -13,7 +13,7 @@
 		plan?: PlanData;
 		completedSteps?: Set<number>;
 		activeStepId?: number | null;
-		activeStepMessage?: string;
+		stepMessages?: Record<number, string>;
 		onregenerate?: () => void;
 	}
 
@@ -24,7 +24,7 @@
 		plan,
 		completedSteps = new Set(),
 		activeStepId = null,
-		activeStepMessage = '',
+		stepMessages = {},
 		onregenerate
 	}: Props = $props();
 
@@ -76,7 +76,7 @@
 
 			<!-- Execution plan block (sits at the top of the bubble) -->
 			{#if plan}
-				<ExecutionPlan {plan} {completedSteps} {activeStepId} {activeStepMessage} />
+				<ExecutionPlan {plan} {completedSteps} {activeStepId} {stepMessages} />
 				<!-- Divider only shown once content starts streaming in -->
 				{#if hasContent}
 					<div class="plan-divider"></div>

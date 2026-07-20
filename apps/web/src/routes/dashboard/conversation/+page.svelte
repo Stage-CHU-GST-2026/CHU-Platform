@@ -220,13 +220,18 @@
 				onStepStarted(step) {
 					if (streamIdx >= messages.length) return;
 					messages[streamIdx].activeStepId = step.id;
-					messages[streamIdx].activeStepMessage = step.description;
+					messages[streamIdx].activeStepMessage = ''; // clear previous step's text
 					touch();
 					scrollToBottom();
 				},
 				onStepUpdate(msgText) {
 					if (streamIdx >= messages.length) return;
-					messages[streamIdx].activeStepMessage = msgText;
+					// Accumulate tokens so streaming text builds up in the step card.
+					// onStepUpdate receives both step_token chunks (many, small) and
+					// step_update status strings (few, complete). We always append so
+					// tokens stream naturally without overwriting each other.
+					messages[streamIdx].activeStepMessage =
+						(messages[streamIdx].activeStepMessage ?? '') + msgText;
 					touch();
 					scrollToBottom();
 				},

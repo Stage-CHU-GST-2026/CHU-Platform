@@ -224,7 +224,7 @@ When the user requests:
 - action plan
 - project plan
 
-use create_plan.
+use create_blueprint.
 
 Provide:
 

@@ -55,7 +55,7 @@ Return ONLY a JSON object with this exact structure:
 - aggregation: aggregate, filter, sort
 - relationships: correlation, outliers
 - visualization: generate_chart, bar_chart, histogram, scatter_plot
-- planning: create_plan
+- planning: create_blueprint
 - synthesis: no tools needed (just thinking/writing)
 
 ## Examples

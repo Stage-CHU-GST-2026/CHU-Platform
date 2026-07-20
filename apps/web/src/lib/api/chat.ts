@@ -226,8 +226,14 @@ export async function sendMessage(
 
                     if (currentEvent === "token" && dataLines.length > 0) {
                         callbacks.onToken(currentData);
+                    } else if (currentEvent === "step_token" && dataLines.length > 0) {
+                        // Route live step text to the step card (onStepUpdate),
+                        // NOT to the main message bubble (onToken). This prevents
+                        // duplication: step text is shown transiently in the active
+                        // step card; only the final synthesis goes into the message.
+                        callbacks.onStepUpdate?.(currentData);
                     } else if (currentEvent === "image" && currentData) {
-                        callbacks.onToken(`\n\n![chart](${currentData})\n\n`);
+                        callbacks.onStepUpdate?.(`\n\n![chart](${currentData})\n\n`);
                     } else if (currentEvent === "artifact" && currentData) {
                         try {
                             const artifact = JSON.parse(currentData);
