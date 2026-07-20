@@ -12,6 +12,7 @@ class AgentState(TypedDict):
     # ── Orchestrator fields ─────────────────────────────────────────
     plan: dict | None          # The execution plan (serialized ExecutionPlan)
     evidence: Annotated[str, operator.add] # Accumulated evidence from executed steps
+    generated_charts: Annotated[list[str], operator.add] # Charts generated across steps
     current_step: int          # Index of the currently executing step (0-based)
     original_message: str      # The user's original request
     dataset_path: str | None   # Optional dataset path

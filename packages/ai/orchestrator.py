@@ -41,6 +41,7 @@ Do NOT try to do everything at once. Other steps will handle other tasks.
 
 ## Rules
 - Use the available tools to gather evidence for this specific step.
+- VERY IMPORTANT: Call tools sequentially. Do NOT call the same tool or multiple tools in parallel.
 - Be thorough but focused.
 - Report what you found clearly and concisely.
 - If a tool call fails, note it and move on.
@@ -124,6 +125,7 @@ class Orchestrator:
             "plan": plan.to_dict(),
             "current_step": 0,
             "evidence": "",
+            "generated_charts": [],
             "run_id": run_id, 
         }
 
@@ -232,6 +234,7 @@ class Orchestrator:
 
         return {
             "evidence": result_evidence,
+            "generated_charts": buffered_images,
             "current_step": current_step_idx + 1
         }
 
@@ -246,6 +249,11 @@ class Orchestrator:
 
     async def _synthesizer_node(self, state: AgentState, config: RunnableConfig) -> dict:
         logger.info("Phase 3: Synthesizing final answer")
+        
+        generated_charts = state.get("generated_charts", [])
+        for chart_url in generated_charts:
+            await self._emit("token", f"![Generated Chart]({chart_url})\n\n")
+            
         evidence = state.get("evidence", "").strip()
         if not evidence:
             evidence = "No evidence gathered."
@@ -318,6 +326,7 @@ class Orchestrator:
             "summary": "",
             "plan": None,
             "evidence": "",
+            "generated_charts": [],
             "current_step": 0,
             "run_id": "",
         }
