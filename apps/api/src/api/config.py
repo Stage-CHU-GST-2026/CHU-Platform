@@ -55,3 +55,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def get_charts_abs_dir() -> str:
+    """Resolve settings.charts_dir to an absolute path.
+
+    Anchored to this file (src/api/config.py) so the result is always
+    correct regardless of where the process is started from.
+    """
+    _here = os.path.dirname(os.path.abspath(__file__))  # .../src/api
+    return os.path.abspath(os.path.join(_here, "..", "..", settings.charts_dir))

@@ -1,6 +1,6 @@
 @layer components {
     .conversation {
-        @apply flex flex-col gap-6 w-full;
+        @apply flex flex-col gap-8 w-full;
         font-family: var(--font-ui);
     }
 
@@ -13,15 +13,15 @@
     }
 
     .msg-bubble {
-        @apply p-5 rounded-xl text-[16px] leading-[1.75] text-text-primary;
+        @apply text-[15.5px] leading-[1.7] text-text-primary;
     }
 
     .msg-bubble.user {
-        @apply max-w-[85%] bg-surface-elevated border border-border rounded-br-sm shadow-md;
+        @apply px-4 py-3 max-w-[80%] md:max-w-[75%] bg-surface-elevated border border-border rounded-[18px] rounded-br-sm shadow-sm;
     }
 
     .msg-bubble.assistant {
-        @apply max-w-[95%] bg-canvas border border-border rounded-bl-sm shadow-sm;
+        @apply w-full min-w-0;
     }
 
     .msg-meta {
@@ -109,28 +109,36 @@
     .prose-agent table {
         width: 100%;
         border-collapse: collapse;
-        margin: 0.85em 0;
+        margin: 1.25em 0;
         font-size: 0.9em;
     }
 
     .prose-agent th {
-        background: var(--color-surface-elevated);
         color: var(--color-text-secondary);
         font-weight: 600;
         text-align: left;
-        padding: 0.5em 0.8em;
-        border: 1px solid var(--color-border);
+        padding: 0.75em 0.5em;
+        border-bottom: 1.5px solid var(--color-border);
         letter-spacing: 0.01em;
     }
 
     .prose-agent td {
-        padding: 0.45em 0.8em;
-        border: 1px solid var(--color-border-subtle);
+        padding: 0.6em 0.5em;
+        border-bottom: 1px solid var(--color-border-subtle);
         color: var(--color-text-primary);
     }
 
     .prose-agent strong {
         color: var(--color-text-primary);
         font-weight: 650;
+    }
+
+    .prose-agent hr {
+        border: none;
+        height: 1px;
+        background: var(--color-border);
+        opacity: 0.5;
+        margin: 1.4em 0;
+        color: transparent;
     }
 }

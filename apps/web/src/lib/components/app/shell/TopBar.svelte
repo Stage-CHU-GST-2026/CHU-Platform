@@ -1,10 +1,31 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { app } from '$lib/state/app.svelte';
-	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck } from '@tabler/icons-svelte';
+	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck, IconDownload } from '@tabler/icons-svelte';
 
 	let path = $derived($page.url.pathname);
 	let isConversation = $derived(path.startsWith('/dashboard/conversation'));
+
+	async function exportConversation() {
+		const id = $page.url.searchParams.get('id');
+		if (!id) return;
+		try {
+			const res = await fetch(`/api/v1/conversations/${id}`);
+			if (!res.ok) throw new Error('Failed to fetch conversation');
+			const data = await res.json();
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `conversation-${id}.json`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		} catch (err) {
+			console.error(err);
+		}
+	}
 
 	// Breadcrumb logic
 	let breadcrumbs = $derived.by(() => {
@@ -48,6 +69,16 @@
 
 	<!-- Right: Actions -->
 	<div class="flex items-center gap-3">
+		{#if isConversation}
+			<button
+				class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+				title="Export conversation as JSON"
+				onclick={exportConversation}
+			>
+				<IconDownload size={16} stroke={1.5} />
+			</button>
+		{/if}
+
 		<button
 			class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
 			aria-label="More options"

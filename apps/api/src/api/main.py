@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from api.config import settings
+from api.config import settings, get_charts_abs_dir
 from api.database import Base, engine
 from api.routers.artifacts import router as artifacts_router
 from api.routers.chat import router as chat_router
@@ -25,7 +25,7 @@ async def lifespan(_app: FastAPI):
     On shutdown: dispose of the database connection pool.
     """
     # Resolve charts directory inside the API package & create it
-    abs_charts_dir = _charts_abs_dir()
+    abs_charts_dir = get_charts_abs_dir()
     os.makedirs(abs_charts_dir, exist_ok=True)
 
     # Override the tool's hardcoded /tmp path so charts persist
@@ -41,13 +41,6 @@ async def lifespan(_app: FastAPI):
     # Shutdown: dispose engine
     await engine.dispose()
 
-
-def _charts_abs_dir() -> str:
-    """Resolve charts_dir relative to the API package root."""
-    _api_root = os.path.dirname(os.path.abspath(__file__))  # .../src/api
-    return os.path.abspath(
-        os.path.join(_api_root, "..", "..", settings.charts_dir)
-    )
 
 
 def create_app() -> FastAPI:
@@ -66,7 +59,7 @@ def create_app() -> FastAPI:
 
     # ----- Static files: generated charts -----
     # Mount AFTER routers so API routes take precedence.
-    charts_static = StaticFiles(directory=_charts_abs_dir())
+    charts_static = StaticFiles(directory=get_charts_abs_dir())
     app.mount("/api/v1/charts", charts_static, name="charts")
 
     # ----- Global error handler -----

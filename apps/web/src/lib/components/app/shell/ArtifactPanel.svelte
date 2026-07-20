@@ -1,8 +1,10 @@
 <script lang="ts">
     import { app } from '$lib/state/app.svelte';
-    import { IconCode, IconX, IconDownload, IconPhoto, IconTable } from '@tabler/icons-svelte';
+    import { IconCode, IconX, IconDownload, IconPhoto, IconTable, IconCircleCheck } from '@tabler/icons-svelte';
     import { marked } from 'marked';
     import { browser } from '$app/environment';
+    import { PLAN_MIME_TYPE } from '$lib/api/chat';
+    import type { PlanData } from '$lib/api/chat';
 
     let DOMPurify: any = null;
     if (browser) {
@@ -162,12 +164,55 @@
                                     <div class="text-danger">Failed to load content.</div>
                                 {/await}
                             </div>
+                        {:else if activeArtifact.mime_type === PLAN_MIME_TYPE}
+                            {#await fetch(`/api/v1/artifacts/${encodeURIComponent(activeArtifact.id)}/file`).then(r => r.json())}
+                                <div class="flex items-center gap-2 text-muted justify-center py-10">
+                                    <span class="w-4 h-4 rounded-full border-2 border-muted border-t-transparent animate-spin"></span>
+                                    <span class="text-[13px]">Loading plan...</span>
+                                </div>
+                            {:then plan}
+                                <div class="w-full max-w-[560px] flex flex-col gap-5 py-2">
+                                    <!-- Header -->
+                                    <div>
+                                        <p class="text-[10.5px] font-mono text-muted uppercase tracking-widest mb-1">Execution Plan</p>
+                                        <h3 class="text-text-primary font-semibold text-[15px] tracking-tight leading-snug">
+                                            {plan.plan_title || 'Unnamed Plan'}
+                                        </h3>
+                                        <p class="text-[12px] text-muted mt-1">{plan.steps?.length ?? 0} steps · completed</p>
+                                    </div>
+
+                                    <!-- Step track -->
+                                    <div class="flex flex-col border-l-[1.5px] border-border-subtle pl-4 gap-0">
+                                        {#each plan.steps ?? [] as step, i}
+                                            <div class="flex items-start gap-3 py-3 relative">
+                                                <!-- Node -->
+                                                <div class="flex items-center justify-center w-[18px] shrink-0 mt-0.5 -ml-[22px] z-[1]">
+                                                    <div class="w-[14px] h-[14px] rounded-full bg-success/15 flex items-center justify-center">
+                                                        <IconCircleCheck size={10} stroke={2.5} class="text-success" />
+                                                    </div>
+                                                </div>
+                                                <!-- Content -->
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[13px] font-medium text-text-primary">{step.title}</span>
+                                                        <span class="text-[10.5px] text-success font-mono">done</span>
+                                                    </div>
+                                                    <p class="text-[12px] text-text-secondary mt-0.5 leading-relaxed">{step.description}</p>
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {:catch}
+                                <div class="text-danger text-[13px]">Failed to load execution plan.</div>
+                            {/await}
                         {:else}
                             <div class="text-text-secondary text-[13px] flex items-center justify-center gap-2 mt-10">
                                 <IconCode size={16} />
                                 <span>{activeArtifact.mime_type} preview not supported yet.</span>
                             </div>
                         {/if}
+
                     </div>
                 </div>
             {/if}

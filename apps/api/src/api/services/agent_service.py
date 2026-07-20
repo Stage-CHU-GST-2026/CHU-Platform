@@ -1,6 +1,16 @@
-"""Wraps the Data Analyst agent and handles prompt construction."""
+"""Wraps the Data Analyst agent and handles prompt construction.
+
+Supports two streaming modes:
+- **Orchestrated** (default): Plan → Execute steps → Synthesize.
+  Streams plan, step_started, step_update, step_finished, token,
+  image, artifact, and done events.
+- **Legacy** (fast path for simple queries): Direct LLM streaming
+  with token, image, artifact, and done events.
+"""
 
 from __future__ import annotations
+
+from typing import AsyncGenerator
 
 from langchain_core.messages import AIMessageChunk, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
@@ -8,15 +18,20 @@ from langgraph.store.base import BaseStore
 
 from agents.data_analyst import create_data_analyst
 from ai import Agent
+from ai.orchestrator import Orchestrator
 from tools.visualization.visualization import CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
 
 
 class AgentService:
-    """Thin wrapper around the Data Analyst agent.
+    """Wrapper around the Data Analyst agent with orchestrator support.
 
     Accepts a pluggable checkpointer so memory backends can be
     swapped (InMemory ↔ Postgres) without changing the service code.
+
+    For complex analytical queries, uses the Orchestrator to plan,
+    execute step-by-step, and synthesize findings. For simple
+    questions, falls back to direct LLM streaming.
     """
 
     def __init__(
@@ -28,6 +43,7 @@ class AgentService:
             checkpointer=checkpointer,
             store=store,
         )
+        self._orchestrator = Orchestrator(self._agent, self._agent.config)
 
     @property
     def agent(self) -> Agent:
@@ -39,13 +55,47 @@ class AgentService:
             return f"[Dataset: {dataset_path}]\n{message}"
         return message
 
-    async def stream(self, message: str, thread_id: str, dataset_path: str | None = None):
-        """Stream agent tokens and chart URLs for a given message and thread.
+    async def stream(
+        self,
+        message: str,
+        thread_id: str,
+        dataset_path: str | None = None,
+    ) -> AsyncGenerator[tuple[str, str | dict], None]:
+        """Stream agent events for a given message and thread.
 
-        Yields either:
-          ("token", text)      — a text token to append to the assistant message
-          ("image", url)       — a chart URL to render inline
-          ("artifact", json)   — plan artifact metadata JSON
+        Uses the orchestrator for complex queries (plan → execute →
+        synthesize) with step-level progress events. Falls back to
+        direct LLM streaming for simple questions.
+
+        Yields:
+            ("plan", json)           — execution plan (list of steps)
+            ("step_started", json)   — {id, title, description, tool_hint}
+            ("step_update", str)     — progress message within a step
+            ("step_finished", json)  — {id}
+            ("token", str)           — text token (final synthesis)
+            ("image", str)           — chart URL to render inline
+            ("artifact", json)       — plan artifact metadata JSON
+            ("done", str)            — stream complete
+        """
+        prompt = self.build_prompt(message, dataset_path)
+
+        # Use the orchestrator for the full plan→execute→synthesize flow
+        async for event_type, data in self._orchestrator.stream(
+            message=prompt,
+            thread_id=thread_id,
+            dataset_path=dataset_path,
+        ):
+            yield (event_type, data)
+
+    async def stream_legacy(
+        self,
+        message: str,
+        thread_id: str,
+        dataset_path: str | None = None,
+    ) -> AsyncGenerator[tuple[str, str | dict], None]:
+        """Legacy streaming mode — direct LLM tokens without planning.
+
+        Useful as a fallback or for simple conversational turns.
         """
         prompt = self.build_prompt(message, dataset_path)
         async for chunk, metadata in self._agent.graph.astream(
@@ -53,22 +103,16 @@ class AgentService:
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
-            # Text tokens from the LLM — only yield from the "agent" node
-            # to avoid leaking the "summarize" node's output into the stream.
             if (
                 isinstance(chunk, AIMessageChunk)
                 and chunk.content
                 and metadata.get("langgraph_node") == "agent"
             ):
                 yield ("token", chunk.content)
-
-            # Tool results — inspect for chart URLs and artifact URLs
             elif isinstance(chunk, ToolMessage) and chunk.content:
                 content = str(chunk.content)
                 for line in content.splitlines():
                     if line.startswith(CHART_URL_PREFIX):
-                        url = line[len(CHART_URL_PREFIX):]
-                        yield ("image", url)
+                        yield ("image", line[len(CHART_URL_PREFIX):])
                     elif line.startswith(ARTIFACT_URL_PREFIX):
-                        metadata = line[len(ARTIFACT_URL_PREFIX):]
-                        yield ("artifact", metadata)
+                        yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])
