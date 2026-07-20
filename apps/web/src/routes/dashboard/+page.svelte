@@ -23,6 +23,11 @@
     }
 </script>
 
+<svelte:head>
+	<title>Dashboard | CHU Platform</title>
+	<meta name="description" content="Manage your data analytics, models, and workflows in the CHU Platform dashboard." />
+</svelte:head>
+
 <!-- Ambient Background Glow -->
 <div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden bg-bg">
     <div class="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-accent/5 blur-[120px] rounded-full mix-blend-screen opacity-60 animate-pulse-fade"></div>

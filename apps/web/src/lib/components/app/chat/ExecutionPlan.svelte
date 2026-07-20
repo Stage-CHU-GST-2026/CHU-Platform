@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { IconChevronDown, IconChevronRight, IconCheck, IconBrain } from '@tabler/icons-svelte';
+	import { IconChevronDown, IconChevronRight, IconCheck } from '@tabler/icons-svelte';
 	import type { PlanData, PlanStepData } from '$lib/api/chat';
 
 	interface Props {
@@ -43,14 +43,6 @@
 			onclick={() => (expanded = !expanded)}
 			aria-expanded={expanded}
 		>
-			<!-- Animated icon: spinner while running, brain when done -->
-			<span class="trigger-icon" class:done={allDone}>
-				{#if !allDone}
-					<span class="spinner" aria-hidden="true"></span>
-				{:else}
-					<IconBrain size={13} stroke={2} />
-				{/if}
-			</span>
 
 			<span class="trigger-label">
 				{#if !allDone}
@@ -144,33 +136,6 @@
 	.trigger:hover {
 		background: var(--color-surface);
 		color: var(--color-text-primary);
-	}
-
-	/* Spinner icon slot */
-	.trigger-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		flex-shrink: 0;
-		color: var(--color-blue);
-		transition: color 200ms ease;
-	}
-
-	.trigger-icon.done {
-		color: var(--color-success);
-	}
-
-	.spinner {
-		display: block;
-		width: 12px;
-		height: 12px;
-		border: 1.5px solid color-mix(in srgb, var(--color-blue) 25%, transparent);
-		border-top-color: var(--color-blue);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
 	}
 
 	.trigger-label {

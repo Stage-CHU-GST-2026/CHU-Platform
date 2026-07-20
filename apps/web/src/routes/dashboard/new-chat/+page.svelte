@@ -23,6 +23,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>New Chat | CHU Platform</title>
+	<meta name="description" content="Start a new conversation with the Data Analyst Agent." />
+</svelte:head>
+
 <!-- Ambient Background Glow -->
 <div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden bg-bg">
 	<div

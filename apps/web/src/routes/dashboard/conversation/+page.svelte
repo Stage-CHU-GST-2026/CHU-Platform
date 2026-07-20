@@ -288,6 +288,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Active Conversation | CHU Platform</title>
+	<meta name="description" content="Chat with the Data Analyst Agent to analyze your data." />
+</svelte:head>
+
 <div class="absolute inset-0 flex flex-col bg-canvas">
 	<!-- Chat History Area -->
 	<div
@@ -453,31 +458,27 @@
 	.prose-agent :global(table) {
 		width: 100%;
 		border-collapse: collapse;
-		margin: 0.85em 0;
+		margin: 1.25em 0;
 		font-size: 0.88em;
 	}
 
 	.prose-agent :global(th) {
-		background: var(--color-surface-elevated);
 		color: var(--color-text-secondary);
 		font-weight: 600;
 		text-align: left;
-		padding: 0.5em 0.8em;
-		border: 1px solid var(--color-border);
+		padding: 0.75em 0.5em;
+		border-bottom: 1.5px solid var(--color-border);
 		font-size: 0.85em;
 		letter-spacing: 0.01em;
 	}
 
 	.prose-agent :global(td) {
-		padding: 0.45em 0.8em;
-		border: 1px solid var(--color-border-subtle);
+		padding: 0.6em 0.5em;
+		border-bottom: 1px solid var(--color-border-subtle);
 		color: var(--color-text-primary);
 		font-size: 0.88em;
 	}
 
-	.prose-agent :global(tr:nth-child(even) td) {
-		background: var(--color-surface);
-	}
 
 	.prose-agent :global(blockquote) {
 		border-left: 2px solid var(--color-accent);
@@ -512,8 +513,11 @@
 
 	.prose-agent :global(hr) {
 		border: none;
-		border-top: 1px solid var(--color-border-subtle);
+		height: 1px;
+		background: var(--color-border);
+		opacity: 0.5;
 		margin: 1.4em 0;
+		color: transparent; /* Fix for tailwind color: inherit */
 	}
 
 	.prose-agent :global(em) {
