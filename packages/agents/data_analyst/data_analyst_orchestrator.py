@@ -20,7 +20,7 @@ from langgraph.graph import START, END, StateGraph
 
 from ai.agent import Agent
 from ai.models.config import AgentConfig
-from ai.planner import ExecutionPlan, PlanStep, generate_plan
+from .data_analyst_planner import ExecutionPlan, PlanStep, generate_plan
 from ai.logger import get_logger
 from ai.state import AgentState
 from analysis.charts import ChartArtifact
@@ -87,6 +87,7 @@ Do NOT dump all charts at the top. Charts must be embedded in the flow of the te
 
 # ── Orchestrator ───────────────────────────────────────────────────────
 
+
 class Orchestrator:
     """Coordinates the plan → execute → synthesize workflow via LangGraph.
 
@@ -132,7 +133,8 @@ class Orchestrator:
         try:
             plan = await generate_plan(original_message, self._config, dataset_path)
         except Exception as e:
-            logger.error("Plan generation failed, using fallback", error=str(e))
+            logger.error(
+                "Plan generation failed, using fallback", error=str(e))
             plan = self._fallback_plan()
 
         await self._emit("plan", json.dumps(plan.to_dict()))
@@ -145,7 +147,7 @@ class Orchestrator:
             "current_step": 0,
             "evidence": "",
             "generated_charts": [],
-            "run_id": run_id, 
+            "run_id": run_id,
         }
 
     async def _executor_node(self, state: AgentState, config: RunnableConfig) -> dict:
@@ -162,7 +164,8 @@ class Orchestrator:
         original_message = state.get("original_message", "")
         dataset_path = state.get("dataset_path")
 
-        logger.info("Phase 2: Executing step", step_id=step.id, title=step.title)
+        logger.info("Phase 2: Executing step",
+                    step_id=step.id, title=step.title)
         await self._emit("step_started", json.dumps(step.to_dict()))
 
         if step.tool_hint == "synthesis":
@@ -188,7 +191,8 @@ class Orchestrator:
         # chart lifecycle directive with the specific rationale so the step agent
         # knows what kind of chart to generate and why.
         if getattr(step, "needs_visualization", False):
-            rationale = getattr(step, "visualization_rationale", "") or "A chart would clarify the findings."
+            rationale = getattr(step, "visualization_rationale",
+                                "") or "A chart would clarify the findings."
             step_instruction += (
                 f"\n\n## Visualization Required\n"
                 f"{rationale}\n"
@@ -208,7 +212,8 @@ class Orchestrator:
         buffered_artifacts: list[ChartArtifact] = []
         buffered_plan_artifacts: list[str] = []
 
-        step_config = {"configurable": {"thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
+        step_config = {"configurable": {
+            "thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
 
         try:
             async for chunk, metadata in self._agent.graph.astream(
@@ -234,7 +239,8 @@ class Orchestrator:
                             # Parse the ChartArtifact JSON payload
                             raw_json = line[len(CHART_ARTIFACT_PREFIX):]
                             try:
-                                artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                                artifact = ChartArtifact.from_dict(
+                                    json.loads(raw_json))
                                 buffered_artifacts.append(artifact)
                                 # Emit image immediately so the UI can display inline
                                 await self._emit("image", artifact.api_url)
@@ -251,7 +257,8 @@ class Orchestrator:
                             url = line[len(CHART_URL_PREFIX):]
                             await self._emit("image", url)
                         elif line.startswith(ARTIFACT_URL_PREFIX):
-                            buffered_plan_artifacts.append(line[len(ARTIFACT_URL_PREFIX):])
+                            buffered_plan_artifacts.append(
+                                line[len(ARTIFACT_URL_PREFIX):])
 
             # Build evidence string: LLM narrative + inline chart summaries
             full_evidence = "".join(evidence_tokens)
@@ -322,9 +329,10 @@ class Orchestrator:
         )
         if dataset_path:
             user_message = f"[Dataset: {dataset_path}]\n{user_message}"
-            
+
         synthesis_prompt = SYNTHESIS_SYSTEM_PROMPT.format(evidence=evidence)
-        synth_config = {"configurable": {"thread_id": f"{thread_id}_synthesize"}}
+        synth_config = {"configurable": {
+            "thread_id": f"{thread_id}_synthesize"}}
 
         try:
             async for chunk, metadata in self._agent.graph.astream(
@@ -350,7 +358,8 @@ class Orchestrator:
                         if line.startswith(CHART_ARTIFACT_PREFIX):
                             raw_json = line[len(CHART_ARTIFACT_PREFIX):]
                             try:
-                                artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                                artifact = ChartArtifact.from_dict(
+                                    json.loads(raw_json))
                                 await self._emit("image", artifact.api_url)
                                 await self._emit("chart_artifact", artifact.to_dict())
                             except Exception as parse_err:
@@ -365,9 +374,8 @@ class Orchestrator:
         except Exception as e:
             logger.error("Synthesis failed", error=str(e))
             await self._emit("token", f"\n\n*Error generating final report: {str(e)}*")
-            
-        return {}
 
+        return {}
 
     async def stream(
         self,
@@ -387,7 +395,7 @@ class Orchestrator:
         inputs = {
             "original_message": message,
             "dataset_path": dataset_path,
-            "messages": [], 
+            "messages": [],
             "summary": "",
             "plan": None,
             "evidence": "",
@@ -420,7 +428,7 @@ class Orchestrator:
 
     def _fallback_plan(self) -> ExecutionPlan:
         """Return a minimal fallback plan when planning fails."""
-        from ai.planner import PlanStep
+        from .data_analyst_planner import PlanStep
         return ExecutionPlan(
             title="Analysis",
             steps=[
@@ -461,7 +469,8 @@ class Orchestrator:
                     if line.startswith(CHART_ARTIFACT_PREFIX):
                         raw_json = line[len(CHART_ARTIFACT_PREFIX):]
                         try:
-                            artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                            artifact = ChartArtifact.from_dict(
+                                json.loads(raw_json))
                             yield ("image", artifact.api_url)
                             yield ("chart_artifact", artifact.to_dict())
                         except Exception:

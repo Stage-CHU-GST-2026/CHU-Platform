@@ -18,9 +18,8 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.base import BaseStore
 
-from agents.data_analyst import create_data_analyst
+from agents.data_analyst import create_data_analyst, Orchestrator
 from ai import Agent
-from ai.orchestrator import Orchestrator
 from analysis.charts import ChartArtifact
 from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
