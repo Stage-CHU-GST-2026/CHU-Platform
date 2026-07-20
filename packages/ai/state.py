@@ -1,3 +1,4 @@
+import operator
 from typing import Annotated, Any
 
 from langgraph.graph.message import add_messages
@@ -10,6 +11,8 @@ class AgentState(TypedDict):
     summary: str
     # ── Orchestrator fields ─────────────────────────────────────────
     plan: dict | None          # The execution plan (serialized ExecutionPlan)
-    evidence: str              # Accumulated evidence from executed steps
-    # Index of the currently executing step (0-based)
-    current_step: int
+    evidence: Annotated[str, operator.add] # Accumulated evidence from executed steps
+    current_step: int          # Index of the currently executing step (0-based)
+    original_message: str      # The user's original request
+    dataset_path: str | None   # Optional dataset path
+    run_id: str                # Unique ID for the current execution run
