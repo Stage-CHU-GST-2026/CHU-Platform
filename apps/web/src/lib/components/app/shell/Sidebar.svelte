@@ -17,6 +17,7 @@
 		IconLoader2,
 		IconSettings
 	} from '@tabler/icons-svelte';
+	import { base } from '$app/paths';
 
 	const currentPath = $derived($page.url.pathname);
 	const activeConvId = $derived($page.url.searchParams.get('id'));
@@ -71,14 +72,16 @@
 	}
 </script>
 
-<aside class="sidebar bg-sidebar border-r border-border flex flex-col z-[var(--z-sidebar)] w-full h-screen">
+<aside
+	class="sidebar bg-sidebar border-r border-border flex flex-col z-[var(--z-sidebar)] w-full h-screen"
+>
 	<!-- Header: New Conversation button -->
 	<div class="pt-6 px-4 pb-5 shrink-0 border-b border-border">
-		<button
+		<a
+			href="{base}/dashboard/new-chat"
 			class="btn btn-secondary w-full !rounded-[10px] !py-[10px] {app.sidebarCollapsed
 				? '!justify-center !px-0'
 				: '!justify-start !px-3'}"
-			onclick={newConversation}
 		>
 			<div class="flex items-center justify-center shrink-0">
 				<IconPlus size={16} stroke={2} />
@@ -86,7 +89,7 @@
 			{#if !app.sidebarCollapsed}
 				New Conversation
 			{/if}
-		</button>
+		</a>
 	</div>
 
 	<!-- Nav -->

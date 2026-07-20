@@ -98,18 +98,18 @@ class AgentService:
         Useful as a fallback or for simple conversational turns.
         """
         prompt = self.build_prompt(message, dataset_path)
-        async for chunk, _metadata in self._agent.graph.astream(
+        async for chunk, metadata in self._agent.graph.astream(
             {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
-            # Text tokens from the LLM
+            # Text tokens from the LLM — only yield from the "agent" node
+            # to avoid leaking the "summarize" node's output into the stream.
             if (
                 isinstance(chunk, AIMessageChunk)
                 and chunk.content
-                and _metadata.get("langgraph_node") == "agent"
+                and metadata.get("langgraph_node") == "agent"
             ):
-
                 yield ("token", chunk.content)
             elif isinstance(chunk, ToolMessage) and chunk.content:
                 content = str(chunk.content)
