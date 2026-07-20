@@ -1,15 +1,32 @@
 <script lang="ts">
     import { marked } from 'marked';
     import { browser } from '$app/environment';
-    import { IconSparkles } from '@tabler/icons-svelte';
+    import ExecutionPlan from './ExecutionPlan.svelte';
+    import type { PlanData } from '$lib/api/chat';
+    import { IconCopy, IconRefresh, IconCheck } from '@tabler/icons-svelte';
 
     interface Props {
         role: 'user' | 'assistant';
         content: string;
         streaming?: boolean;
+        // Plan data — only set on assistant messages that ran the orchestrator
+        plan?: PlanData;
+        completedSteps?: Set<number>;
+        activeStepId?: number | null;
+        activeStepMessage?: string;
+        onregenerate?: () => void;
     }
 
-    let { role, content, streaming = false } = $props<Props>();
+    let {
+        role,
+        content,
+        streaming = false,
+        plan,
+        completedSteps = new Set(),
+        activeStepId = null,
+        activeStepMessage = '',
+        onregenerate
+    } = $props<Props>();
 
     // Configure marked for clean output
     marked.setOptions({ breaks: true, gfm: true });
@@ -33,22 +50,48 @@
     }
 
     let tokens = $derived(content ? marked.lexer(content) : []);
+
+    const hasPlan = $derived(!!plan);
+    const hasContent = $derived(!!content);
+
+    let copied = $state(false);
+    function copyText() {
+        if (!browser) return;
+        navigator.clipboard.writeText(content);
+        copied = true;
+        setTimeout(() => copied = false, 2000);
+    }
 </script>
 
-<div class="msg-row {role}">
+<div class="msg-row {role} group">
     <div class="msg-bubble {role}">
         {#if role === 'user'}
             <div class="whitespace-pre-wrap">{content}</div>
         {:else}
-            <!-- Assistant styling -->
+            <!-- Assistant meta line -->
             <div class="msg-meta">
                 <span>Data Analyst Agent</span>
                 <span>·</span>
-                <span>{streaming ? 'thinking…' : 'done'}</span>
+                <span>{streaming ? 'working…' : 'done'}</span>
             </div>
 
-            {#if !content && streaming}
-                <!-- Typing indicator before first token -->
+            <!-- Execution plan block (sits at the top of the bubble) -->
+            {#if hasPlan}
+                <ExecutionPlan
+                    {plan}
+                    {completedSteps}
+                    {activeStepId}
+                    {activeStepMessage}
+                />
+                <!-- Divider only shown once content starts streaming in -->
+                {#if hasContent}
+                    <div class="plan-divider"></div>
+                {/if}
+            {/if}
+
+            <!-- Streamed content -->
+            {#if !content && streaming && !hasPlan}
+                <!-- Typing indicator before first token (no plan) -->
                 <span class="inline-flex gap-[5px] items-center h-5 mt-1">
                     <span class="typing-dot" style="animation-delay: 0ms"></span>
                     <span class="typing-dot" style="animation-delay: 160ms"></span>
@@ -62,6 +105,32 @@
                             {@html renderMd(token.raw)}
                         </div>
                     {/each}
+                </div>
+            {/if}
+
+            <!-- Actions Bar -->
+            {#if !streaming}
+                <div class="flex items-center justify-end gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                        class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+                        title="Copy response"
+                        onclick={copyText}
+                    >
+                        {#if copied}
+                            <IconCheck size={15} stroke={2} class="text-success" />
+                        {:else}
+                            <IconCopy size={15} stroke={1.5} />
+                        {/if}
+                    </button>
+                    {#if onregenerate}
+                        <button 
+                            class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+                            title="Regenerate response"
+                            onclick={onregenerate}
+                        >
+                            <IconRefresh size={15} stroke={1.5} />
+                        </button>
+                    {/if}
                 </div>
             {/if}
         {/if}
@@ -84,5 +153,11 @@
         40%            { transform: translateY(-4px); opacity: 0.9; }
     }
 
-
+    /* Separator between the thinking block and the synthesized response */
+    .plan-divider {
+        height: 1px;
+        background: var(--color-border-subtle);
+        margin: 10px 0 12px;
+        border-radius: 999px;
+    }
 </style>

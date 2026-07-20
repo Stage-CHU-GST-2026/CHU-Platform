@@ -9,7 +9,11 @@
 		createConversation,
 		getConversation,
 		listArtifacts,
-		type ChatMessage
+		fetchPlanFromArtifact,
+		PLAN_MIME_TYPE,
+		type ChatMessage,
+		type PlanData,
+		type Artifact
 	} from '$lib/api/chat';
 	import { refreshConversations } from '$lib/stores/conversations';
 	import { app } from '$lib/state/app.svelte';
@@ -19,15 +23,17 @@
 	import ChatBubble from '$lib/components/app/chat/ChatBubble.svelte';
 	import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
 	import PlanCard from '$lib/components/app/chat/PlanCard.svelte';
-	import type { Artifact } from '$lib/api/chat';
 
 	// ── State ────────────────────────────────────────────────────────────
 	interface Message {
 		role: 'user' | 'assistant';
 		content: string;
 		streaming?: boolean;
-		/** If set, this message is rendered as a PlanCard instead of a ChatBubble. */
 		artifact?: Artifact;
+		plan?: PlanData;
+		completedSteps?: Set<number>;
+		activeStepId?: number | null;
+		activeStepMessage?: string;
 	}
 
 	let messages = $state<Message[]>([]);
@@ -36,6 +42,16 @@
 	let isStreaming = $state(false);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+
+	// ── Helpers ─────────────────────────────────────────────────────────
+	/** Force Svelte 5 to notice a deep mutation by touching the array.
+	 *  Svelte 5 proxies detect property writes on array elements, but
+	 *  only if they go through the proxied reference.  As a safety net,
+	 *  we reassign the array to itself after deep mutations — this is
+	 *  a no-op identity-wise but tells the Svelte runtime to re-check. */
+	function touch() {
+		messages = messages;
+	}
 
 	let scrollEl = $state<HTMLDivElement | null>(null);
 	let isAutoScrolling = $state(true);
@@ -59,10 +75,34 @@
 		try {
 			const conv = await getConversation(id);
 			conversationId = id;
-			messages = conv.messages.map((m: ChatMessage) => ({
+
+			// Build message list from stored messages
+			const loaded: Message[] = conv.messages.map((m: ChatMessage) => ({
 				role: m.role as 'user' | 'assistant',
 				content: m.content
 			}));
+
+			// ── Reconstruct execution plan — attach it to the last assistant message ──
+			const planArtifact = (conv.artifacts || []).find(
+				(a: Artifact) => a.mime_type === PLAN_MIME_TYPE
+			);
+			if (planArtifact) {
+				const plan = await fetchPlanFromArtifact(planArtifact);
+				if (plan) {
+					// Find the last assistant message and embed the plan there.
+					for (let i = loaded.length - 1; i >= 0; i--) {
+						if (loaded[i].role === 'assistant') {
+							loaded[i].plan = plan;
+							loaded[i].completedSteps = new Set(plan.steps.map((s) => s.id));
+							loaded[i].activeStepId = null;
+							loaded[i].activeStepMessage = '';
+							break;
+						}
+					}
+				}
+			}
+
+			messages = loaded;
 			app.activeArtifacts = conv.artifacts || [];
 			await tick();
 			scrollToBottom();
@@ -102,6 +142,16 @@
 		submit();
 	}
 
+	function regenerate(index: number) {
+		if (isStreaming || index === 0) return;
+		// Find the previous user message
+		const prevMsg = messages[index - 1];
+		if (prevMsg && prevMsg.role === 'user') {
+			input = prevMsg.content;
+			submit();
+		}
+	}
+
 	// ── Send message ───────────────────────────────────────────────────
 	async function submit() {
 		const text = input.trim();
@@ -111,12 +161,20 @@
 		input = '';
 		await tick();
 
-		// Add user bubble immediately
+		// Push user bubble
 		messages.push({ role: 'user', content: text });
 
-		// Add empty streaming assistant slot
-		const assistantIdx = messages.length;
-		messages.push({ role: 'assistant', content: '', streaming: true });
+		// Single assistant slot — plan data will be set inline on this same message.
+		const streamIdx = messages.length;
+		messages.push({
+			role: 'assistant',
+			content: '',
+			streaming: true,
+			plan: undefined,
+			completedSteps: new Set<number>(),
+			activeStepId: null,
+			activeStepMessage: ''
+		});
 
 		isStreaming = true;
 		isAutoScrolling = true;
@@ -124,49 +182,78 @@
 		scrollToBottom();
 
 		try {
-			// Create a new conversation if we don't have one yet
 			if (!conversationId) {
 				const conv = await createConversation();
 				conversationId = conv.id;
-				// Update URL without full navigation
 				goto(`/dashboard/conversation?id=${conv.id}`, { replaceState: true, noScroll: true });
-				// Tell the sidebar to refresh
 				refreshConversations();
 			}
 
 			await sendMessage(conversationId, text, {
 				onToken(token) {
-					messages[assistantIdx].content += token;
-					messages = messages;
+					if (streamIdx < messages.length) {
+						messages[streamIdx].content += token;
+						touch();
+					}
 					scrollToBottom();
 				},
 				onArtifact(artifact) {
-					// Generate a temporary ID for real-time rendering;
-					// the real DB id will be populated on page reload.
-					const planArtifact = {
+					const a = {
 						...artifact,
 						id: artifact.id || crypto.randomUUID(),
 						conversation_id: artifact.conversation_id || conversationId || '',
 						created_at: artifact.created_at || new Date().toISOString()
 					};
-					// Add to ArtifactPanel store
-					app.activeArtifacts = [...app.activeArtifacts, planArtifact];
-					// Insert a PlanCard message after the streaming slot
-					messages.push({
-						role: 'assistant',
-						content: '',
-						artifact: planArtifact,
-						streaming: false
-					});
-					messages = messages;
+					app.activeArtifacts = [...app.activeArtifacts, a];
+					messages.push({ role: 'assistant', content: '', artifact: a, streaming: false });
+					touch();
+				},
+				onPlan(plan) {
+					// Embed the plan directly in the streaming message — no separate row.
+					if (streamIdx < messages.length) {
+						messages[streamIdx].plan = plan;
+						messages[streamIdx].completedSteps = new Set();
+						touch();
+						scrollToBottom();
+					}
+				},
+				onStepStarted(step) {
+					if (streamIdx >= messages.length) return;
+					messages[streamIdx].activeStepId = step.id;
+					messages[streamIdx].activeStepMessage = step.description;
+					touch();
+					scrollToBottom();
+				},
+				onStepUpdate(msgText) {
+					if (streamIdx >= messages.length) return;
+					messages[streamIdx].activeStepMessage = msgText;
+					touch();
+					scrollToBottom();
+				},
+				onStepFinished(stepId) {
+					if (streamIdx >= messages.length) return;
+					const m = messages[streamIdx];
+					m.completedSteps = new Set([...(m.completedSteps ?? []), stepId]);
+					if (m.activeStepId === stepId) {
+						m.activeStepId = null;
+						m.activeStepMessage = '';
+					}
+					touch();
+					scrollToBottom();
 				},
 				async onDone() {
-					messages[assistantIdx].streaming = false;
-					messages = messages;
+					if (streamIdx < messages.length) {
+						const m = messages[streamIdx];
+						m.streaming = false;
+						if (m.plan) {
+							m.completedSteps = new Set(m.plan.steps.map((s) => s.id));
+							m.activeStepId = null;
+							m.activeStepMessage = '';
+						}
+					}
+					touch();
 					isStreaming = false;
-					// Refresh sidebar so updated title/timestamp shows
 					refreshConversations();
-					// Check for new artifacts
 					if (conversationId) {
 						try {
 							app.activeArtifacts = await listArtifacts(conversationId);
@@ -176,24 +263,25 @@
 					}
 				},
 				onError(err) {
-					messages[assistantIdx].streaming = false;
-					messages[assistantIdx].content =
-						messages[assistantIdx].content || '_Error receiving response._';
-					messages = messages;
+					if (streamIdx < messages.length) {
+						messages[streamIdx].streaming = false;
+						messages[streamIdx].content =
+							messages[streamIdx].content || '_Error receiving response._';
+					}
+					touch();
 					error = err.message;
 					isStreaming = false;
 				}
 			});
 
-			// Fallback: end streaming if connection closed without explicit 'done'
 			if (isStreaming) {
-				messages[assistantIdx].streaming = false;
-				messages = messages;
+				if (streamIdx < messages.length) messages[streamIdx].streaming = false;
+				touch();
 				isStreaming = false;
 			}
 		} catch (err) {
-			messages[assistantIdx].streaming = false;
-			messages = messages;
+			if (streamIdx < messages.length) messages[streamIdx].streaming = false;
+			touch();
 			error = err instanceof Error ? err.message : 'Unknown error';
 			isStreaming = false;
 		}
@@ -221,7 +309,16 @@
 				{#if msg.artifact}
 					<PlanCard planArtifact={msg.artifact} onproceed={() => proceedWithPlan(msg.artifact!)} />
 				{:else}
-					<ChatBubble role={msg.role} content={msg.content} streaming={msg.streaming} />
+					<ChatBubble
+						role={msg.role}
+						content={msg.content}
+						streaming={msg.streaming}
+						plan={msg.plan}
+						completedSteps={msg.completedSteps ?? new Set()}
+						activeStepId={msg.activeStepId ?? null}
+						activeStepMessage={msg.activeStepMessage ?? ''}
+						onregenerate={msg.role === 'assistant' && i > 0 ? () => regenerate(i) : undefined}
+					/>
 				{/if}
 			{/each}
 
