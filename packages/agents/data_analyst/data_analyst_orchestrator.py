@@ -29,61 +29,17 @@ from tools.planning import ARTIFACT_URL_PREFIX
 
 logger = get_logger(__name__)
 
-# ── Step-specific prompts ──────────────────────────────────────────────
+from pathlib import Path
 
-STEP_SYSTEM_PROMPT = """You are an expert data analyst executing a specific step in an analysis plan.
+# ── Prompts ────────────────────────────────────────────────────────────
 
-## Current Task
-{step_title}: {step_description}
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-## Context
-This is step {step_id} of a multi-step analysis. Focus ONLY on this step.
-Do NOT try to do everything at once. Other steps will handle other tasks.
+with open(_PROMPTS_DIR / "step_prompt.md") as f:
+    STEP_SYSTEM_PROMPT = f.read()
 
-## Rules
-- Use the available tools to gather evidence for this specific step.
-- VERY IMPORTANT: Call tools sequentially. Do NOT call the same tool or multiple tools in parallel.
-- Be thorough but focused.
-- Report what you found clearly and concisely.
-- If a tool call fails, note it and move on.
-- Do NOT make a plan or list next steps — just execute this step.
-
-## Chart Lifecycle (when this step requires visualization)
-1. COMPUTE FIRST — run the relevant statistics or aggregation tool.
-2. DECIDE — would a chart add information the numbers alone cannot convey?
-3. INSIGHT FIRST — form a 1-2 sentence interpretation of what the chart will show.
-4. GENERATE — call generate_chart with the insight in the `insight` parameter.
-5. REFERENCE — mention the chart by title in your narrative.
-Never generate a chart without first computing the underlying data.
-Never generate a chart without providing a meaningful insight."""
-
-SYNTHESIS_SYSTEM_PROMPT = """You are an expert data analyst writing a final analytical report.
-
-## Evidence Manifest
-All analysis steps have been completed. The evidence below contains statistics,
-findings, and chart references gathered step by step. Chart references appear as:
-    [Chart: <Title> (<type>) | Columns: <cols> | Insight: <insight>]
-    Markdown: ![<Title>](<api_url>)
-
-## Evidence
-{evidence}
-
-## Report Structure
-Write a professional, research-paper-style report. For each analytical section:
-
-1. Open with a paragraph describing the findings (cite specific numbers).
-2. Embed the chart's Markdown exactly where it is most relevant.
-3. Provide the interpretation and business impact.
-
-Do NOT dump all charts at the top. Charts must be embedded in the flow of the text where they are discussed, exactly like Figures in a scientific paper.
-
-## Hard Rules
-- Every conclusion MUST be traceable to evidence above.
-- Never fabricate statistics or trends not present in the evidence.
-- When referencing a chart, you MUST output its EXACT Markdown image tag.
-- Use markdown: headings, tables, lists, inline code.
-- Do NOT call any more tools — just write the final report.
-- If evidence for any section is insufficient, explicitly say so."""
+with open(_PROMPTS_DIR / "synthesis_prompt.md") as f:
+    SYNTHESIS_SYSTEM_PROMPT = f.read()
 
 # ── Orchestrator ───────────────────────────────────────────────────────
 
