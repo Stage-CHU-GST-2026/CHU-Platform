@@ -103,8 +103,6 @@ class AgentService:
             stream_mode="messages",
             config={"configurable": {"thread_id": thread_id}},
         ):
-            # Text tokens from the LLM — only yield from the "agent" node
-            # to avoid leaking the "summarize" node's output into the stream.
             if (
                 isinstance(chunk, AIMessageChunk)
                 and chunk.content
