@@ -35,14 +35,36 @@
 		return html;
 	}
 
-	let expandedSteps = $state(new Set<number>());
+	// Steps the user has explicitly toggled closed (active steps) or open (done steps)
+	let closedByUser = $state(new Set<number>());
+	let openedByUser = $state(new Set<number>());
+
 	function toggleStep(id: number) {
-		if (expandedSteps.has(id)) {
-			expandedSteps.delete(id);
+		// console.log('[toggleStep] id=', id, 'stepMessages=', stepMessages, 'openedByUser=', openedByUser);
+		const status = stepStatus(plan.steps.find((s) => s.id === id)!);
+		if (status === 'active') {
+			if (closedByUser.has(id)) {
+				closedByUser = new Set([...closedByUser].filter((x) => x !== id));
+			} else {
+				closedByUser = new Set([...closedByUser, id]);
+			}
 		} else {
-			expandedSteps.add(id);
+			if (openedByUser.has(id)) {
+				openedByUser = new Set([...openedByUser].filter((x) => x !== id));
+			} else {
+				openedByUser = new Set([...openedByUser, id]);
+			}
 		}
-		expandedSteps = expandedSteps;
+	}
+
+	function isStepExpanded(step: PlanStepData): boolean {
+		const status = stepStatus(step);
+		if (status === 'active') {
+			// Open by default unless user explicitly closed it
+			return !closedByUser.has(step.id);
+		}
+		// Done/pending: closed by default unless user opened it
+		return openedByUser.has(step.id);
 	}
 
 	// Auto-expand while running, auto-collapse when done
@@ -105,7 +127,7 @@
 			<div class="step-track">
 				{#each plan.steps as step (step.id)}
 					{@const status = stepStatus(step)}
-					{@const isExpanded = expandedSteps.has(step.id) || status === 'active'}
+					{@const stepExpanded = isStepExpanded(step)}
 
 					<div class="step-row" class:active={status === 'active'} class:done={status === 'done'}>
 						<!-- Timeline node -->
@@ -125,12 +147,12 @@
 								class="step-title-btn"
 								class:muted={status === 'pending'}
 								onclick={() => toggleStep(step.id)}
-								disabled={!stepMessages[step.id] && status !== 'active'}
+								disabled={!stepMessages[step.id] && status === 'pending'}
 							>
 								<span class="step-title">{step.title}</span>
 								{#if stepMessages[step.id] || status === 'active'}
 									<span class="step-toggle-icon">
-										{#if expandedSteps.has(step.id) || (status === 'active' && !expandedSteps.has(step.id))}
+										{#if stepExpanded}
 											<IconChevronDown size={14} />
 										{:else}
 											<IconChevronRight size={14} />
@@ -139,7 +161,7 @@
 								{/if}
 							</button>
 
-							{#if isExpanded && stepMessages[step.id]}
+							{#if stepExpanded && stepMessages[step.id]}
 								<div class="step-message prose-agent md-small">
 									{@html renderMd(stepMessages[step.id])}
 								</div>

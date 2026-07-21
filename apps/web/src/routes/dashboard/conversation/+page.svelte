@@ -33,7 +33,7 @@
 		plan?: PlanData;
 		completedSteps?: Set<number>;
 		activeStepId?: number | null;
-		activeStepMessage?: string;
+		stepMessages?: Record<number, string>; // persistent per-step content
 	}
 
 	let messages = $state<Message[]>([]);
@@ -173,7 +173,7 @@
 			plan: undefined,
 			completedSteps: new Set<number>(),
 			activeStepId: null,
-			activeStepMessage: ''
+			stepMessages: {}
 		});
 
 		isStreaming = true;
@@ -220,18 +220,21 @@
 				onStepStarted(step) {
 					if (streamIdx >= messages.length) return;
 					messages[streamIdx].activeStepId = step.id;
-					messages[streamIdx].activeStepMessage = ''; // clear previous step's text
 					touch();
 					scrollToBottom();
 				},
 				onStepUpdate(msgText) {
 					if (streamIdx >= messages.length) return;
-					// Accumulate tokens so streaming text builds up in the step card.
-					// onStepUpdate receives both step_token chunks (many, small) and
-					// step_update status strings (few, complete). We always append so
-					// tokens stream naturally without overwriting each other.
-					messages[streamIdx].activeStepMessage =
-						(messages[streamIdx].activeStepMessage ?? '') + msgText;
+					const m = messages[streamIdx];
+					const sid = m.activeStepId;
+					console.log('[StepUpdate] sid=', sid, 'text=', msgText?.slice(0, 40));
+					if (sid == null) return;
+					// Create a NEW object so Svelte's proxy detects the change.
+					const prev = m.stepMessages ?? {};
+					messages[streamIdx].stepMessages = {
+						...prev,
+						[sid]: (prev[sid] ?? '') + msgText
+					};
 					touch();
 					scrollToBottom();
 				},
@@ -241,7 +244,6 @@
 					m.completedSteps = new Set([...(m.completedSteps ?? []), stepId]);
 					if (m.activeStepId === stepId) {
 						m.activeStepId = null;
-						m.activeStepMessage = '';
 					}
 					touch();
 					scrollToBottom();
@@ -326,7 +328,7 @@
 						plan={msg.plan}
 						completedSteps={msg.completedSteps ?? new Set()}
 						activeStepId={msg.activeStepId ?? null}
-						activeStepMessage={msg.activeStepMessage ?? ''}
+						stepMessages={msg.stepMessages ?? {}}
 						onregenerate={msg.role === 'assistant' && i > 0 ? () => regenerate(i) : undefined}
 					/>
 				{/if}
