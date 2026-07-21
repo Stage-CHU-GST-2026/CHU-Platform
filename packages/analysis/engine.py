@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import pandas as pd
 
 from .profiler import ProfileResult, profile
@@ -213,6 +215,124 @@ class AnalysisEngine:
         lower = q1 - factor * iqr
         upper = q3 + factor * iqr
         return df[(df[column] < lower) | (df[column] > upper)].copy()
+
+    # ------------------------------------------------------------------
+    # SQL
+    # ------------------------------------------------------------------
+
+    def _ensure_sql_registered(self) -> None:
+        """Register all loaded DataFrames with the DuckDB connection."""
+        self._sql_conn = duckdb.connect()  # in-memory, recreated each time
+        for abs_path, df in self._loaded.items():
+            table_name = Path(abs_path).stem.replace(".", "_").replace("-", "_")
+            self._sql_conn.register(table_name, df)
+
+    def sql_tables(self) -> str:
+        """List all tables available for SQL querying (loaded datasets)."""
+        self._ensure_sql_registered()
+        tables = self._sql_conn.execute("SHOW TABLES").fetchall()
+        if not tables:
+            return (
+                "No datasets loaded. Use `describe_dataset` or another tool "
+                "first to load a dataset, then you can query it with SQL."
+            )
+        lines = ["Tables available for SQL queries:\n"]
+        for (table_name,) in tables:
+            # Resolve which file this table came from
+            for abs_path in self._loaded:
+                if Path(abs_path).stem.replace(".", "_").replace("-", "_") == table_name:
+                    lines.append(
+                        f"  📊 {table_name}  ←  {Path(abs_path).name}  "
+                        f"({len(self._loaded[abs_path]):,} rows × "
+                        f"{len(self._loaded[abs_path].columns)} cols)"
+                    )
+                    break
+            else:
+                lines.append(f"  📊 {table_name}")
+        return "\n".join(lines)
+
+    def sql_schema(self, table: str) -> str:
+        """Return the schema (columns + types) for a registered table."""
+        self._ensure_sql_registered()
+        try:
+            result = self._sql_conn.execute(
+                f"DESCRIBE {table}"
+            ).fetchall()
+        except Exception as e:
+            available = [Path(p).stem.replace(".", "_").replace("-", "_")
+                         for p in self._loaded]
+            return (
+                f"Table '{table}' not found.\n"
+                f"Available tables: {', '.join(available) if available else '(none)'}\n"
+                f"Use `sql_tables` to list available tables.\n"
+                f"Error: {e}"
+            )
+        lines = [f"Schema for table '{table}':\n"]
+        lines.append(f"{'Column':30s} {'Type':15s} {'Nullable':>8}")
+        lines.append("-" * 55)
+        for col_name, col_type, nullable, *_ in result:
+            lines.append(
+                f"{col_name:30s} {col_type:15s} {str(nullable):>8}"
+            )
+        # Add row count
+        count = self._sql_conn.execute(
+            f"SELECT COUNT(*) FROM {table}"
+        ).fetchone()[0]
+        lines.append(f"\nTotal rows: {count:,}")
+        return "\n".join(lines)
+
+    def sql_query(self, query: str) -> str:
+        """Execute a SQL query against loaded datasets and return the result.
+
+        The query can use any loaded dataset as a table. Table names are
+        derived from filenames (dots/hyphens replaced with underscores).
+
+        Returns the result as a formatted text table (max 50 rows).
+        """
+        self._ensure_sql_registered()
+        try:
+            result = self._sql_conn.execute(query)
+            # Fetch up to 50 rows
+            rows = result.fetchmany(50)
+            if not rows:
+                # For non-SELECT queries (CREATE, INSERT, etc.)
+                return f"Query executed successfully.\n{result.description or ''}"
+
+            col_names = [desc[0] for desc in result.description]
+            buf = io.StringIO()
+
+            # Build a simple text table
+            # Calculate column widths
+            col_widths = [len(name) for name in col_names]
+            for row in rows:
+                for i, val in enumerate(row):
+                    col_widths[i] = max(col_widths[i], len(str(val)))
+
+            # Header
+            header = " | ".join(
+                name.ljust(col_widths[i]) for i, name in enumerate(col_names)
+            )
+            sep = "-+-".join("-" * w for w in col_widths)
+            buf.write(header + "\n")
+            buf.write(sep + "\n")
+
+            # Rows
+            for row in rows:
+                buf.write(
+                    " | ".join(
+                        str(val).ljust(col_widths[i]) for i, val in enumerate(row)
+                    )
+                    + "\n"
+                )
+
+            # Check if there are more rows
+            remaining = result.fetchone()
+            if remaining is not None:
+                buf.write(f"\n(Showing first 50 rows — query returned more results)")
+
+            return buf.getvalue()
+        except Exception as e:
+            return f"SQL error: {e}"
 
 
 # ------------------------------------------------------------------

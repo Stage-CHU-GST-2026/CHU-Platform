@@ -35,6 +35,11 @@ from tools.relationships import (
     OutlierDetectionTool,
 )
 from tools.visualization import GenerateChartTool, CorrelationHeatmapTool
+from tools.sql import (
+    SQLQueryTool,
+    SQLSchemaTool,
+    SQLTablesTool,
+)
 
 DATA_ANALYST_TOOLS = [
     # Discovery — call this first when no dataset is known
@@ -67,4 +72,8 @@ DATA_ANALYST_TOOLS = [
     # Visualization
     GenerateChartTool(),
     CorrelationHeatmapTool(),
+    # SQL
+    SQLQueryTool(),
+    SQLSchemaTool(),
+    SQLTablesTool(),
 ]

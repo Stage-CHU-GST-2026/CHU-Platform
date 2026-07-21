@@ -39,6 +39,11 @@ from .relationships import (
     OutlierDetectionTool,
 )
 from .visualization import GenerateChartTool, CorrelationHeatmapTool
+from .sql import (
+    SQLQueryTool,
+    SQLSchemaTool,
+    SQLTablesTool,
+)
 
 # ---------------------------------------------------------------------------
 # Register all tools so they can be discovered by name
@@ -73,6 +78,10 @@ _TOOL_CLASSES = [
     # Visualization
     GenerateChartTool,
     CorrelationHeatmapTool,
+    # SQL
+    SQLQueryTool,
+    SQLSchemaTool,
+    SQLTablesTool,
 ]
 
 for cls in _TOOL_CLASSES:
@@ -102,6 +111,9 @@ __all__ = [
     "OutlierDetectionTool",
     "GenerateChartTool",
     "CorrelationHeatmapTool",
+    "SQLQueryTool",
+    "SQLSchemaTool",
+    "SQLTablesTool",
     "TOOL_REGISTRY",
     "register_tool",
 ]
