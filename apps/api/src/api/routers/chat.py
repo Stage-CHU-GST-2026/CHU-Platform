@@ -13,10 +13,10 @@ from api.schemas.chat import (
     HistoryItem,
     HistoryResponse,
 )
-from api.services.session import SessionManager
+from api.services.session import session_manager
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-sessions = SessionManager()
+sessions = session_manager
 
 
 @router.post("/new", response_model=ChatNewResponse)

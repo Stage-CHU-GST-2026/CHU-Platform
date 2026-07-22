@@ -8,6 +8,7 @@ render a live step-progress UI.
 """
 
 from __future__ import annotations
+from pathlib import Path
 
 import json
 import uuid
@@ -29,7 +30,6 @@ from tools.planning import ARTIFACT_URL_PREFIX
 
 logger = get_logger(__name__)
 
-from pathlib import Path
 
 # ── Prompts ────────────────────────────────────────────────────────────
 
@@ -376,9 +376,23 @@ class Orchestrator:
                           "thank you", "ok", "okay", "yes", "no", "bye", "goodbye"}
         if msg in conversational:
             return True
-        meta_starts = ("what can you do", "how do you work",
-                       "who are you", "help")
-        if msg.startswith(meta_starts):
+
+        simple_starts = (
+            "what can you do", "how do you work",
+            "who are you", "help",
+            "what is my", "what's my",         # personal info (name, etc.)
+            "do you remember",                   # memory recall
+            "who am i",                          # identity
+            "what did we", "what was",           # conversation recall
+            "tell me about myself",              # personal summary
+            "my name is", "i am", "i'm",         # self-introductions
+            "nice to meet", "pleasure",          # pleasantries
+            "good morning", "good afternoon",    # time-based greetings
+            "good evening", "how are you",       # social
+            "how's it going", "what's up",       # casual
+            "see you", "talk to you later",      # farewells
+        )
+        if msg.startswith(simple_starts):
             return True
         return False
 

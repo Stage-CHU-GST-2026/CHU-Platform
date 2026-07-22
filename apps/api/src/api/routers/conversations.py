@@ -26,11 +26,11 @@ from api.schemas.conversation import (
     MessageItem,
     UpdateConversationRequest,
 )
-from api.services.session import SessionManager
+from api.services.session import session_manager
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
-sessions = SessionManager()
+sessions = session_manager
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -278,7 +278,8 @@ async def chat_in_conversation(
                 # The image event is always emitted alongside this, but we guard
                 # against duplication so double-registration cannot occur.
                 try:
-                    art_data = data if isinstance(data, dict) else json.loads(str(data))
+                    art_data = data if isinstance(
+                        data, dict) else json.loads(str(data))
                     url = art_data.get("api_url", "")
                     if url and url not in chart_urls:
                         chart_urls.append(url)

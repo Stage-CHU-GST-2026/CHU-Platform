@@ -15,7 +15,7 @@ from typing import AsyncGenerator
 import json
 
 from langchain_core.messages import AIMessageChunk, ToolMessage
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 
 from agents.data_analyst import create_data_analyst, Orchestrator
@@ -38,7 +38,7 @@ class AgentService:
 
     def __init__(
         self,
-        checkpointer: InMemorySaver | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         store: BaseStore | None = None,
     ) -> None:
         self._agent: Agent = create_data_analyst(
@@ -117,7 +117,8 @@ class AgentService:
                     if line.startswith(CHART_ARTIFACT_PREFIX):
                         raw_json = line[len(CHART_ARTIFACT_PREFIX):]
                         try:
-                            artifact = ChartArtifact.from_dict(json.loads(raw_json))
+                            artifact = ChartArtifact.from_dict(
+                                json.loads(raw_json))
                             yield ("image", artifact.api_url)
                             yield ("chart_artifact", artifact.to_dict())
                         except Exception:
