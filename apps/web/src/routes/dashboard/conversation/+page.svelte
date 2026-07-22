@@ -15,7 +15,7 @@
 		type PlanData,
 		type Artifact
 	} from '$lib/api/chat';
-	import { refreshConversations } from '$lib/stores/conversations';
+	import { convo } from '$lib/state/conversations.svelte';
 	import { app } from '$lib/state/app.svelte';
 	import { IconSparkles } from '@tabler/icons-svelte';
 	import ChatLoadingState from '$lib/components/app/chat/ChatLoadingState.svelte';
@@ -186,7 +186,7 @@
 				const conv = await createConversation();
 				conversationId = conv.id;
 				goto(`/dashboard/conversation?id=${conv.id}`, { replaceState: true, noScroll: true });
-				refreshConversations();
+				convo.refresh();
 			}
 
 			await sendMessage(conversationId, text, {
@@ -260,7 +260,7 @@
 					}
 					touch();
 					isStreaming = false;
-					refreshConversations();
+					convo.refresh();
 					if (conversationId) {
 						try {
 							app.activeArtifacts = await listArtifacts(conversationId);
@@ -383,24 +383,25 @@
 	.prose-agent :global(h2),
 	.prose-agent :global(h3),
 	.prose-agent :global(h4) {
+		font-family: 'Cormorant Garamond', serif;
 		color: var(--color-text-primary);
-		font-weight: 600;
+		font-weight: 700;
 		letter-spacing: -0.02em;
 		margin-top: 1.4em;
 		margin-bottom: 0.45em;
 		line-height: 1.3;
 	}
 	.prose-agent :global(h1) {
-		font-size: 1.1em;
+		font-size: 1.6em;
 	}
 	.prose-agent :global(h2) {
-		font-size: 1em;
+		font-size: 1.4em;
 	}
 	.prose-agent :global(h3) {
-		font-size: 0.95em;
+		font-size: 1.25em;
 	}
 	.prose-agent :global(h4) {
-		font-size: 0.9em;
+		font-size: 1.15em;
 		font-weight: 500;
 	}
 
@@ -435,7 +436,7 @@
 
 	.prose-agent :global(code) {
 		background: var(--color-surface-elevated);
-		color: var(--color-accent);
+		color: var(--color-text-secondary);
 		padding: 0.1em 0.38em;
 		border-radius: 5px;
 		font-family: var(--font-mono);
@@ -458,7 +459,7 @@
 		border: none;
 		padding: 0;
 		color: var(--color-text-primary);
-		font-size: 0.83em;
+		font-size: 0.9em;
 		letter-spacing: 0;
 	}
 
@@ -466,7 +467,7 @@
 		width: 100%;
 		border-collapse: collapse;
 		margin: 1.25em 0;
-		font-size: 0.88em;
+		font-size: 0.95em;
 	}
 
 	.prose-agent :global(th) {
@@ -475,7 +476,7 @@
 		text-align: left;
 		padding: 0.75em 0.5em;
 		border-bottom: 1.5px solid var(--color-border);
-		font-size: 0.85em;
+		font-size: 0.9em;
 		letter-spacing: 0.01em;
 	}
 
@@ -483,7 +484,7 @@
 		padding: 0.6em 0.5em;
 		border-bottom: 1px solid var(--color-border-subtle);
 		color: var(--color-text-primary);
-		font-size: 0.88em;
+		font-size: 0.95em;
 	}
 
 
@@ -504,7 +505,7 @@
 	}
 
 	.prose-agent :global(a) {
-		color: var(--color-accent);
+		color: var(--color-text-secondary);
 		text-decoration: underline;
 		text-underline-offset: 2px;
 		text-decoration-thickness: 1px;

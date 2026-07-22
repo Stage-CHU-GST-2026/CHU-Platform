@@ -9,6 +9,8 @@ class ConversationsState {
     artifactTab = $state<'output' | 'sources' | 'code' | 'files'>('output');
     searchQuery = $state('');
     pinned = $state<string[]>(['c1']);
+    /** Incremented to signal the sidebar to refresh its conversation list */
+    refreshTick = $state(0);
 
     get active(): Conversation | null {
         return this.all.find((c) => c.id === this.activeId) ?? null;
@@ -28,6 +30,10 @@ class ConversationsState {
 
     unpin(id: string) {
         this.pinned = this.pinned.filter((p) => p !== id);
+    }
+
+    refresh() {
+        this.refreshTick++;
     }
 
     async send(content: string): Promise<void> {

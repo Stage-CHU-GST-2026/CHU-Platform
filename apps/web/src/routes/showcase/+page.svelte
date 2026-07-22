@@ -153,7 +153,7 @@
 
 			<div class="mb-8 flex gap-3">
 				<button
-					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[22px] py-[10px] text-[13.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[22px] py-[10px] text-[13.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:brightness-[1.15] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
 					>Explore components</button
 				>
 				<button
@@ -252,7 +252,7 @@
 			</div>
 
 			<div class="mb-8 grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
-				{#each [{ name: 'Background', hex: '#121212', usage: 'App-level base layer' }, { name: 'Canvas', hex: '#181818', usage: 'Content area background' }, { name: 'Surface', hex: '#1A1A1A', usage: 'Cards, panels, table headers' }, { name: 'Elevated surface', hex: '#282828', usage: 'Popovers, active states' }, { name: 'Sidebar', hex: '#000000', usage: 'Navigation chrome' }, { name: 'Border', hex: '#2A2A2A', usage: 'Hairline dividers' }] as swatch}
+				{#each [{ name: 'Background', hex: '#0d1117', usage: 'App-level base layer' }, { name: 'Canvas', hex: '#161b22', usage: 'Content area background' }, { name: 'Surface', hex: '#21262d', usage: 'Cards, panels, table headers' }, { name: 'Elevated surface', hex: '#21262d', usage: 'Popovers, active states' }, { name: 'Sidebar', hex: '#000000', usage: 'Navigation chrome' }, { name: 'Border', hex: '#30363d', usage: 'Hairline dividers' }] as swatch}
 					<div
 						class="overflow-hidden rounded-radius-md border border-border bg-canvas transition-shadow hover:-translate-y-0.5 hover:shadow-shadow-md"
 					>
@@ -269,7 +269,7 @@
 			</div>
 
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
-				{#each [{ name: 'Primary green', hex: '#1DB954', usage: 'Actions — buttons, links, focus' }, { name: 'Accent indigo', hex: '#8D87FF', usage: 'AI — reserved exclusively' }, { name: 'Success', hex: '#34D399', usage: 'Positive deltas, confirmations' }, { name: 'Warning', hex: '#F0A23E', usage: 'Needs attention, not urgent' }, { name: 'Danger', hex: '#F0555C', usage: 'Errors, destructive actions' }, { name: 'Primary text', hex: '#FFFFFF', usage: 'Headlines, body copy' }] as swatch}
+				{#each [{ name: 'Primary green', hex: '#2f81f7', usage: 'Actions — buttons, links, focus' }, { name: 'Accent indigo', hex: '#a371f7', usage: 'AI — reserved exclusively' }, { name: 'Success', hex: '#3fb950', usage: 'Positive deltas, confirmations' }, { name: 'Warning', hex: '#d29922', usage: 'Needs attention, not urgent' }, { name: 'Danger', hex: '#f85149', usage: 'Errors, destructive actions' }, { name: 'Primary text', hex: '#FFFFFF', usage: 'Headlines, body copy' }] as swatch}
 					<div
 						class="overflow-hidden rounded-radius-md border border-border bg-canvas transition-shadow hover:-translate-y-0.5 hover:shadow-shadow-md"
 					>
@@ -429,7 +429,7 @@
 
 			<div class="mb-[18px] flex flex-wrap items-center gap-3">
 				<button
-					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[22px] py-[10px] text-[13.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[22px] py-[10px] text-[13.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:brightness-[1.15] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
 					>Run analysis</button
 				>
 				<button
@@ -447,7 +447,7 @@
 			</div>
 			<div class="flex flex-wrap items-center gap-3">
 				<button
-					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:brightness-[1.15] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
 					>Apply filter</button
 				>
 				<button
@@ -690,7 +690,7 @@
 						</div>
 					</div>
 					<svg viewBox="0 0 480 200" class="w-full h-[200px] overflow-visible">
-						<g stroke="#2A2A2A" stroke-width="1">
+						<g stroke="#30363d" stroke-width="1">
 							<line x1="0" y1="20" x2="480" y2="20" />
 							<line x1="0" y1="70" x2="480" y2="70" />
 							<line x1="0" y1="120" x2="480" y2="120" />
@@ -698,7 +698,7 @@
 						</g>
 						<polyline
 							fill="none"
-							stroke="#8D87FF"
+							stroke="#a371f7"
 							stroke-width="2"
 							stroke-dasharray="4 4"
 							opacity="0.7"
@@ -706,7 +706,7 @@
 						/>
 						<polyline
 							fill="none"
-							stroke="#1DB954"
+							stroke="#2f81f7"
 							stroke-width="2.5"
 							points="0,140 40,130 80,150 120,110 160,120 200,90 240,100 280,85 300,110"
 						/>
@@ -717,11 +717,11 @@
 						/>
 						<defs>
 							<linearGradient id="areaFade_chart" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="0%" stop-color="#1DB954" stop-opacity="0.25" />
-								<stop offset="100%" stop-color="#1DB954" stop-opacity="0" />
+								<stop offset="0%" stop-color="#2f81f7" stop-opacity="0.25" />
+								<stop offset="100%" stop-color="#2f81f7" stop-opacity="0" />
 							</linearGradient>
 						</defs>
-						<circle cx="280" cy="85" r="4" fill="#1DB954" stroke="#121212" stroke-width="2" />
+						<circle cx="280" cy="85" r="4" fill="#2f81f7" stroke="#0d1117" stroke-width="2" />
 					</svg>
 				</div>
 
@@ -965,7 +965,7 @@
 					class="flex-1 bg-transparent font-ui text-[13.5px] text-text-primary outline-none placeholder:text-muted"
 				/>
 				<button
-					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:bg-[#1ED760] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+					class="inline-flex cursor-pointer appearance-none items-center gap-2 rounded-radius-btn border border-transparent bg-blue px-[14px] py-[7px] text-[12.5px] font-bold text-[#0A0A0A] font-ui shadow-shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-[0.16s] ease-[cubic-bezier(.4,0,.2,1)] active:scale-[0.97] hover:translate-y-[-1px] hover:brightness-[1.15] hover:shadow-shadow-md hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
 					>Send</button
 				>
 			</div>
@@ -1078,16 +1078,16 @@
 						>
 					</div>
 					<svg viewBox="0 0 400 160" class="w-full h-40">
-						<g stroke="#2A2A2A" stroke-width="1">
+						<g stroke="#30363d" stroke-width="1">
 							<line x1="0" y1="10" x2="400" y2="10" />
 							<line x1="0" y1="60" x2="400" y2="60" />
 							<line x1="0" y1="110" x2="400" y2="110" />
 							<line x1="0" y1="150" x2="400" y2="150" />
 						</g>
-						<rect x="20" y="50" width="48" height="100" fill="#1DB954" />
-						<rect x="100" y="70" width="48" height="80" fill="#1DB954" opacity="0.75" />
-						<rect x="180" y="95" width="48" height="55" fill="#1DB954" opacity="0.55" />
-						<rect x="260" y="115" width="48" height="35" fill="#1DB954" opacity="0.4" />
+						<rect x="20" y="50" width="48" height="100" fill="#2f81f7" />
+						<rect x="100" y="70" width="48" height="80" fill="#2f81f7" opacity="0.75" />
+						<rect x="180" y="95" width="48" height="55" fill="#2f81f7" opacity="0.55" />
+						<rect x="260" y="115" width="48" height="35" fill="#2f81f7" opacity="0.4" />
 					</svg>
 				</div>
 			</div>

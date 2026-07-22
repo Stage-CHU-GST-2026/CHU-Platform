@@ -19,9 +19,9 @@
 
 <a
     {href}
-    class="group relative btn w-full !justify-start !rounded-[10px] !py-[10px] !px-3 mb-[2px] overflow-hidden !font-medium {isActive
-        ? 'btn-secondary'
-        : 'btn-ghost border border-transparent !shadow-none'}"
+    class="group relative inline-flex items-center gap-2.5 text-[13.5px] font-medium cursor-pointer transition-colors duration-150 w-full rounded-lg px-3 py-2.5 mb-0.5 {isActive
+        ? 'bg-surface-hover/80 text-text-primary'
+        : 'text-text-secondary hover:bg-surface-hover/50 hover:text-text-primary'}"
     aria-current={isActive ? 'page' : undefined}
     aria-label={app.sidebarCollapsed ? label : undefined}
     title={app.sidebarCollapsed ? label : undefined}

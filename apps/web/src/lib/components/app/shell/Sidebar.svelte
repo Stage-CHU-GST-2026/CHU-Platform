@@ -6,7 +6,7 @@
 	import SidebarItem from './SidebarItem.svelte';
 	import { listConversations, deleteConversation, createConversation } from '$lib/api/chat';
 	import type { ConversationSummary } from '$lib/api/chat';
-	import { conversationRefreshTick } from '$lib/stores/conversations';
+	import { convo } from '$lib/state/conversations.svelte';
 	import {
 		IconPlus,
 		IconLayoutDashboard,
@@ -40,7 +40,7 @@
 
 	// Re-fetch whenever the conversation page signals a new conversation was created
 	$effect(() => {
-		const _ = $conversationRefreshTick;
+		const _ = convo.refreshTick;
 		load();
 	});
 
@@ -73,13 +73,13 @@
 </script>
 
 <aside
-	class="sidebar bg-sidebar border-r border-border flex flex-col z-[var(--z-sidebar)] w-full h-screen"
+	class="sidebar bg-transparent flex flex-col w-full h-full"
 >
 	<!-- Header: New Conversation button -->
-	<div class="pt-6 px-4 pb-5 shrink-0 border-b border-border">
+	<div class="pt-5 px-4 pb-4 shrink-0 border-b border-border/60">
 		<a
 			href="{base}/dashboard/new-chat"
-			class="btn btn-secondary w-full !rounded-[10px] !py-[10px] {app.sidebarCollapsed
+			class="inline-flex items-center justify-center gap-2 text-[13.5px] font-medium cursor-pointer transition-all duration-150 bg-surface text-text-primary border border-border hover:bg-surface-hover rounded-lg w-full !py-[10px] {app.sidebarCollapsed
 				? '!justify-center !px-0'
 				: '!justify-start !px-3'}"
 		>
@@ -94,7 +94,7 @@
 
 	<!-- Nav -->
 	<nav
-		class="flex-1 overflow-y-auto pt-5 px-4 pb-4 flex flex-col gap-0.5"
+		class="flex-1 overflow-y-auto pt-3 px-3 pb-3 flex flex-col gap-0.5"
 		role="navigation"
 		aria-label="Main navigation"
 	>
@@ -120,9 +120,9 @@
 					{@const isActive = conv.id === activeConvId}
 					<a
 						href="/dashboard/conversation?id={conv.id}"
-						class="group relative btn w-full !justify-start !rounded-[10px] !py-[10px] !px-3 mb-[2px] overflow-hidden !font-medium {isActive
-							? 'btn-secondary'
-							: 'btn-ghost border border-transparent !shadow-none'}"
+						class="group relative inline-flex items-center gap-2.5 text-[13.5px] font-medium cursor-pointer transition-colors duration-150 w-full rounded-lg px-3 py-2.5 mb-0.5 {isActive
+								? 'bg-surface-hover/80 text-text-primary'
+								: 'text-text-secondary hover:bg-surface-hover/50 hover:text-text-primary'}"
 					>
 						<div class="flex items-center justify-center shrink-0">
 							<IconMessages
@@ -151,7 +151,7 @@
 	</nav>
 
 	<!-- Footer -->
-	<div class="p-4 flex flex-col gap-1 shrink-0 border-t border-border">
+	<div class="p-3 flex flex-col gap-1 shrink-0 border-t border-border/60">
 		<SidebarItem href="/dashboard/settings" icon={IconSettings} label="Settings" {currentPath} />
 	</div>
 </aside>
