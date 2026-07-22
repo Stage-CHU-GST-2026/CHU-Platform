@@ -117,7 +117,7 @@
 					class="flex items-center justify-start gap-1.5 mt-3 opacity-0 group-hover:opacity-100 transition-opacity"
 				>
 					<button
-						class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+						class="w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
 						title="Copy response"
 						onclick={copyText}
 					>
@@ -129,7 +129,7 @@
 					</button>
 					{#if onregenerate}
 						<button
-							class="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors"
+							class="w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
 							title="Regenerate response"
 							onclick={onregenerate}
 						>

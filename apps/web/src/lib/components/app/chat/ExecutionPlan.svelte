@@ -319,8 +319,8 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--color-blue);
-		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue) 20%, transparent);
+		background: var(--color-accent);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
 		animation: pulse-node 1.4s ease-in-out infinite;
 	}
 
@@ -431,10 +431,10 @@
 	@keyframes pulse-node {
 		0%,
 		100% {
-			box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue) 20%, transparent);
+			box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
 		}
 		50% {
-			box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-blue) 8%, transparent);
+			box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent) 8%, transparent);
 		}
 	}
 

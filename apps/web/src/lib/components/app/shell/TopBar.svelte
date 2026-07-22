@@ -44,11 +44,11 @@
 	});
 </script>
 
-<header class="topbar bg-[#0a0a0a] border-b border-[#1f1f1f] flex items-center justify-between px-4 z-[var(--z-topbar)] text-white">
+<header class="topbar bg-surface border-b border-border flex items-center justify-between px-4 z-[var(--z-topbar)] text-text-primary">
 	<!-- Left: Sidebar toggle & Breadcrumb -->
 	<div class="flex items-center gap-3">
 		<button
-			class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+			class="w-8 h-8 rounded-md flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
 			onclick={() => app.toggleSidebar()}
 			aria-label="Toggle sidebar"
 		>
@@ -58,9 +58,9 @@
 		<div class="flex items-center text-[13px]">
 			{#each breadcrumbs as crumb, i}
 				{#if i > 0}
-					<span class="mx-2 text-gray-600 font-light">/</span>
+					<span class="mx-2 text-muted font-light">/</span>
 				{/if}
-				<span class={crumb.isLast ? 'text-gray-100 font-medium' : 'text-gray-400 font-medium'}>
+				<span class={crumb.isLast ? 'text-text-primary font-medium' : 'text-text-secondary font-medium'}>
 					{crumb.label}
 				</span>
 			{/each}
@@ -71,7 +71,7 @@
 	<div class="flex items-center gap-3">
 		{#if isConversation}
 			<button
-				class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+				class="w-8 h-8 rounded-md flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
 				title="Export conversation as JSON"
 				onclick={exportConversation}
 			>
@@ -80,7 +80,7 @@
 		{/if}
 
 		<button
-			class="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+			class="w-8 h-8 rounded-md flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
 			aria-label="More options"
 		>
 			<IconDotsVertical size={16} stroke={1.5} />
@@ -89,7 +89,7 @@
 		<!-- Artifact Toggle -->
 		{#if isConversation}
 			<button 
-				class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors border border-[#262626] {app.artifactOpen ? 'bg-[#2a2a2a] text-white shadow-sm' : 'bg-[#141414] text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'}"
+				class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors border border-border cursor-pointer {app.artifactOpen ? 'bg-surface-elevated text-text-primary shadow-sm' : 'bg-surface text-text-secondary hover:text-text-primary hover:bg-surface-hover'}"
 				onclick={() => app.toggleArtifact()}
 			>
 				<IconFileCheck size={14} stroke={1.5} />

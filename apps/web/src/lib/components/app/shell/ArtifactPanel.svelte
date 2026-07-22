@@ -1,6 +1,6 @@
 <script lang="ts">
     import { app } from '$lib/state/app.svelte';
-    import { IconCode, IconX, IconDownload, IconPhoto, IconTable, IconCircleCheck } from '@tabler/icons-svelte';
+    import { IconCode, IconX, IconDownload, IconPhoto, IconTable, IconCircleCheck, IconFileDescription } from '@tabler/icons-svelte';
     import { marked } from 'marked';
     import { browser } from '$app/environment';
     import { PLAN_MIME_TYPE } from '$lib/api/chat';
@@ -36,6 +36,31 @@
             app.activeArtifactTabId = 'overview';
         }
     }
+
+    // Derived groupings for the overview — excludes .json, groups by type
+    let artifactGroups = $derived.by(() => {
+        const filtered = app.activeArtifacts.filter(
+            a => !a.filename.endsWith('.json')
+        );
+
+        const groups: { label: string; icon: any; items: typeof filtered }[] = [];
+
+        const docs = filtered.filter(a => a.mime_type === 'text/markdown' || a.filename.endsWith('.md'));
+        const images = filtered.filter(a => a.mime_type.startsWith('image/'));
+        const other = filtered.filter(a =>
+            !a.mime_type.startsWith('image/') &&
+            !(a.mime_type === 'text/markdown' || a.filename.endsWith('.md'))
+        );
+
+        if (docs.length) groups.push({ label: 'Documents', icon: IconFileDescription, items: docs });
+        if (images.length) groups.push({ label: 'Images', icon: IconPhoto, items: images });
+        if (other.length) groups.push({ label: 'Other', icon: IconCode, items: other });
+
+        return groups;
+    });
+
+    let hasVisibleArtifacts = $derived(artifactGroups.some(g => g.items.length > 0));
+
 </script>
 
 <aside class="artifact-panel border-l border-border bg-canvas flex flex-col z-[var(--z-sidebar)] overflow-hidden">
@@ -46,7 +71,7 @@
             <span>Artifacts</span>
         </div>
         <button
-            class="w-6 h-6 rounded flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface transition-colors"
+            class="w-8 h-8 rounded flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
             onclick={() => app.toggleArtifact()}
             aria-label="Close artifact panel"
         >
@@ -58,7 +83,7 @@
     <div class="flex items-center overflow-x-auto border-b border-border bg-surface-elevated shrink-0 scrollbar-hide">
         <!-- Overview Tab -->
         <button 
-            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 {app.activeArtifactTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
+            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 cursor-pointer {app.activeArtifactTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
             onclick={() => app.activeArtifactTabId = 'overview'}
         >
             <IconTable size={14} />
@@ -78,7 +103,7 @@
                         <span class="truncate max-w-[120px]">{artifact.filename}</span>
                     </button>
                     <button 
-                        class="pr-3 pl-1 text-muted opacity-0 group-hover:opacity-100 hover:text-text-primary transition-opacity"
+                        class="pr-3 pl-1 text-muted opacity-0 group-hover:opacity-100 hover:text-text-primary transition-opacity cursor-pointer"
                         onclick={(e) => closeArtifactTab(tabId, e)}
                         aria-label="Close tab"
                     >
@@ -107,7 +132,7 @@
                     <div class="text-[12px] font-medium text-muted uppercase tracking-wider mb-2 px-1">Files</div>
                     {#each app.activeArtifacts as artifact}
                         <button 
-                            class="w-full text-left flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors group"
+                            class="w-full text-left flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors group cursor-pointer"
                             onclick={() => openArtifactTab(artifact.id)}
                         >
                             <div class="flex items-center gap-3 overflow-hidden">
@@ -139,7 +164,7 @@
                         <a 
                             href={activeArtifact.url}
                             download={activeArtifact.filename}
-                            class="btn btn-secondary !px-3 !py-1.5 !text-[12.5px] gap-2"
+                            class="inline-flex items-center justify-center gap-2 text-[12.5px] font-medium cursor-pointer transition-colors duration-150 bg-surface text-text-primary border border-border hover:bg-surface-hover rounded-lg px-3 py-1.5"
                             title="Download Artifact"
                             target="_blank"
                             rel="noopener noreferrer"

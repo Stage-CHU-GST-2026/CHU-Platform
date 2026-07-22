@@ -38,7 +38,7 @@
 
         <!-- Hero Header -->
         <div class="flex flex-col items-center gap-4 mb-10 w-full mt-4">
-            <h1 class="text-4xl md:text-[52px] font-black tracking-[-0.03em] leading-[1.05] max-w-[700px] text-center bg-gradient-to-br from-text-primary via-text-primary to-text-secondary bg-clip-text text-transparent pb-1">
+            <h1 class="text-4xl md:text-[52px] font-black tracking-[-0.03em] leading-[1.05] max-w-[700px] text-center text-text-primary pb-1">
                 Ask anything about<br>your data.
             </h1>
             
