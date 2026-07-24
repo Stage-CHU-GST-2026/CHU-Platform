@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import uuid
 from datetime import datetime
 
@@ -37,6 +38,22 @@ sessions = session_manager
 
 def _artifact_url(filename: str) -> str:
     return f"/api/v1/charts/{filename}"
+
+
+def _fix_chart_urls(text: str) -> str:
+    """Ensure chart image URLs have a leading slash so they resolve
+    correctly in the browser regardless of the current page path.
+
+    The LLM synthesizer sometimes strips the leading ``/`` from
+    ``/api/v1/charts/…``, producing relative URLs like
+    ``api/v1/charts/foo.png`` that break when the page URL is
+    at a sub-path (e.g. ``/dashboard/conversation?id=…``).
+    """
+    return re.sub(
+        r'\]\(api/v1/charts/',
+        '](/api/v1/charts/',
+        text,
+    )
 
 
 # ── List ──────────────────────────────────────────────────────────────
@@ -268,7 +285,9 @@ async def chat_in_conversation(
             dataset_path=body.dataset_path,
         ):
             if event_type == "token":
-                assistant_content += str(data)
+                fixed = _fix_chart_urls(str(data))
+                assistant_content += fixed
+                data = fixed
             elif event_type == "image":
                 url = str(data)
                 if url not in chart_urls:
@@ -303,7 +322,9 @@ async def chat_in_conversation(
             yield {"event": event_type, "data": data}
 
         # ── Save assistant response (chart URLs already embedded above) ──
-        full_content = assistant_content
+        # Double-check the full content for any chart URLs that were split
+        # across token boundaries and missed by the per-token fix above.
+        full_content = _fix_chart_urls(assistant_content)
 
         async with AsyncSessionLocal() as db:
             # Save assistant message
