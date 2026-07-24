@@ -1,0 +1,99 @@
+@theme {
+	/* ---- Surface palette ---- */
+	--color-bg: #0d1117;
+	--color-canvas: #161b22;
+	--color-surface: #21262d;
+	--color-surface-elevated: #21262d;
+	--color-sidebar: #010409;
+	--color-border: #30363d;
+
+	/* ---- Text ---- */
+	--color-text-primary: #f0f6fc;
+	--color-text-secondary: #8b949e;
+	--color-muted: #6e7681;
+
+	/* ---- Semantic colors ---- */
+	--color-accent: #2f81f7;
+	--color-blue: var(--color-accent);        /* alias for --color-accent */
+	--color-indigo: #a371f7;
+	--color-success: #3fb950;
+	--color-warning: #d29922;
+	--color-danger: #f85149;
+
+	/* ---- Radii ---- */
+	--radius-xs: 4px;
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-xl: 24px;
+	--radius-full: 9999px;
+
+	/* ---- Container widths ---- */
+	--container-sm: 640px;
+	--container-md: 768px;
+	--container-lg: 1024px;
+	--container-xl: 1280px;
+	--container-2xl: 1440px;
+
+	/* ---- Shadows ---- */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.36), 0 1px 1px rgba(0, 0, 0, 0.2);
+	--shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.28);
+	--shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.32);
+
+	/* ---- Spacing scale (8‑pt rhythm) ---- */
+	--spacing-0: 0px;
+	--spacing-1: 4px;
+	--spacing-2: 8px;
+	--spacing-3: 12px;
+	--spacing-4: 16px;
+	--spacing-5: 20px;
+	--spacing-6: 24px;
+	--spacing-7: 48px;
+	--spacing-8: 32px;
+	--spacing-9: 96px;
+	--spacing-10: 40px;
+	--spacing-12: 48px;
+	--spacing-16: 64px;
+
+	/* ---- Type scale ---- */
+	--font-size-2xs: 10px;
+	--font-size-xs: 11px;
+	--font-size-sm: 12.5px;
+	--font-size-base: 14px;
+	--font-size-md: 15px;
+	--font-size-lg: 16.5px;
+	--font-size-xl: 18px;
+
+	/* ---- Fonts ---- */
+	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-ui: var(--font-sans);
+	--font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+	/* ---- Custom animations ---- */
+	--animate-pulse-fade: pulse-fade 2s ease-in-out infinite;
+	--animate-spinner: pulse-fade 1.4s ease-in-out infinite;
+
+	/* ---- Semantic aliases ---- */
+	--color-surface-hover: #30363d;
+	--color-border-subtle: #21262d;
+
+	/* ---- Transitions ---- */
+	--transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-enter: 200ms cubic-bezier(0, 0, 0.2, 1);
+	--transition-leave: 150ms cubic-bezier(0.4, 0, 1, 1);
+
+	/* ---- Shell dimensions ---- */
+	--sidebar-width: 236px;
+	--sidebar-collapsed-width: 52px;
+	--artifact-width: 480px;
+	--topbar-height: 52px;
+
+	/* ---- Z-index scale ---- */
+	--z-sidebar: 20;
+	--z-topbar: 30;
+	--z-overlay: 40;
+	--z-modal: 50;
+	--z-toast: 60;
+	--z-palette: 70;
+}

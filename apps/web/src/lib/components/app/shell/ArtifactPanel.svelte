@@ -1,8 +1,10 @@
 <script lang="ts">
     import { app } from '$lib/state/app.svelte';
-    import { IconCode, IconX, IconDownload, IconPhoto, IconTable } from '@tabler/icons-svelte';
+    import { IconCode, IconX, IconDownload, IconPhoto, IconTable, IconCircleCheck, IconFileDescription } from '@tabler/icons-svelte';
     import { marked } from 'marked';
     import { browser } from '$app/environment';
+    import { PLAN_MIME_TYPE } from '$lib/api/chat';
+    import type { PlanData } from '$lib/api/chat';
 
     let DOMPurify: any = null;
     if (browser) {
@@ -34,6 +36,31 @@
             app.activeArtifactTabId = 'overview';
         }
     }
+
+    // Derived groupings for the overview — excludes .json, groups by type
+    let artifactGroups = $derived.by(() => {
+        const filtered = app.activeArtifacts.filter(
+            a => !a.filename.endsWith('.json')
+        );
+
+        const groups: { label: string; icon: any; items: typeof filtered }[] = [];
+
+        const docs = filtered.filter(a => a.mime_type === 'text/markdown' || a.filename.endsWith('.md'));
+        const images = filtered.filter(a => a.mime_type.startsWith('image/'));
+        const other = filtered.filter(a =>
+            !a.mime_type.startsWith('image/') &&
+            !(a.mime_type === 'text/markdown' || a.filename.endsWith('.md'))
+        );
+
+        if (docs.length) groups.push({ label: 'Documents', icon: IconFileDescription, items: docs });
+        if (images.length) groups.push({ label: 'Images', icon: IconPhoto, items: images });
+        if (other.length) groups.push({ label: 'Other', icon: IconCode, items: other });
+
+        return groups;
+    });
+
+    let hasVisibleArtifacts = $derived(artifactGroups.some(g => g.items.length > 0));
+
 </script>
 
 <aside class="artifact-panel border-l border-border bg-canvas flex flex-col z-[var(--z-sidebar)] overflow-hidden">
@@ -44,7 +71,7 @@
             <span>Artifacts</span>
         </div>
         <button
-            class="w-6 h-6 rounded flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface transition-colors"
+            class="w-8 h-8 rounded flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
             onclick={() => app.toggleArtifact()}
             aria-label="Close artifact panel"
         >
@@ -56,7 +83,7 @@
     <div class="flex items-center overflow-x-auto border-b border-border bg-surface-elevated shrink-0 scrollbar-hide">
         <!-- Overview Tab -->
         <button 
-            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 {app.activeArtifactTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
+            class="px-4 py-2 text-[13px] font-medium border-r border-border transition-colors flex items-center gap-2 cursor-pointer {app.activeArtifactTabId === 'overview' ? 'bg-canvas text-text-primary' : 'text-muted hover:bg-surface'}"
             onclick={() => app.activeArtifactTabId = 'overview'}
         >
             <IconTable size={14} />
@@ -76,7 +103,7 @@
                         <span class="truncate max-w-[120px]">{artifact.filename}</span>
                     </button>
                     <button 
-                        class="pr-3 pl-1 text-muted opacity-0 group-hover:opacity-100 hover:text-text-primary transition-opacity"
+                        class="pr-3 pl-1 text-muted opacity-0 group-hover:opacity-100 hover:text-text-primary transition-opacity cursor-pointer"
                         onclick={(e) => closeArtifactTab(tabId, e)}
                         aria-label="Close tab"
                     >
@@ -105,7 +132,7 @@
                     <div class="text-[12px] font-medium text-muted uppercase tracking-wider mb-2 px-1">Files</div>
                     {#each app.activeArtifacts as artifact}
                         <button 
-                            class="w-full text-left flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors group"
+                            class="w-full text-left flex items-center justify-between p-3 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors group cursor-pointer"
                             onclick={() => openArtifactTab(artifact.id)}
                         >
                             <div class="flex items-center gap-3 overflow-hidden">
@@ -137,7 +164,7 @@
                         <a 
                             href={activeArtifact.url}
                             download={activeArtifact.filename}
-                            class="btn btn-secondary !px-3 !py-1.5 !text-[12.5px] gap-2"
+                            class="inline-flex items-center justify-center gap-2 text-[12.5px] font-medium cursor-pointer transition-colors duration-150 bg-surface text-text-primary border border-border hover:bg-surface-hover rounded-lg px-3 py-1.5"
                             title="Download Artifact"
                             target="_blank"
                             rel="noopener noreferrer"
@@ -162,12 +189,55 @@
                                     <div class="text-danger">Failed to load content.</div>
                                 {/await}
                             </div>
+                        {:else if activeArtifact.mime_type === PLAN_MIME_TYPE}
+                            {#await fetch(`/api/v1/artifacts/${encodeURIComponent(activeArtifact.id)}/file`).then(r => r.json())}
+                                <div class="flex items-center gap-2 text-muted justify-center py-10">
+                                    <span class="w-4 h-4 rounded-full border-2 border-muted border-t-transparent animate-spin"></span>
+                                    <span class="text-[13px]">Loading plan...</span>
+                                </div>
+                            {:then plan}
+                                <div class="w-full max-w-[560px] flex flex-col gap-5 py-2">
+                                    <!-- Header -->
+                                    <div>
+                                        <p class="text-[10.5px] font-mono text-muted uppercase tracking-widest mb-1">Execution Plan</p>
+                                        <h3 class="text-text-primary font-semibold text-[15px] tracking-tight leading-snug">
+                                            {plan.plan_title || 'Unnamed Plan'}
+                                        </h3>
+                                        <p class="text-[12px] text-muted mt-1">{plan.steps?.length ?? 0} steps · completed</p>
+                                    </div>
+
+                                    <!-- Step track -->
+                                    <div class="flex flex-col border-l-[1.5px] border-border-subtle pl-4 gap-0">
+                                        {#each plan.steps ?? [] as step, i}
+                                            <div class="flex items-start gap-3 py-3 relative">
+                                                <!-- Node -->
+                                                <div class="flex items-center justify-center w-[18px] shrink-0 mt-0.5 -ml-[22px] z-[1]">
+                                                    <div class="w-[14px] h-[14px] rounded-full bg-success/15 flex items-center justify-center">
+                                                        <IconCircleCheck size={10} stroke={2.5} class="text-success" />
+                                                    </div>
+                                                </div>
+                                                <!-- Content -->
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[13px] font-medium text-text-primary">{step.title}</span>
+                                                        <span class="text-[10.5px] text-success font-mono">done</span>
+                                                    </div>
+                                                    <p class="text-[12px] text-text-secondary mt-0.5 leading-relaxed">{step.description}</p>
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {:catch}
+                                <div class="text-danger text-[13px]">Failed to load execution plan.</div>
+                            {/await}
                         {:else}
                             <div class="text-text-secondary text-[13px] flex items-center justify-center gap-2 mt-10">
                                 <IconCode size={16} />
                                 <span>{activeArtifact.mime_type} preview not supported yet.</span>
                             </div>
                         {/if}
+
                     </div>
                 </div>
             {/if}

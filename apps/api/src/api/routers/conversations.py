@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import uuid
 from datetime import datetime
 
@@ -14,6 +15,7 @@ from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
 from api.database import AsyncSessionLocal, get_db
+from api.config import get_charts_abs_dir
 from api.models.artifact import Artifact
 from api.models.conversation import Conversation, Message
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
@@ -25,17 +27,33 @@ from api.schemas.conversation import (
     MessageItem,
     UpdateConversationRequest,
 )
-from api.services.session import SessionManager
+from api.services.session import session_manager
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
-sessions = SessionManager()
+sessions = session_manager
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
 def _artifact_url(filename: str) -> str:
     return f"/api/v1/charts/{filename}"
+
+
+def _fix_chart_urls(text: str) -> str:
+    """Ensure chart image URLs have a leading slash so they resolve
+    correctly in the browser regardless of the current page path.
+
+    The LLM synthesizer sometimes strips the leading ``/`` from
+    ``/api/v1/charts/…``, producing relative URLs like
+    ``api/v1/charts/foo.png`` that break when the page URL is
+    at a sub-path (e.g. ``/dashboard/conversation?id=…``).
+    """
+    return re.sub(
+        r'\]\(api/v1/charts/',
+        '](/api/v1/charts/',
+        text,
+    )
 
 
 # ── List ──────────────────────────────────────────────────────────────
@@ -260,31 +278,53 @@ async def chat_in_conversation(
         assistant_content = ""
         chart_urls: list[str] = []
         artifact_metas: list[dict] = []
+        plan_data: dict | None = None  # execution plan to persist
         async for event_type, data in service.stream(
             message=body.message,
             thread_id=thread_id,
             dataset_path=body.dataset_path,
         ):
             if event_type == "token":
-                assistant_content += str(data)
+                fixed = _fix_chart_urls(str(data))
+                assistant_content += fixed
+                data = fixed
             elif event_type == "image":
-                chart_urls.append(str(data))
-                # Embed chart markdown at the exact position it appeared
-                # in the stream, so the persisted content matches what the
-                # client builds during live streaming.
-                assistant_content += f"\n\n![chart]({data})\n\n"
+                url = str(data)
+                if url not in chart_urls:
+                    chart_urls.append(url)
+            elif event_type == "chart_artifact":
+                # Rich ChartArtifact payload — extract the api_url for persistence.
+                # The image event is always emitted alongside this, but we guard
+                # against duplication so double-registration cannot occur.
+                try:
+                    art_data = data if isinstance(
+                        data, dict) else json.loads(str(data))
+                    url = art_data.get("api_url", "")
+                    if url and url not in chart_urls:
+                        chart_urls.append(url)
+                except Exception:
+                    pass
             elif event_type == "artifact":
                 meta = json.loads(str(data))
                 artifact_metas.append(meta)
-                # Yield immediately during the stream so the PlanCard
-                # appears in real-time. The DB id will be populated on
-                # page reload via the onDone artifact refresh.
-                yield {"event": event_type, "data": str(data)}
-                continue  # skip the generic yield below
+            elif event_type == "plan":
+                # Capture the execution plan for persistence
+                try:
+                    plan_data = json.loads(str(data))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            elif event_type == "step_evidence":
+                continue
+            elif event_type == "step_update":
+                pass
+
+            # Pass through all user-visible event types to the frontend
             yield {"event": event_type, "data": data}
 
         # ── Save assistant response (chart URLs already embedded above) ──
-        full_content = assistant_content
+        # Double-check the full content for any chart URLs that were split
+        # across token boundaries and missed by the per-token fix above.
+        full_content = _fix_chart_urls(assistant_content)
 
         async with AsyncSessionLocal() as db:
             # Save assistant message
@@ -295,13 +335,7 @@ async def chat_in_conversation(
             ))
 
             # ── Persist chart files as Artifact records ──
-            from api.config import settings
-
-            charts_abs_dir = os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__), "..", "..", settings.charts_dir,
-                )
-            )
+            charts_abs_dir = get_charts_abs_dir()
 
             for chart_url in chart_urls:
                 # chart_url is like "/api/v1/charts/foo.png"
@@ -350,6 +384,25 @@ async def chat_in_conversation(
                 await db.flush()
                 await db.refresh(art)
                 artifact_ids.append(str(art.id))
+
+            # ── Persist execution plan as an Artifact ──────────────────
+            if plan_data:
+                plan_filename = f"plan_{conversation_id}.json"
+                plan_filepath = os.path.join(charts_abs_dir, plan_filename)
+                try:
+                    with open(plan_filepath, "w") as f:
+                        json.dump(plan_data, f)
+                    plan_size = os.path.getsize(plan_filepath)
+                except OSError:
+                    plan_size = None
+
+                db.add(Artifact(
+                    conversation_id=conversation_id,
+                    filename=plan_filename,
+                    filepath=plan_filepath,
+                    mime_type="application/vnd.chu.execution-plan+json",
+                    file_size=plan_size,
+                ))
 
             # ── Schedule title generation in the background ──
             if not conv.title:

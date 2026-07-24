@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { IconChevronDown, IconPlus, IconMicrophone, IconSparkles, IconSend, IconBrain, IconMessageCircle, IconArrowRight } from '@tabler/icons-svelte';
+    import { IconChevronDown, IconPlus, IconMicrophone, IconSparkles, IconBrain, IconMessageCircle, IconArrowRight, IconSquare } from '@tabler/icons-svelte';
     import Dropdown, { type DropdownItem } from '$lib/components/app/common/Dropdown.svelte';
 
     interface Props {
@@ -12,12 +12,15 @@
 
     let textareaEl = $state<HTMLTextAreaElement | null>(null);
     let selectedModel = $state('Gemini');
+    let focused = $state(false);
 
     const modelItems: DropdownItem[] = [
         { label: 'Gemini', icon: IconSparkles, action: () => selectedModel = 'Gemini' },
         { label: 'Claude', icon: IconBrain, action: () => selectedModel = 'Claude' },
         { label: 'ChatGPT', icon: IconMessageCircle, action: () => selectedModel = 'ChatGPT' },
     ];
+
+    let hasText = $derived(input.trim().length > 0);
 
     export function resizeTextarea() {
         if (textareaEl) {
@@ -29,30 +32,38 @@
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            onsubmit();
+            if (hasText && !isStreaming) onsubmit();
         }
+    }
+
+    function handleStop() {
+        // Reload the page to stop the current stream — the backend
+        // will detect the disconnected client and abort generation.
+        window.location.reload();
     }
 </script>
 
-<div class="composer">
+<div class="composer {focused ? 'composer-focused' : ''}">
     <!-- Textarea at the top -->
-    <textarea 
+    <textarea
         bind:this={textareaEl}
         bind:value={input}
-        class="w-full bg-transparent text-white placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none px-2 py-1 text-[16px] leading-[1.65] min-h-[30px] max-h-40 overflow-y-auto disabled:opacity-40 tracking-[-0.005em]"
-        placeholder="Ask anything, @ to mention, / for actions"
+        class="w-full bg-transparent text-text-primary placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none px-3 pt-2 text-[15.5px] leading-[1.7] min-h-[28px] max-h-48 overflow-y-auto disabled:opacity-40"
+        placeholder="Ask anything..."
         rows="1"
         disabled={isStreaming}
         onkeydown={handleKeydown}
         oninput={resizeTextarea}
+        onfocus={() => focused = true}
+        onblur={() => focused = false}
     ></textarea>
 
     <!-- Toolbar row at the bottom -->
-    <div class="flex items-center justify-between w-full px-1">
+    <div class="flex items-center justify-between w-full px-1.5 pb-0.5">
         <!-- Left side: + button & Model selector -->
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1">
             <button
-                class="w-7 h-7 flex items-center justify-center rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors shrink-0"
+                class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors shrink-0 cursor-pointer disabled:opacity-30"
                 aria-label="Add attachment"
                 disabled={isStreaming}
             >
@@ -61,32 +72,41 @@
 
             <Dropdown items={modelItems} align="left" direction="up" width="w-48">
                 {#snippet trigger()}
-                    <div class="flex items-center gap-1.5 px-2 h-7 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[13.5px] font-medium tracking-[-0.01em]">
-                        <span>{selectedModel} 3.1 Pro (High)</span>
-                        <IconChevronDown size={14} stroke={2} class="opacity-50" />
-                    </div>
+                    <button class="flex items-center gap-1.5 px-2.5 h-8 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[12.5px] font-medium">
+                        <IconSparkles size={14} stroke={1.5} />
+                        <span>{selectedModel}</span>
+                        <IconChevronDown size={12} stroke={2} class="opacity-40" />
+                    </button>
                 {/snippet}
             </Dropdown>
+
+            <!-- Hint text -->
+            <span class="hidden sm:inline text-[11.5px] text-muted/50 ml-2 select-none">Shift + Enter for new line</span>
         </div>
 
-        <!-- Right side: Mic & Send button -->
-        <div class="flex items-center gap-3">
-            <button class="flex items-center justify-center text-muted hover:text-text-secondary transition-colors" aria-label="Voice input">
+        <!-- Right side: Actions -->
+        <div class="flex items-center gap-2">
+            <button class="flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors cursor-pointer" aria-label="Voice input">
                 <IconMicrophone size={16} stroke={1.5} />
             </button>
 
             {#if isStreaming}
-                <button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface hover:bg-surface-hover text-muted cursor-not-allowed" disabled aria-label="Sending">
-                    <span class="w-3.5 h-3.5 rounded-full border-[2px] border-muted border-t-transparent animate-spin"></span>
+                <button
+                    onclick={handleStop}
+                    class="flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-hover hover:text-danger transition-colors cursor-pointer text-[12.5px] font-medium"
+                    aria-label="Stop generating"
+                >
+                    <IconSquare size={12} stroke={2} />
+                    Stop
                 </button>
             {:else}
-                <button 
+                <button
                     onclick={onsubmit}
-                    disabled={!input.trim()}
-                    class="flex items-center justify-center w-8 h-8 rounded-full transition-colors {input.trim() ? 'bg-surface hover:bg-accent text-text-primary hover:text-white' : 'bg-surface text-muted opacity-60 cursor-not-allowed'}"
+                    disabled={!hasText}
+                    class="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 cursor-pointer {hasText ? 'bg-accent text-black hover:brightness-[1.15] active:brightness-[0.95] shadow-sm' : 'bg-surface text-muted opacity-50 cursor-not-allowed'}"
                     aria-label="Send message"
                 >
-                    <IconArrowRight size={16} stroke={2} />
+                    <IconArrowRight size={18} stroke={2} />
                 </button>
             {/if}
         </div>

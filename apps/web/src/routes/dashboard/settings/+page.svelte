@@ -22,6 +22,11 @@
     ];
 </script>
 
+<svelte:head>
+	<title>Settings | CHU Platform</title>
+	<meta name="description" content="Configure your CHU Platform preferences, models, and account settings." />
+</svelte:head>
+
 <div class="w-full max-w-[1024px] mx-auto px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-12 md:gap-24 items-start">
     
     <!-- Sidebar Navigation -->

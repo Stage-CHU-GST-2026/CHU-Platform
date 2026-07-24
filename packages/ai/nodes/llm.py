@@ -68,8 +68,11 @@ def make_llm_node(
     # Without this, stream_mode="messages" yields the whole response as one chunk.
     try:
         logger.info("Calling LLM", model=config.model)
-        response = model.bind_tools(tools).invoke(
-            messages, config=runnable_config)
+        
+        # Disable parallel tool calls to prevent excessive duplicate tool executions
+        bound_model = model.bind_tools(tools, parallel_tool_calls=False)
+        response = bound_model.invoke(messages, config=runnable_config)
+        
         logger.info("LLM responded")
         return {"messages": [response]}
     except OpenAIAPIError as exc:

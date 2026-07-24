@@ -23,6 +23,11 @@
     }
 </script>
 
+<svelte:head>
+	<title>Dashboard | CHU Platform</title>
+	<meta name="description" content="Manage your data analytics, models, and workflows in the CHU Platform dashboard." />
+</svelte:head>
+
 <!-- Ambient Background Glow -->
 <div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden bg-bg">
     <div class="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-accent/5 blur-[120px] rounded-full mix-blend-screen opacity-60 animate-pulse-fade"></div>
@@ -33,7 +38,7 @@
 
         <!-- Hero Header -->
         <div class="flex flex-col items-center gap-4 mb-10 w-full mt-4">
-            <h1 class="text-4xl md:text-[52px] font-black tracking-[-0.03em] leading-[1.05] max-w-[700px] text-center bg-gradient-to-br from-text-primary via-text-primary to-text-secondary bg-clip-text text-transparent pb-1">
+            <h1 class="text-4xl md:text-[52px] font-black tracking-[-0.03em] leading-[1.05] max-w-[700px] text-center text-text-primary pb-1">
                 Ask anything about<br>your data.
             </h1>
             

@@ -108,6 +108,9 @@ export async function sendMessage(
                         resolvedThreadId = currentData;
                     } else if (currentEvent === "token" && dataLines.length > 0) {
                         callbacks.onToken(currentData);
+                    } else if (currentEvent === "step_token" && dataLines.length > 0) {
+                        // Live tokens streamed during each execution step.
+                        callbacks.onToken(currentData);
                     } else if (currentEvent === "image" && currentData) {
                         // Append a markdown image so MessageResponse renders it inline.
                         callbacks.onToken(`\n\n![chart](${currentData})\n\n`);

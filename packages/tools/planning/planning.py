@@ -5,11 +5,11 @@ step-by-step approach. The tool saves the markdown content to disk
 so it can be served as a downloadable/ viewable artifact.
 
 Usage (from the LLM):
-    create_plan(
-        title="Implementation Plan",
+    create_blueprint(
+        title="Analysis Blueprint",
         description="A concise 1-2 sentence summary for the card.",
-        content="# Full markdown plan...",
-        filename="implementation_plan.md",
+        content="# Full markdown blueprint...",
+        filename="analysis_blueprint.md",
     )
 """
 
@@ -38,7 +38,7 @@ ARTIFACT_URL_PREFIX = "ARTIFACT_URL:"
 # ---------------------------------------------------------------------------
 
 
-class CreatePlanSchema(BaseModel):
+class CreateBlueprintSchema(BaseModel):
     title: str = Field(
         description=(
             "Short, human-readable title for the plan card "
@@ -72,17 +72,17 @@ class CreatePlanSchema(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class CreatePlanTool(BaseTool):
-    name: str = "create_plan"
+class CreateBlueprintTool(BaseTool):
+    name: str = "create_blueprint"
     description: str = (
-        "Generate a structured plan document and save it as a markdown artifact. "
-        "Call this whenever the user asks for a plan, strategy, step-by-step approach, "
-        "implementation steps, migration plan, or roadmap. "
+        "Generate a structured blueprint document and save it as a markdown artifact. "
+        "Call this whenever the user asks for a blueprint, plan document, strategy, "
+        "step-by-step approach, implementation steps, migration plan, or roadmap. "
         "Provide a clear title, a one-sentence description for the card preview, "
-        "and the full markdown content. The plan will appear as an interactive card "
-        "with options to view the full document or proceed with execution."
+        "and the full markdown content. The blueprint will appear as an interactive card "
+        "with options to view the full document."
     )
-    args_schema: type[BaseModel] = CreatePlanSchema
+    args_schema: type[BaseModel] = CreateBlueprintSchema
 
     def _run(
         self,

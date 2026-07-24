@@ -9,6 +9,8 @@ const API_BASE = "/api/v1";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export const PLAN_MIME_TYPE = "application/vnd.chu.execution-plan+json";
+
 export interface ConversationSummary {
     id: string;
     title: string | null;
@@ -50,8 +52,30 @@ export interface Conversation {
 export interface StreamCallbacks {
     onToken: (token: string) => void;
     onArtifact: (artifact: Artifact) => void;
+    /** Called when the orchestrator generates an execution plan. */
+    onPlan?: (plan: PlanData) => void;
+    /** Called when a step starts executing. */
+    onStepStarted?: (step: PlanStepData) => void;
+    /** Called with progress updates within a step. */
+    onStepUpdate?: (message: string) => void;
+    /** Called when a step finishes executing. */
+    onStepFinished?: (stepId: number) => void;
     onDone: () => void;
     onError: (error: Error) => void;
+}
+
+/** Structured plan data from the orchestrator. */
+export interface PlanData {
+    plan_title: string;
+    steps: PlanStepData[];
+}
+
+/** A single step in the execution plan. */
+export interface PlanStepData {
+    id: number;
+    title: string;
+    description: string;
+    tool_hint: string;
 }
 
 // ── Conversation CRUD ─────────────────────────────────────────────────────────
@@ -97,6 +121,23 @@ export async function listArtifacts(conversationId: string, limit = 50, offset =
     const res = await fetch(`${API_BASE}/artifacts?conversation_id=${encodeURIComponent(conversationId)}&limit=${limit}&offset=${offset}`);
     if (!res.ok) throw new Error(`Failed to list artifacts: ${res.status}`);
     return res.json();
+}
+
+/**
+ * Fetch the execution plan JSON from a plan artifact.
+ * Returns null if the artifact is not a plan or the fetch fails.
+ */
+export async function fetchPlanFromArtifact(artifact: Artifact): Promise<PlanData | null> {
+    if (artifact.mime_type !== PLAN_MIME_TYPE) return null;
+    try {
+        // Use the /artifacts/{id}/file endpoint — the static /charts/ path
+        // does not serve .json files reliably (it is optimised for images).
+        const res = await fetch(`${API_BASE}/artifacts/${encodeURIComponent(artifact.id)}/file`);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -185,14 +226,43 @@ export async function sendMessage(
 
                     if (currentEvent === "token" && dataLines.length > 0) {
                         callbacks.onToken(currentData);
+                    } else if (currentEvent === "step_token" && dataLines.length > 0) {
+                        // Route live step text to the step card (onStepUpdate),
+                        // NOT to the main message bubble (onToken). This prevents
+                        // duplication: step text is shown transiently in the active
+                        // step card; only the final synthesis goes into the message.
+                        callbacks.onStepUpdate?.(currentData);
                     } else if (currentEvent === "image" && currentData) {
-                        callbacks.onToken(`\n\n![chart](${currentData})\n\n`);
+                        callbacks.onStepUpdate?.(`\n\n![chart](${currentData})\n\n`);
                     } else if (currentEvent === "artifact" && currentData) {
                         try {
                             const artifact = JSON.parse(currentData);
                             callbacks.onArtifact(artifact);
                         } catch (e) {
                             console.warn("Failed to parse artifact event", e);
+                        }
+                    } else if (currentEvent === "plan" && currentData) {
+                        try {
+                            const plan = JSON.parse(currentData);
+                            callbacks.onPlan?.(plan);
+                        } catch (e) {
+                            console.warn("Failed to parse plan event", e);
+                        }
+                    } else if (currentEvent === "step_started" && currentData) {
+                        try {
+                            const step = JSON.parse(currentData);
+                            callbacks.onStepStarted?.(step);
+                        } catch (e) {
+                            console.warn("Failed to parse step_started event", e);
+                        }
+                    } else if (currentEvent === "step_update" && currentData) {
+                        callbacks.onStepUpdate?.(currentData);
+                    } else if (currentEvent === "step_finished" && currentData) {
+                        try {
+                            const data = JSON.parse(currentData);
+                            callbacks.onStepFinished?.(data.id);
+                        } catch (e) {
+                            console.warn("Failed to parse step_finished event", e);
                         }
                     } else if (currentEvent === "done") {
                         callbacks.onDone();
