@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import '../lib/css/tokens.css';
 @import 'tailwindcss';
 @import '../lib/css/chat.css';
@@ -8,72 +8,54 @@
 /* Light mode overrides */
 @media (prefers-color-scheme: light) {
     :root {
-        --color-bg: #f3f3f4;
+        --color-bg: #f8fafc;
         --color-canvas: #ffffff;
-        --color-surface: #f8f8f9;
+        --color-surface: #f1f5f9;
         --color-surface-elevated: #ffffff;
-        --color-surface-hover: #ebebec;
-        --color-sidebar: #ebebec;
-        --color-border: #e0e0e2;
-        --color-border-subtle: #e8e8ea;
-        --color-text-primary: #111112;
-        --color-text-secondary: #3a3a3e;
-        --color-muted: #8a8a8f;
+        --color-surface-hover: #e2e8f0;
+        --color-sidebar: #f1f5f9;
+        --color-border: #e2e8f0;
+        --color-border-subtle: #f1f5f9;
+        --color-text-primary: #0f172a;
+        --color-text-secondary: #475569;
+        --color-muted: #94a3b8;
     }
 }
 
 html.light {
-    --color-bg: #f6f8fa;
+    --color-bg: #f8fafc;
     --color-canvas: #ffffff;
-    --color-surface: #f0f6fc;
+    --color-surface: #f1f5f9;
     --color-surface-elevated: #ffffff;
-    --color-surface-hover: #e8ecf0;
-    --color-sidebar: #f6f8fa;
-    --color-border: #d0d7de;
-    --color-border-subtle: #e0e6ed;
-    --color-text-primary: #1f2328;
-    --color-text-secondary: #656d76;
-    --color-muted: #8b949e;
+    --color-surface-hover: #e2e8f0;
+    --color-sidebar: #f1f5f9;
+    --color-border: #e2e8f0;
+    --color-border-subtle: #f1f5f9;
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #475569;
+    --color-muted: #94a3b8;
 }
 
 html.dark {
-    --color-bg: #0d1117;
-    --color-canvas: #161b22;
-    --color-surface: #21262d;
-    --color-surface-elevated: #21262d;
-    --color-surface-hover: #30363d;
-    --color-sidebar: #010409;
-    --color-border: #30363d;
-    --color-border-subtle: #21262d;
-    --color-text-primary: #f0f6fc;
-    --color-text-secondary: #8b949e;
-    --color-muted: #6e7681;
+    --color-bg: #090d11;
+    --color-canvas: #11161d;
+    --color-surface: #181e28;
+    --color-surface-elevated: #1c2331;
+    --color-surface-hover: #222c3a;
+    --color-sidebar: #06090c;
+    --color-border: #232d3b;
+    --color-border-subtle: #1a222e;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-muted: #64748b;
 }
 
-@keyframes pulse-fade {
-
-    0%,
-    100% {
+@keyframes fade-subtle {
+    0%, 100% {
         opacity: 1;
     }
-
     50% {
-        opacity: 0.3;
-    }
-}
-
-@keyframes bounce-dot {
-
-    0%,
-    80%,
-    100% {
-        transform: translateY(0);
-        opacity: 0.4;
-    }
-
-    40% {
-        transform: translateY(-4px);
-        opacity: 1;
+        opacity: 0.5;
     }
 }
 
@@ -107,7 +89,7 @@ html.dark {
 @layer base {
 
     html {
-        font-size: 15px;
+        font-size: 14px;
         -webkit-text-size-adjust: 100%;
     }
 
@@ -120,8 +102,8 @@ html.dark {
         font-family: var(--font-sans);
         font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
         font-optical-sizing: auto;
-        line-height: 1.6;
-        letter-spacing: -0.01em;
+        line-height: 1.5;
+        letter-spacing: -0.011em;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
@@ -143,7 +125,7 @@ html.dark {
     }
 
     ::selection {
-        background: rgba(47, 129, 247, 0.28);
+        background: rgba(37, 99, 235, 0.2);
         color: var(--color-text-primary);
     }
 
@@ -170,8 +152,8 @@ html.dark {
 
     /* Refined scrollbar */
     ::-webkit-scrollbar {
-        width: 5px;
-        height: 5px;
+        width: 6px;
+        height: 6px;
     }
 
     ::-webkit-scrollbar-track {
@@ -194,7 +176,6 @@ html.dark {
         position: relative;
         background: transparent;
         z-index: 50;
-        /* Ensure it stays above panes */
     }
 
     .resizer::before {

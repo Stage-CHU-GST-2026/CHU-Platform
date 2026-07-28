@@ -31,7 +31,7 @@
 	} = $props();
 
 	const variants = {
-		primary: 'bg-accent text-[#0A0A0A] hover:brightness-[1.12] active:brightness-[0.95]',
+		primary: 'bg-accent text-white hover:bg-accent/90 active:bg-accent/95 shadow-sm',
 		secondary: 'bg-surface text-text-primary border border-border hover:bg-surface-hover',
 		ghost: 'bg-transparent text-text-secondary hover:bg-surface-hover hover:text-text-primary',
 		danger: 'bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20',

@@ -28,8 +28,8 @@
     {/if}
 
     <!-- Content area with padding — top, left, right only, flush to bottom -->
-    <div class="flex-1 flex flex-col min-w-0 pt-3 pr-3 pl-0 overflow-hidden">
-        <div class="flex-1 bg-canvas border border-border rounded-t-2xl shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col min-w-0 pt-2 pr-2 pl-0 overflow-hidden">
+        <div class="flex-1 bg-canvas border border-border rounded-t-lg shadow-sm flex flex-col overflow-hidden">
             <PaneGroup direction="horizontal" autoSaveId="app-layout">
                 <Pane defaultSize={showArtifacts ? 52 : 100}>
                     <div class="flex flex-col h-full w-full relative">

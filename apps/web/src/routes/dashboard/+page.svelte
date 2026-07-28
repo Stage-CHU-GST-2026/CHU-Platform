@@ -28,22 +28,17 @@
 	<meta name="description" content="Manage your data analytics, models, and workflows in the CHU Platform dashboard." />
 </svelte:head>
 
-<!-- Ambient Background Glow -->
-<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden bg-bg">
-    <div class="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-accent/5 blur-[120px] rounded-full mix-blend-screen opacity-60 animate-pulse-fade"></div>
-</div>
-
-<div class="flex flex-col items-center justify-center h-full w-full min-h-[calc(100vh-var(--topbar-height))] relative z-10">
-    <div class="w-full max-w-[760px] flex flex-col items-center px-4 -mt-12">
+<div class="flex flex-col items-center justify-center h-full w-full min-h-[calc(100vh-var(--topbar-height))] relative z-10 bg-bg">
+    <div class="w-full max-w-[720px] flex flex-col items-center px-4 -mt-10">
 
         <!-- Hero Header -->
-        <div class="flex flex-col items-center gap-4 mb-10 w-full mt-4">
-            <h1 class="text-4xl md:text-[52px] font-black tracking-[-0.03em] leading-[1.05] max-w-[700px] text-center text-text-primary pb-1">
-                Ask anything about<br>your data.
+        <div class="flex flex-col items-center gap-3 mb-8 w-full">
+            <h1 class="text-3xl md:text-4xl font-semibold tracking-[-0.025em] leading-tight text-center text-text-primary">
+                Ask anything about your data
             </h1>
             
-            <p class="text-[16px] md:text-[17px] leading-[1.65] text-text-secondary max-w-[540px] mt-2 font-light text-center">
-                Your intelligent workspace for business analytics. Generate insights, explore trends, and make data-driven decisions.
+            <p class="text-sm md:text-base leading-relaxed text-text-secondary max-w-[500px] text-center">
+                Intelligent workspace for business analytics. Generate insights, explore trends, and make data-driven decisions.
             </p>
         </div>
 
@@ -52,8 +47,8 @@
             <ChatComposer bind:input isStreaming={isSubmitting} onsubmit={submit} />
             
             <!-- Hint text -->
-            <p class="mt-4 text-[11.5px] text-muted tracking-wide flex items-center gap-2 opacity-80">
-                Press <kbd class="px-1.5 py-0.5 rounded border border-border-subtle bg-surface font-mono text-[10px]">Enter</kbd> to send
+            <p class="mt-3 text-xs text-muted tracking-tight flex items-center gap-1.5 opacity-80">
+                Press <kbd class="px-1.5 py-0.5 rounded border border-border bg-surface font-mono text-[10px]">Enter</kbd> to send
             </p>
         </div>
 

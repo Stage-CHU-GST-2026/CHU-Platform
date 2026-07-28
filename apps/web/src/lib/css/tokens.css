@@ -1,31 +1,33 @@
 @theme {
-	/* ---- Surface palette ---- */
-	--color-bg: #0d1117;
-	--color-canvas: #161b22;
-	--color-surface: #21262d;
-	--color-surface-elevated: #21262d;
-	--color-sidebar: #010409;
-	--color-border: #30363d;
+	/* ---- Surface palette (Enterprise Dark Slate default) ---- */
+	--color-bg: #090d11;
+	--color-canvas: #11161d;
+	--color-surface: #181e28;
+	--color-surface-elevated: #1c2331;
+	--color-sidebar: #06090c;
+	--color-border: #232d3b;
+	--color-border-subtle: #1a222e;
+	--color-surface-hover: #222c3a;
 
 	/* ---- Text ---- */
-	--color-text-primary: #f0f6fc;
-	--color-text-secondary: #8b949e;
-	--color-muted: #6e7681;
+	--color-text-primary: #f8fafc;
+	--color-text-secondary: #94a3b8;
+	--color-muted: #64748b;
 
 	/* ---- Semantic colors ---- */
-	--color-accent: #2f81f7;
+	--color-accent: #2563eb;
 	--color-blue: var(--color-accent);        /* alias for --color-accent */
-	--color-indigo: #a371f7;
-	--color-success: #3fb950;
-	--color-warning: #d29922;
-	--color-danger: #f85149;
+	--color-indigo: #4f46e5;
+	--color-success: #10b981;
+	--color-warning: #f59e0b;
+	--color-danger: #ef4444;
 
-	/* ---- Radii ---- */
+	/* ---- Radii (Clean, functional enterprise grid) ---- */
 	--radius-xs: 4px;
-	--radius-sm: 8px;
-	--radius-md: 12px;
-	--radius-lg: 16px;
-	--radius-xl: 24px;
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
 	--radius-full: 9999px;
 
 	/* ---- Container widths ---- */
@@ -35,10 +37,10 @@
 	--container-xl: 1280px;
 	--container-2xl: 1440px;
 
-	/* ---- Shadows ---- */
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.36), 0 1px 1px rgba(0, 0, 0, 0.2);
-	--shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.28);
-	--shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.32);
+	/* ---- Shadows (Layered, subtle depth) ---- */
+	--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+	--shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.35), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+	--shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.45), 0 4px 8px -2px rgba(0, 0, 0, 0.25);
 
 	/* ---- Spacing scale (8‑pt rhythm) ---- */
 	--spacing-0: 0px;
@@ -65,23 +67,19 @@
 	--font-size-xl: 18px;
 
 	/* ---- Fonts ---- */
-	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-ui: var(--font-sans);
 	--font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
-	/* ---- Custom animations ---- */
-	--animate-pulse-fade: pulse-fade 2s ease-in-out infinite;
-	--animate-spinner: pulse-fade 1.4s ease-in-out infinite;
-
-	/* ---- Semantic aliases ---- */
-	--color-surface-hover: #30363d;
-	--color-border-subtle: #21262d;
+	/* ---- Clean animations ---- */
+	--animate-pulse-fade: fade-subtle 1.5s ease-in-out infinite;
+	--animate-spinner: fade-subtle 1s ease-in-out infinite;
 
 	/* ---- Transitions ---- */
-	--transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-	--transition-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
-	--transition-enter: 200ms cubic-bezier(0, 0, 0.2, 1);
-	--transition-leave: 150ms cubic-bezier(0.4, 0, 1, 1);
+	--transition-base: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+	--transition-slow: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+	--transition-enter: 150ms cubic-bezier(0, 0, 0.2, 1);
+	--transition-leave: 100ms cubic-bezier(0.4, 0, 1, 1);
 
 	/* ---- Shell dimensions ---- */
 	--sidebar-width: 236px;
