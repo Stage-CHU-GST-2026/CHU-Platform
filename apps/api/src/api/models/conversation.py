@@ -76,5 +76,13 @@ class Message(Base):
         back_populates="messages",
     )
 
+    tool_evidences: Mapped[list[ToolEvidence]] = relationship(
+        "ToolEvidence",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="ToolEvidence.created_at",
+    )
+
     def __repr__(self) -> str:
         return f"<Message {self.id} role={self.role!r}>"
+

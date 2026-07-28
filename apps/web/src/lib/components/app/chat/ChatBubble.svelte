@@ -2,7 +2,8 @@
 	import { marked } from 'marked';
 	import { browser } from '$app/environment';
 	import ExecutionPlan from './ExecutionPlan.svelte';
-	import type { PlanData } from '$lib/api/chat';
+	import ToolEvidenceViewer from './ToolEvidenceViewer.svelte';
+	import type { PlanData, ToolEvidence } from '$lib/api/chat';
 	import { IconCopy, IconRefresh, IconCheck } from '@tabler/icons-svelte';
 
 	interface Props {
@@ -14,6 +15,7 @@
 		completedSteps?: Set<number>;
 		activeStepId?: number | null;
 		stepMessages?: Record<number, string>;
+		evidences?: ToolEvidence[];
 		onregenerate?: () => void;
 	}
 
@@ -25,8 +27,10 @@
 		completedSteps = new Set(),
 		activeStepId = null,
 		stepMessages = {},
+		evidences = [],
 		onregenerate
 	}: Props = $props();
+
 
 	// Configure marked for clean output
 	marked.setOptions({ breaks: true, gfm: true });
@@ -82,6 +86,12 @@
 					<div class="plan-divider"></div>
 				{/if}
 			{/if}
+
+			<!-- Tool Evidence & Traceability Block -->
+			{#if evidences && evidences.length > 0}
+				<ToolEvidenceViewer {evidences} />
+			{/if}
+
 
 			<!-- Streamed content -->
 			{#if !content && streaming && !hasPlan}

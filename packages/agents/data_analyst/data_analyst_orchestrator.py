@@ -11,8 +11,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import json
+import re
+import time
 import uuid
+
 from typing import AsyncGenerator, Literal
+
 
 from langchain_core.callbacks import adispatch_custom_event
 from langchain_core.messages import AIMessageChunk, HumanMessage, ToolMessage, SystemMessage
@@ -167,6 +171,8 @@ class Orchestrator:
         evidence_tokens: list[str] = []
         buffered_artifacts: list[ChartArtifact] = []
         buffered_plan_artifacts: list[str] = []
+        pending_by_id: dict[str, dict] = {}
+        pending_by_index: dict[int, dict] = {}
 
         step_config = {"configurable": {
             "thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
@@ -180,6 +186,8 @@ class Orchestrator:
                 stream_mode="messages",
                 config=step_config,
             ):
+                self._track_tool_call_chunk(chunk, pending_by_id, pending_by_index)
+
                 if (
                     isinstance(chunk, AIMessageChunk)
                     and chunk.content
@@ -189,6 +197,22 @@ class Orchestrator:
                     await self._emit("step_token", chunk.content)
 
                 elif isinstance(chunk, ToolMessage) and chunk.content:
+                    tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(chunk, pending_by_id, pending_by_index)
+                    raw_result = str(chunk.content)
+
+                    # Emit evidence for traceability
+                    evidence_payload = {
+                        "step_id": step.id,
+                        "tool_name": tool_name,
+                        "tool_call_id": tc_id,
+                        "parameters": parameters,
+                        "result": raw_result,
+                        "status": getattr(chunk, "status", "success"),
+                        "execution_time_ms": duration_ms,
+                    }
+                    await self._emit("tool_evidence", json.dumps(evidence_payload))
+
+
                     content = str(chunk.content)
                     for line in content.splitlines():
                         if line.startswith(CHART_ARTIFACT_PREFIX):
@@ -215,6 +239,7 @@ class Orchestrator:
                         elif line.startswith(ARTIFACT_URL_PREFIX):
                             buffered_plan_artifacts.append(
                                 line[len(ARTIFACT_URL_PREFIX):])
+
 
             # Build evidence string: LLM narrative + inline chart summaries
             full_evidence = "".join(evidence_tokens)
@@ -422,11 +447,16 @@ class Orchestrator:
         if dataset_path and dataset_path not in message:
             prompt = f"[Dataset: {dataset_path}]\n{message}"
 
+        pending_by_id: dict[str, dict] = {}
+        pending_by_index: dict[int, dict] = {}
+
         async for chunk, metadata in self._agent.graph.astream(
             {"messages": [HumanMessage(content=prompt)], "summary": ""},
             stream_mode="messages",
             config=config,
         ):
+            self._track_tool_call_chunk(chunk, pending_by_id, pending_by_index)
+
             if (
                 isinstance(chunk, AIMessageChunk)
                 and chunk.content
@@ -434,10 +464,25 @@ class Orchestrator:
             ):
                 yield ("token", chunk.content)
             elif isinstance(chunk, ToolMessage) and chunk.content:
+                tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(chunk, pending_by_id, pending_by_index)
+                raw_result = str(chunk.content)
+
+                evidence_payload = {
+                    "step_id": None,
+                    "tool_name": tool_name,
+                    "tool_call_id": tc_id,
+                    "parameters": parameters,
+                    "result": raw_result,
+                    "status": getattr(chunk, "status", "success"),
+                    "execution_time_ms": duration_ms,
+                }
+                yield ("tool_evidence", json.dumps(evidence_payload))
+
                 content = str(chunk.content)
                 for line in content.splitlines():
                     if line.startswith(CHART_ARTIFACT_PREFIX):
                         raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+
                         try:
                             artifact = ChartArtifact.from_dict(
                                 json.loads(raw_json))
@@ -451,3 +496,101 @@ class Orchestrator:
                         yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])
 
         yield ("done", "")
+
+    def _track_tool_call_chunk(self, chunk, pending_by_id: dict[str, dict], pending_by_index: dict[int, dict]) -> None:
+        """Accumulate tool calls and parameter fragments from streaming message chunks."""
+        # 1. Handle complete tool_calls attribute (if available)
+        tool_calls = getattr(chunk, "tool_calls", None)
+        if tool_calls:
+            for tc in tool_calls:
+                tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+                tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                if tc_id:
+                    parsed_args = tc_args if isinstance(tc_args, dict) else {}
+                    pending_by_id[tc_id] = {
+                        "id": tc_id,
+                        "name": tc_name or "tool",
+                        "args": parsed_args,
+                        "args_raw": "",
+                        "start_time": time.time(),
+                    }
+
+        # 2. Handle streaming tool_call_chunks attribute
+        tool_call_chunks = getattr(chunk, "tool_call_chunks", None)
+        if tool_call_chunks:
+            for tc in tool_call_chunks:
+                if isinstance(tc, dict):
+                    idx = tc.get("index", 0)
+                    tc_id = tc.get("id")
+                    name = tc.get("name")
+                    args_fragment = tc.get("args")
+                else:
+                    idx = getattr(tc, "index", 0)
+                    tc_id = getattr(tc, "id", None)
+                    name = getattr(tc, "name", None)
+                    args_fragment = getattr(tc, "args", None)
+
+                # Reset index entry if a new tool call ID is starting at this index
+                existing = pending_by_index.get(idx)
+                if existing and tc_id and existing.get("id") and existing["id"] != tc_id:
+                    existing = None
+
+                if not existing:
+                    existing = {
+                        "id": tc_id,
+                        "name": name or "",
+                        "args_raw": "",
+                        "start_time": time.time(),
+                    }
+                    pending_by_index[idx] = existing
+
+                if tc_id:
+                    existing["id"] = tc_id
+                    pending_by_id[tc_id] = existing
+                if name:
+                    existing["name"] = name
+                if args_fragment:
+                    existing["args_raw"] += str(args_fragment)
+
+    def _extract_tool_evidence_params(
+        self,
+        chunk,
+        pending_by_id: dict[str, dict],
+        pending_by_index: dict[int, dict],
+    ) -> tuple[str, dict, str | None, int | None]:
+        """Extract tool evidence parameters and execution timing for a completed ToolMessage."""
+        tc_id = getattr(chunk, "tool_call_id", None)
+        call_info = pending_by_id.pop(tc_id, {}) if tc_id else {}
+
+        # Remove completed tool call from pending_by_index map
+        for idx, entry in list(pending_by_index.items()):
+            if entry.get("id") == tc_id or entry == call_info:
+                pending_by_index.pop(idx, None)
+
+        start_time = call_info.get("start_time")
+        duration_ms = int((time.time() - start_time) * 1000) if start_time else None
+        tool_name = call_info.get("name") or getattr(chunk, "name", "tool")
+
+        parameters = call_info.get("args")
+        if parameters is None or not isinstance(parameters, dict) or not parameters:
+            args_raw = call_info.get("args_raw", "").strip()
+            if args_raw:
+                try:
+                    parameters = json.loads(args_raw)
+                except Exception:
+                    # If args_raw contains concatenated JSONs (e.g. {"a":1}{"b":2}), parse the last complete valid JSON object!
+                    parsed = None
+                    matches = re.findall(r'\{[^{}]*\}', args_raw)
+                    if matches:
+                        for candidate in reversed(matches):
+                            try:
+                                parsed = json.loads(candidate)
+                                break
+                            except Exception:
+                                pass
+                    parameters = parsed if isinstance(parsed, dict) else {}
+            else:
+                parameters = {}
+
+        return tool_name, parameters, tc_id, duration_ms
