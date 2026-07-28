@@ -13,7 +13,8 @@
 		PLAN_MIME_TYPE,
 		type ChatMessage,
 		type PlanData,
-		type Artifact
+		type Artifact,
+		type ToolEvidence
 	} from '$lib/api/chat';
 	import { convo } from '$lib/state/conversations.svelte';
 	import { app } from '$lib/state/app.svelte';
@@ -34,7 +35,9 @@
 		completedSteps?: Set<number>;
 		activeStepId?: number | null;
 		stepMessages?: Record<number, string>; // persistent per-step content
+		evidences?: ToolEvidence[];
 	}
+
 
 	let messages = $state<Message[]>([]);
 	let conversationId = $state<string | null>(null);
@@ -79,8 +82,10 @@
 			// Build message list from stored messages
 			const loaded: Message[] = conv.messages.map((m: ChatMessage) => ({
 				role: m.role as 'user' | 'assistant',
-				content: m.content
+				content: m.content,
+				evidences: m.tool_evidences || []
 			}));
+
 
 			// ── Reconstruct execution plan — attach it to the last assistant message ──
 			const planArtifact = (conv.artifacts || []).find(
@@ -173,7 +178,8 @@
 			plan: undefined,
 			completedSteps: new Set<number>(),
 			activeStepId: null,
-			stepMessages: {}
+			stepMessages: {},
+			evidences: []
 		});
 
 		isStreaming = true;
@@ -217,6 +223,14 @@
 						scrollToBottom();
 					}
 				},
+				onToolEvidence(evidence) {
+					if (streamIdx < messages.length) {
+						const m = messages[streamIdx];
+						m.evidences = [...(m.evidences || []), evidence];
+						touch();
+						scrollToBottom();
+					}
+				},
 				onStepStarted(step) {
 					if (streamIdx >= messages.length) return;
 					messages[streamIdx].activeStepId = step.id;
@@ -255,11 +269,10 @@
 						if (m.plan) {
 							m.completedSteps = new Set(m.plan.steps.map((s) => s.id));
 							m.activeStepId = null;
-							m.activeStepMessage = '';
 						}
 					}
-					touch();
 					isStreaming = false;
+					touch();
 					convo.refresh();
 					if (conversationId) {
 						try {
@@ -329,6 +342,7 @@
 						completedSteps={msg.completedSteps ?? new Set()}
 						activeStepId={msg.activeStepId ?? null}
 						stepMessages={msg.stepMessages ?? {}}
+						evidences={msg.evidences ?? []}
 						onregenerate={msg.role === 'assistant' && i > 0 ? () => regenerate(i) : undefined}
 					/>
 				{/if}

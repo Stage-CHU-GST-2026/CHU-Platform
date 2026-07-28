@@ -8,6 +8,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from .artifact import ArtifactItem
+from .tool_evidence import ToolEvidenceItem
 
 
 # ── Nested ────────────────────────────────────────────────────────────
@@ -19,8 +20,10 @@ class MessageItem(BaseModel):
     role: str
     content: str
     created_at: datetime
+    tool_evidences: list[ToolEvidenceItem] = []
 
     model_config = {"from_attributes": True}
+
 
 
 # ── Responses ─────────────────────────────────────────────────────────

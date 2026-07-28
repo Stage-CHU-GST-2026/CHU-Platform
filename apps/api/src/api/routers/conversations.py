@@ -18,6 +18,7 @@ from api.database import AsyncSessionLocal, get_db
 from api.config import get_charts_abs_dir
 from api.models.artifact import Artifact
 from api.models.conversation import Conversation, Message
+from api.models.tool_evidence import ToolEvidence
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 from api.schemas.chat import ConversationChatRequest
 from api.schemas.conversation import (
@@ -116,7 +117,7 @@ async def get_conversation(
     stmt = (
         select(Conversation)
         .where(Conversation.id == conversation_id)
-        .options(selectinload(Conversation.messages))
+        .options(selectinload(Conversation.messages).selectinload(Message.tool_evidences))
     )
     if include_artifacts:
         stmt = stmt.options(selectinload(Conversation.artifacts))
@@ -278,6 +279,7 @@ async def chat_in_conversation(
         assistant_content = ""
         chart_urls: list[str] = []
         artifact_metas: list[dict] = []
+        tool_evidences_data: list[dict] = []
         plan_data: dict | None = None  # execution plan to persist
         async for event_type, data in service.stream(
             message=body.message,
@@ -313,6 +315,12 @@ async def chat_in_conversation(
                     plan_data = json.loads(str(data))
                 except (json.JSONDecodeError, TypeError):
                     pass
+            elif event_type == "tool_evidence":
+                try:
+                    ev_dict = data if isinstance(data, dict) else json.loads(str(data))
+                    tool_evidences_data.append(ev_dict)
+                except Exception:
+                    pass
             elif event_type == "step_evidence":
                 continue
             elif event_type == "step_update":
@@ -328,11 +336,29 @@ async def chat_in_conversation(
 
         async with AsyncSessionLocal() as db:
             # Save assistant message
-            db.add(Message(
+            assistant_msg = Message(
                 conversation_id=conversation_id,
                 role="assistant",
                 content=full_content,
-            ))
+            )
+            db.add(assistant_msg)
+            await db.flush()
+            await db.refresh(assistant_msg)
+
+            # ── Persist ToolEvidence records linked to assistant_msg ──
+            for ev in tool_evidences_data:
+                db.add(ToolEvidence(
+                    message_id=assistant_msg.id,
+                    conversation_id=conversation_id,
+                    step_id=ev.get("step_id"),
+                    tool_name=ev.get("tool_name", "tool"),
+                    tool_call_id=ev.get("tool_call_id"),
+                    parameters=ev.get("parameters"),
+                    result=str(ev.get("result", "")),
+                    status=ev.get("status", "success"),
+                    execution_time_ms=ev.get("execution_time_ms"),
+                ))
+
 
             # ── Persist chart files as Artifact records ──
             charts_abs_dir = get_charts_abs_dir()

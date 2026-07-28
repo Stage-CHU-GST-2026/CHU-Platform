@@ -33,11 +33,26 @@ export interface Artifact {
     description?: string;
 }
 
+export interface ToolEvidence {
+    id?: string;
+    message_id?: number;
+    conversation_id?: string;
+    step_id?: number | null;
+    tool_name: string;
+    tool_call_id?: string | null;
+    parameters?: Record<string, any> | null;
+    result: string;
+    status: 'success' | 'error' | string;
+    execution_time_ms?: number | null;
+    created_at?: string;
+}
+
 export interface ChatMessage {
     id: number;
     role: "user" | "assistant";
     content: string;
     created_at: string;
+    tool_evidences?: ToolEvidence[];
 }
 
 export interface Conversation {
@@ -54,6 +69,8 @@ export interface StreamCallbacks {
     onArtifact: (artifact: Artifact) => void;
     /** Called when the orchestrator generates an execution plan. */
     onPlan?: (plan: PlanData) => void;
+    /** Called when a tool evidence record is emitted. */
+    onToolEvidence?: (evidence: ToolEvidence) => void;
     /** Called when a step starts executing. */
     onStepStarted?: (step: PlanStepData) => void;
     /** Called with progress updates within a step. */
@@ -63,6 +80,7 @@ export interface StreamCallbacks {
     onDone: () => void;
     onError: (error: Error) => void;
 }
+
 
 /** Structured plan data from the orchestrator. */
 export interface PlanData {
@@ -248,7 +266,15 @@ export async function sendMessage(
                         } catch (e) {
                             console.warn("Failed to parse plan event", e);
                         }
+                    } else if (currentEvent === "tool_evidence" && currentData) {
+                        try {
+                            const evidence = JSON.parse(currentData);
+                            callbacks.onToolEvidence?.(evidence);
+                        } catch (e) {
+                            console.warn("Failed to parse tool_evidence event", e);
+                        }
                     } else if (currentEvent === "step_started" && currentData) {
+
                         try {
                             const step = JSON.parse(currentData);
                             callbacks.onStepStarted?.(step);
