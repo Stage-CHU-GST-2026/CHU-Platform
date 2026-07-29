@@ -15,7 +15,8 @@
 		IconMessages,
 		IconTrash,
 		IconLoader2,
-		IconSettings
+		IconSettings,
+		IconDatabase
 	} from '@tabler/icons-svelte';
 	import { base } from '$app/paths';
 
@@ -72,9 +73,7 @@
 	}
 </script>
 
-<aside
-	class="sidebar bg-transparent flex flex-col w-full h-full"
->
+<aside class="sidebar bg-transparent flex flex-col w-full h-full">
 	<!-- Header: New Conversation button -->
 	<div class="pt-5 px-4 pb-4 shrink-0 border-b border-border/60">
 		<a
@@ -99,6 +98,7 @@
 		aria-label="Main navigation"
 	>
 		<SidebarItem href="/dashboard" icon={IconLayoutDashboard} label="Dashboard" {currentPath} />
+		<SidebarItem href="/dashboard/datasets" icon={IconDatabase} label="Datasets" {currentPath} />
 
 		{#if !app.sidebarCollapsed}
 			<!-- Conversations section -->
@@ -121,8 +121,8 @@
 					<a
 						href="/dashboard/conversation?id={conv.id}"
 						class="group relative inline-flex items-center gap-2.5 text-[13.5px] font-medium cursor-pointer transition-colors duration-150 w-full rounded-lg px-3 py-2.5 mb-0.5 {isActive
-								? 'bg-surface-hover/80 text-text-primary'
-								: 'text-text-secondary hover:bg-surface-hover/50 hover:text-text-primary'}"
+							? 'bg-surface-hover/80 text-text-primary'
+							: 'text-text-secondary hover:bg-surface-hover/50 hover:text-text-primary'}"
 					>
 						<div class="flex items-center justify-center shrink-0">
 							<IconMessages
@@ -133,9 +133,16 @@
 									: 'text-muted group-hover:text-text-secondary'}"
 							/>
 						</div>
-						<span class="flex-1 min-w-0 truncate">
-							{conv.title ?? 'New conversation'}
-						</span>
+						<div class="flex-1 min-w-0">
+							<span class="block truncate">
+								{conv.title ?? 'New conversation'}
+							</span>
+							{#if conv.dataset_name}
+								<span class="block text-[11px] text-muted truncate mt-0.5">
+									📊 {conv.dataset_name}
+								</span>
+							{/if}
+						</div>
 						<!-- Delete button (shows on hover) -->
 						<button
 							class="shrink-0 opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded hover:text-danger transition-all"

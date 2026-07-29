@@ -34,6 +34,7 @@ dependencies = [
     "sse-starlette>=3.4.5",
     "langgraph-checkpoint-postgres>=3.1.0",
     "psycopg[binary]>=3.3.4",
+    "python-multipart>=0.0.32",
 ]
 
 [project.optional-dependencies]

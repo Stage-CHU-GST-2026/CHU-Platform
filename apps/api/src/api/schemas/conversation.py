@@ -33,6 +33,8 @@ class ConversationSummary(BaseModel):
 
     id: uuid.UUID
     title: str | None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
     created_at: datetime
     updated_at: datetime
     message_count: int
@@ -46,6 +48,8 @@ class ConversationDetail(BaseModel):
 
     id: uuid.UUID
     title: str | None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
     created_at: datetime
     updated_at: datetime
     messages: list[MessageItem]
@@ -62,6 +66,10 @@ class CreateConversationRequest(BaseModel):
     title: str | None = Field(
         default=None, max_length=255,
         description="Optional title for the conversation.",
+    )
+    dataset_id: str | None = Field(
+        default=None,
+        description="Optional dataset UUID to link to this conversation.",
     )
 
 

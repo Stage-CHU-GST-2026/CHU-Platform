@@ -1,17 +1,26 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { createConversation } from '$lib/api/chat';
 	import { goto } from '$app/navigation';
 	import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
-	import { IconChartBar, IconTrendingUp, IconGlobe, IconAward, IconSparkles } from '@tabler/icons-svelte';
+	import type { DatasetSummary } from '$lib/api/datasets';
+	import {
+		IconChartBar,
+		IconTrendingUp,
+		IconGlobe,
+		IconAward,
+		IconSparkles
+	} from '@tabler/icons-svelte';
 
 	let input = $state('');
 	let isSubmitting = $state(false);
+	let selectedDataset = $state<DatasetSummary | null>(null);
 
 	const suggestions: { text: string; icon: typeof IconSparkles }[] = [
 		{ text: 'Analyze sales trends for Q1 2026', icon: IconChartBar },
 		{ text: 'Show me monthly revenue breakdown', icon: IconTrendingUp },
 		{ text: 'Compare performance across regions', icon: IconGlobe },
-		{ text: 'Identify top 10 customers by revenue', icon: IconAward },
+		{ text: 'Identify top 10 customers by revenue', icon: IconAward }
 	];
 
 	async function submit() {
@@ -20,7 +29,10 @@
 
 		isSubmitting = true;
 		try {
-			const conv = await createConversation();
+			const conv = await createConversation(
+				selectedDataset ? `Dataset: ${selectedDataset.original_filename}` : undefined,
+				selectedDataset?.id
+			);
 			await goto(`/dashboard/conversation?id=${conv.id}&q=${encodeURIComponent(text)}`);
 		} catch (error) {
 			console.error('Failed to create conversation', error);
@@ -41,11 +53,15 @@
 	<meta name="description" content="Start a new conversation with the Data Analyst Agent." />
 </svelte:head>
 
-<div class="flex flex-col items-center justify-center h-full w-full min-h-[calc(100vh-var(--topbar-height))]">
+<div
+	class="flex flex-col items-center justify-center h-full w-full min-h-[calc(100vh-var(--topbar-height))]"
+>
 	<div class="w-full max-w-[640px] flex flex-col items-center px-4 -mt-16">
 		<!-- Hero -->
 		<div class="flex flex-col items-center gap-3 mb-8 text-center">
-			<div class="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center mb-1">
+			<div
+				class="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center mb-1"
+			>
 				<IconSparkles size={18} stroke={1.5} class="text-accent" />
 			</div>
 			<h1
@@ -61,7 +77,7 @@
 
 		<!-- Composer -->
 		<div class="w-full mb-6">
-			<ChatComposer bind:input isStreaming={isSubmitting} onsubmit={submit} />
+			<ChatComposer bind:input isStreaming={isSubmitting} onsubmit={submit} bind:selectedDataset />
 		</div>
 
 		<!-- Suggestions -->

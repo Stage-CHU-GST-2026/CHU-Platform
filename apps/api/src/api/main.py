@@ -8,12 +8,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
-from api.config import settings, get_charts_abs_dir
-from api.database import Base, engine
+from api.config import settings, get_charts_abs_dir, get_datasets_abs_dir
+from api.database import Base, engine, AsyncSessionLocal
+from api.models.dataset import Dataset
 from api.routers.artifacts import router as artifacts_router
 from api.routers.chat import router as chat_router
 from api.routers.conversations import router as conversations_router
+from api.routers.datasets import router as datasets_router
+from api.services.agent_service import AgentService
 from api.services.session import session_manager
 
 
@@ -31,6 +35,10 @@ async def lifespan(_app: FastAPI):
     # Resolve charts directory inside the API package & create it
     abs_charts_dir = get_charts_abs_dir()
     os.makedirs(abs_charts_dir, exist_ok=True)
+
+    # Resolve datasets directory & create it on startup
+    abs_datasets_dir = get_datasets_abs_dir()
+    os.makedirs(abs_datasets_dir, exist_ok=True)
 
     # Override the tool's hardcoded /tmp path so charts persist
     import tools.visualization.visualization as viz_mod
@@ -52,6 +60,25 @@ async def lifespan(_app: FastAPI):
 
     session_manager.set_checkpointer(pg_checkpointer)
 
+    # ── Populate the agent's dataset registry from DB ──────────
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Dataset).order_by(Dataset.created_at.desc())
+        )
+        db_datasets = result.scalars().all()
+        registry = [
+            {
+                "original_filename": d.original_filename,
+                "filepath": d.filepath,
+                "rows": d.rows,
+                "columns": d.columns,
+                "file_size": d.file_size,
+                "status": d.status.value,
+            }
+            for d in db_datasets
+        ]
+        AgentService.register_db_datasets(registry)
+
     yield
 
     # Shutdown
@@ -72,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(conversations_router, prefix="/api/v1")
     app.include_router(artifacts_router, prefix="/api/v1")
+    app.include_router(datasets_router, prefix="/api/v1")
 
     # ----- Static files: generated charts -----
     # Mount AFTER routers so API routes take precedence.

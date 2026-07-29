@@ -5,6 +5,17 @@ from .chat import (
     HistoryItem,
     HistoryResponse,
 )
+from .dataset import (
+    ColumnInfo,
+    DatasetDetail,
+    DatasetPreview,
+    DatasetStatistics,
+    DatasetStatus,
+    DatasetSummary,
+    DatasetUploadResponse,
+    DatasetUpdateRequest,
+    PreviewRow,
+)
 
 __all__ = [
     "ChatRequest",
@@ -12,4 +23,13 @@ __all__ = [
     "HistoryItem",
     "HistoryResponse",
     "ErrorResponse",
+    "ColumnInfo",
+    "DatasetDetail",
+    "DatasetPreview",
+    "DatasetStatistics",
+    "DatasetStatus",
+    "DatasetSummary",
+    "DatasetUploadResponse",
+    "DatasetUpdateRequest",
+    "PreviewRow",
 ]

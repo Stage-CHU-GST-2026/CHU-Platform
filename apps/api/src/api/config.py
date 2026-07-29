@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Charts — directory inside the API package, served as static files
     charts_dir: str = "static/charts"
 
+    # Datasets — uploaded dataset files stored inside the API package
+    datasets_dir: str = "static/datasets"
+
     # LLM — matches what the Data Analyst agent picks up
     openai_base_url: str = "http://localhost:6060/v1"
     openai_api_key: str = ""
@@ -65,3 +68,13 @@ def get_charts_abs_dir() -> str:
     """
     _here = os.path.dirname(os.path.abspath(__file__))  # .../src/api
     return os.path.abspath(os.path.join(_here, "..", "..", settings.charts_dir))
+
+
+def get_datasets_abs_dir() -> str:
+    """Resolve settings.datasets_dir to an absolute path.
+
+    Anchored to this file (src/api/config.py) so the result is always
+    correct regardless of where the process is started from.
+    """
+    _here = os.path.dirname(os.path.abspath(__file__))  # .../src/api
+    return os.path.abspath(os.path.join(_here, "..", "..", settings.datasets_dir))

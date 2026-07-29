@@ -35,8 +35,8 @@
 				{ id: 'nav-dashboard', label: 'Go to Dashboard', action: () => goto('/dashboard') },
 				{ id: 'nav-agents', label: 'Go to AI Agents', action: () => goto('/agents') },
 				{ id: 'nav-convos', label: 'Go to Conversations', action: () => goto('/conversations') },
-				{ id: 'nav-datasets', label: 'Go to Datasets', action: () => goto('/datasets') },
-				{ id: 'nav-settings', label: 'Go to Settings', action: () => goto('/settings') }
+				{ id: 'nav-datasets', label: 'Go to Datasets', action: () => goto('/dashboard/datasets') },
+				{ id: 'nav-settings', label: 'Go to Settings', action: () => goto('/dashboard/settings') }
 			]
 		},
 		{
@@ -48,7 +48,7 @@
 					label: 'Create New Agent',
 					icon: IconRobot,
 					action: () => {
-						goto('/agents');
+						goto('/dashboard');
 					}
 				},
 				{
@@ -56,7 +56,7 @@
 					label: 'New Conversation',
 					icon: IconMessages,
 					action: () => {
-						goto('/conversations/new');
+						goto('/dashboard/new-chat');
 					}
 				},
 				{
@@ -64,7 +64,7 @@
 					label: 'Upload Dataset',
 					icon: IconDatabase,
 					action: () => {
-						goto('/datasets');
+						goto('/dashboard/datasets');
 					}
 				}
 			]

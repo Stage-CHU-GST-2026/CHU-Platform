@@ -18,7 +18,9 @@
 	} from '$lib/api/chat';
 	import { convo } from '$lib/state/conversations.svelte';
 	import { app } from '$lib/state/app.svelte';
-	import { IconSparkles } from '@tabler/icons-svelte';
+	import { IconSparkles, IconDatabase } from '@tabler/icons-svelte';
+	import { listDatasets } from '$lib/api/datasets';
+	import type { DatasetSummary } from '$lib/api/datasets';
 	import ChatLoadingState from '$lib/components/app/chat/ChatLoadingState.svelte';
 	import ChatEmptyState from '$lib/components/app/chat/ChatEmptyState.svelte';
 	import ChatBubble from '$lib/components/app/chat/ChatBubble.svelte';
@@ -45,6 +47,7 @@
 	let isStreaming = $state(false);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+	let selectedDataset = $state<DatasetSummary | null>(null);
 
 	// ── Helpers ─────────────────────────────────────────────────────────
 	/** Force Svelte 5 to notice a deep mutation by touching the array.
@@ -78,6 +81,22 @@
 		try {
 			const conv = await getConversation(id);
 			conversationId = id;
+
+			// Restore linked dataset if the conversation has one
+			if (conv.dataset_id && conv.dataset_name) {
+				selectedDataset = {
+					id: conv.dataset_id,
+					original_filename: conv.dataset_name,
+					file_size: null,
+					mime_type: '',
+					status: 'ready',
+					rows: null,
+					columns: null,
+					error_message: null,
+					created_at: '',
+					updated_at: ''
+				};
+			}
 
 			// Build message list from stored messages
 			const loaded: Message[] = conv.messages.map((m: ChatMessage) => ({
@@ -189,12 +208,17 @@
 
 		try {
 			if (!conversationId) {
-				const conv = await createConversation();
+				// If a dataset is selected, link it to the conversation
+				const conv = await createConversation(
+					selectedDataset ? `Dataset: ${selectedDataset.original_filename}` : undefined,
+					selectedDataset?.id
+				);
 				conversationId = conv.id;
 				goto(`/dashboard/conversation?id=${conv.id}`, { replaceState: true, noScroll: true });
 				convo.refresh();
 			}
 
+			// Resolve dataset path — use the uploaded filepath (stored server-side)
 			await sendMessage(conversationId, text, {
 				onToken(token) {
 					if (streamIdx < messages.length) {
@@ -364,7 +388,7 @@
 	<div
 		class="w-full px-4 pb-4 pt-2.5 flex justify-center shrink-0 border-t border-border-subtle bg-canvas"
 	>
-		<ChatComposer bind:input {isStreaming} onsubmit={submit} />
+		<ChatComposer bind:input {isStreaming} onsubmit={submit} bind:selectedDataset />
 	</div>
 </div>
 
@@ -500,7 +524,6 @@
 		color: var(--color-text-primary);
 		font-size: 0.95em;
 	}
-
 
 	.prose-agent :global(blockquote) {
 		border-left: 2px solid var(--color-accent);

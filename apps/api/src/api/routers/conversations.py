@@ -18,6 +18,7 @@ from api.database import AsyncSessionLocal, get_db
 from api.config import get_charts_abs_dir
 from api.models.artifact import Artifact
 from api.models.conversation import Conversation, Message
+from api.models.dataset import Dataset
 from api.models.tool_evidence import ToolEvidence
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 from api.schemas.chat import ConversationChatRequest
@@ -29,7 +30,6 @@ from api.schemas.conversation import (
     UpdateConversationRequest,
 )
 from api.services.session import session_manager
-from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 sessions = session_manager
@@ -80,9 +80,11 @@ async def list_conversations(
     )
 
     stmt = (
-        select(Conversation, msg_subq.c.cnt, art_subq.c.cnt)
+        select(Conversation, msg_subq.c.cnt,
+               art_subq.c.cnt, Dataset.original_filename)
         .outerjoin(msg_subq, Conversation.id == msg_subq.c.conversation_id)
         .outerjoin(art_subq, Conversation.id == art_subq.c.conversation_id)
+        .outerjoin(Dataset, Conversation.dataset_id == Dataset.id)
         .order_by(Conversation.updated_at.desc())
         .offset(offset)
         .limit(limit)
@@ -93,12 +95,14 @@ async def list_conversations(
         ConversationSummary(
             id=conv.id,
             title=conv.title,
+            dataset_id=str(conv.dataset_id) if conv.dataset_id else None,
+            dataset_name=ds_name,
             created_at=conv.created_at,
             updated_at=conv.updated_at,
             message_count=msg_count or 0,
             artifact_count=art_count or 0,
         )
-        for conv, msg_count, art_count in rows
+        for conv, msg_count, art_count, ds_name in rows
     ]
 
 
@@ -130,6 +134,16 @@ async def get_conversation(
             detail="Conversation not found",
         )
 
+    # Resolve linked dataset name
+    dataset_name = None
+    if conv.dataset_id:
+        ds_result = await db.execute(
+            select(Dataset.original_filename).where(
+                Dataset.id == conv.dataset_id)
+        )
+        ds_row = ds_result.scalar_one_or_none()
+        dataset_name = ds_row
+
     artifacts = []
     if include_artifacts and conv.artifacts:
         artifacts = [
@@ -148,6 +162,8 @@ async def get_conversation(
     return ConversationDetail(
         id=conv.id,
         title=conv.title,
+        dataset_id=str(conv.dataset_id) if conv.dataset_id else None,
+        dataset_name=dataset_name,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
         messages=[MessageItem.model_validate(m) for m in conv.messages],
@@ -162,14 +178,32 @@ async def create_conversation(
     body: CreateConversationRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new empty conversation."""
+    """Create a new conversation, optionally linked to a dataset."""
     conv = Conversation(title=body.title)
+
+    # Link to a dataset if dataset_id is provided
+    dataset_name = None
+    if body.dataset_id:
+        try:
+            ds_uuid = uuid.UUID(body.dataset_id)
+            dataset = await db.get(Dataset, ds_uuid)
+            if dataset:
+                conv.dataset_id = dataset.id
+                dataset_name = dataset.original_filename
+                # Auto-title from dataset name if no explicit title
+                if not body.title:
+                    conv.title = f"Dataset: {dataset.original_filename}"
+        except (ValueError, AttributeError):
+            pass
+
     db.add(conv)
     await db.flush()
     await db.refresh(conv)
     return ConversationDetail(
         id=conv.id,
         title=conv.title,
+        dataset_id=str(conv.dataset_id) if conv.dataset_id else None,
+        dataset_name=dataset_name,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
         messages=[],
@@ -201,10 +235,23 @@ async def update_conversation(
     if body.title is not None:
         conv.title = body.title
     await db.flush()
+
+    # Resolve linked dataset name
+    dataset_name = None
+    if conv.dataset_id:
+        ds_result = await db.execute(
+            select(Dataset.original_filename).where(
+                Dataset.id == conv.dataset_id)
+        )
+        ds_row = ds_result.scalar_one_or_none()
+        dataset_name = ds_row
+
     # Construct response manually to avoid lazy-load during serialization
     return ConversationDetail(
         id=conv.id,
         title=conv.title,
+        dataset_id=str(conv.dataset_id) if conv.dataset_id else None,
+        dataset_name=dataset_name,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
         messages=[MessageItem.model_validate(m) for m in conv.messages],
@@ -252,6 +299,13 @@ async def chat_in_conversation(
                 detail="Conversation not found",
             )
 
+        # If no explicit dataset_path, try to use the conversation's linked dataset
+        resolved_dataset_path = body.dataset_path
+        if not resolved_dataset_path and conv.dataset_id:
+            ds = await db.get(Dataset, conv.dataset_id)
+            if ds and ds.filepath:
+                resolved_dataset_path = ds.filepath
+
     # Get or create the agent session keyed on conversation_id
     thread_id = str(conversation_id)
     sessions.get_or_create(thread_id)
@@ -284,7 +338,7 @@ async def chat_in_conversation(
         async for event_type, data in service.stream(
             message=body.message,
             thread_id=thread_id,
-            dataset_path=body.dataset_path,
+            dataset_path=resolved_dataset_path,
         ):
             if event_type == "token":
                 fixed = _fix_chart_urls(str(data))
@@ -317,7 +371,8 @@ async def chat_in_conversation(
                     pass
             elif event_type == "tool_evidence":
                 try:
-                    ev_dict = data if isinstance(data, dict) else json.loads(str(data))
+                    ev_dict = data if isinstance(
+                        data, dict) else json.loads(str(data))
                     tool_evidences_data.append(ev_dict)
                 except Exception:
                     pass
@@ -358,7 +413,6 @@ async def chat_in_conversation(
                     status=ev.get("status", "success"),
                     execution_time_ms=ev.get("execution_time_ms"),
                 ))
-
 
             # ── Persist chart files as Artifact records ──
             charts_abs_dir = get_charts_abs_dir()

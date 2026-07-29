@@ -14,6 +14,8 @@ export const PLAN_MIME_TYPE = "application/vnd.chu.execution-plan+json";
 export interface ConversationSummary {
     id: string;
     title: string | null;
+    dataset_id?: string | null;
+    dataset_name?: string | null;
     created_at: string;
     updated_at: string;
     message_count: number;
@@ -58,6 +60,8 @@ export interface ChatMessage {
 export interface Conversation {
     id: string;
     title: string | null;
+    dataset_id?: string | null;
+    dataset_name?: string | null;
     created_at: string;
     updated_at: string;
     messages: ChatMessage[];
@@ -113,11 +117,14 @@ export async function listConversations(
 /**
  * Create a new conversation. Title is optional — auto-generated from first message if omitted.
  */
-export async function createConversation(title?: string): Promise<Conversation> {
+export async function createConversation(title?: string, datasetId?: string): Promise<Conversation> {
+    const body: Record<string, any> = {};
+    if (title) body.title = title;
+    if (datasetId) body.dataset_id = datasetId;
     const res = await fetch(`${API_BASE}/conversations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(title ? { title } : {}),
+        body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Failed to create conversation: ${res.status}`);
     return res.json();

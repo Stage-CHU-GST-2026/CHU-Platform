@@ -23,6 +23,7 @@ from ai import Agent
 from analysis.charts import ChartArtifact
 from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
+from tools.inspection.describe import register_datasets
 
 
 class AgentService:
@@ -51,10 +52,25 @@ class AgentService:
     def agent(self) -> Agent:
         return self._agent
 
+    @staticmethod
+    def register_db_datasets(datasets: list[dict]) -> None:
+        """Populate the agent's dataset registry from database records.
+
+        Called once at startup so the ``list_datasets`` tool returns
+        DB-backed datasets instead of scanning the filesystem.
+        """
+        register_datasets(datasets)
+
     def build_prompt(self, message: str, dataset_path: str | None = None) -> str:
         """Prepend dataset context to the user message if provided."""
         if dataset_path and dataset_path not in message:
-            return f"[Dataset: {dataset_path}]\n{message}"
+            return (
+                f"[Dataset: {dataset_path}]\n"
+                f"The dataset above is already linked to this conversation. "
+                f"Do NOT call list_datasets — use the provided path directly "
+                f"with analysis tools.\n\n"
+                f"{message}"
+            )
         return message
 
     async def stream(

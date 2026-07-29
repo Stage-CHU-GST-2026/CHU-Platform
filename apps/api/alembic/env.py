@@ -18,6 +18,7 @@ from api.database import Base
 # Import all models so Base.metadata is fully populated
 from api.models.conversation import Conversation, Message  # noqa: F401
 from api.models.artifact import Artifact  # noqa: F401
+from api.models.dataset import Dataset  # noqa: F401
 
 # Alembic Config object
 config = context.config
