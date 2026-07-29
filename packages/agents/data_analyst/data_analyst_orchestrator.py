@@ -78,6 +78,18 @@ class Orchestrator:
 
         self._graph = workflow.compile()
 
+        # ── Synthesis graph: same model, NO tools, shared memory ──
+        # The synthesizer should never call tools — it only writes the report.
+        # We build a minimal graph with the same LLM config but zero tool bindings,
+        # sharing the agent's checkpointer so conversation memory is preserved.
+        from ai.graph import build_graph
+        self._synthesis_graph = build_graph(
+            config=config,
+            tools=[],  # empty — no tool calling during synthesis
+            prompt="You are an expert data analyst writing a final report.",
+            checkpointer=self._agent.checkpointer,
+        )
+
     async def _emit(self, event_type: str, data: str | dict):
         """Helper to dispatch custom events to be caught by stream()."""
         await adispatch_custom_event(
@@ -186,7 +198,8 @@ class Orchestrator:
                 stream_mode="messages",
                 config=step_config,
             ):
-                self._track_tool_call_chunk(chunk, pending_by_id, pending_by_index)
+                self._track_tool_call_chunk(
+                    chunk, pending_by_id, pending_by_index)
 
                 if (
                     isinstance(chunk, AIMessageChunk)
@@ -197,7 +210,8 @@ class Orchestrator:
                     await self._emit("step_token", chunk.content)
 
                 elif isinstance(chunk, ToolMessage) and chunk.content:
-                    tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(chunk, pending_by_id, pending_by_index)
+                    tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(
+                        chunk, pending_by_id, pending_by_index)
                     raw_result = str(chunk.content)
 
                     # Emit evidence for traceability
@@ -211,7 +225,6 @@ class Orchestrator:
                         "execution_time_ms": duration_ms,
                     }
                     await self._emit("tool_evidence", json.dumps(evidence_payload))
-
 
                     content = str(chunk.content)
                     for line in content.splitlines():
@@ -239,7 +252,6 @@ class Orchestrator:
                         elif line.startswith(ARTIFACT_URL_PREFIX):
                             buffered_plan_artifacts.append(
                                 line[len(ARTIFACT_URL_PREFIX):])
-
 
             # Build evidence string: LLM narrative + inline chart summaries
             full_evidence = "".join(evidence_tokens)
@@ -302,7 +314,6 @@ class Orchestrator:
 
         original_message = state.get("original_message", "")
         dataset_path = state.get("dataset_path")
-        thread_id = config.get("configurable", {}).get("thread_id", "default")
 
         user_message = (
             f"Original question: {original_message}\n\n"
@@ -312,15 +323,18 @@ class Orchestrator:
             user_message = f"[Dataset: {dataset_path}]\n{user_message}"
 
         synthesis_prompt = SYNTHESIS_SYSTEM_PROMPT.format(evidence=evidence)
+
+        # Use a tool-less agent graph for synthesis — same model config, no tool bindings
+        thread_id = config.get("configurable", {}).get("thread_id", "default")
         synth_config = {"configurable": {
             "thread_id": f"{thread_id}_synthesize"}}
 
         try:
-            async for chunk, metadata in self._agent.graph.astream(
+            async for chunk, metadata in self._synthesis_graph.astream(
                 {
                     "messages": [
                         SystemMessage(content=synthesis_prompt),
-                        HumanMessage(content=user_message)
+                        HumanMessage(content=user_message),
                     ],
                     "summary": "",
                 },
@@ -333,25 +347,6 @@ class Orchestrator:
                     and metadata.get("langgraph_node") == "agent"
                 ):
                     await self._emit("token", chunk.content)
-                elif isinstance(chunk, ToolMessage) and chunk.content:
-                    content = str(chunk.content)
-                    for line in content.splitlines():
-                        if line.startswith(CHART_ARTIFACT_PREFIX):
-                            raw_json = line[len(CHART_ARTIFACT_PREFIX):]
-                            try:
-                                artifact = ChartArtifact.from_dict(
-                                    json.loads(raw_json))
-                                await self._emit("image", artifact.api_url)
-                                await self._emit("chart_artifact", artifact.to_dict())
-                            except Exception as parse_err:
-                                logger.warning(
-                                    "Synthesizer: failed to parse ChartArtifact",
-                                    error=str(parse_err),
-                                )
-                        elif line.startswith(CHART_URL_PREFIX):
-                            await self._emit("image", line[len(CHART_URL_PREFIX):])
-                        elif line.startswith(ARTIFACT_URL_PREFIX):
-                            await self._emit("artifact", line[len(ARTIFACT_URL_PREFIX):])
         except Exception as e:
             logger.error("Synthesis failed", error=str(e))
             await self._emit("token", f"\n\n*Error generating final report: {str(e)}*")
@@ -464,7 +459,8 @@ class Orchestrator:
             ):
                 yield ("token", chunk.content)
             elif isinstance(chunk, ToolMessage) and chunk.content:
-                tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(chunk, pending_by_id, pending_by_index)
+                tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(
+                    chunk, pending_by_id, pending_by_index)
                 raw_result = str(chunk.content)
 
                 evidence_payload = {
@@ -503,9 +499,12 @@ class Orchestrator:
         tool_calls = getattr(chunk, "tool_calls", None)
         if tool_calls:
             for tc in tool_calls:
-                tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
-                tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
-                tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                tc_id = tc.get("id") if isinstance(
+                    tc, dict) else getattr(tc, "id", None)
+                tc_name = tc.get("name") if isinstance(
+                    tc, dict) else getattr(tc, "name", None)
+                tc_args = tc.get("args") if isinstance(
+                    tc, dict) else getattr(tc, "args", None)
                 if tc_id:
                     parsed_args = tc_args if isinstance(tc_args, dict) else {}
                     pending_by_id[tc_id] = {
@@ -569,7 +568,8 @@ class Orchestrator:
                 pending_by_index.pop(idx, None)
 
         start_time = call_info.get("start_time")
-        duration_ms = int((time.time() - start_time) * 1000) if start_time else None
+        duration_ms = int((time.time() - start_time) *
+                          1000) if start_time else None
         tool_name = call_info.get("name") or getattr(chunk, "name", "tool")
 
         parameters = call_info.get("args")
