@@ -86,7 +86,7 @@ class Orchestrator:
         self._synthesis_graph = build_graph(
             config=config,
             tools=[],  # empty — no tool calling during synthesis
-            prompt="You are an expert data analyst writing a final report.",
+            prompt=SYNTHESIS_SYSTEM_PROMPT,
             checkpointer=self._agent.checkpointer,
         )
 
