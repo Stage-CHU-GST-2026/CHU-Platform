@@ -56,7 +56,14 @@ async def lifespan(_app: FastAPI):
     pg_config = PostgresConfig()  # reads DATABASE_URL from .env
     pg_conn = await AsyncConnection.connect(pg_config.connection_string)
     pg_checkpointer = AsyncPostgresSaver(pg_conn)
-    await pg_checkpointer.setup()
+
+    # setup() runs CREATE INDEX CONCURRENTLY which needs autocommit mode
+    await pg_conn.execute("COMMIT")
+    await pg_conn.set_autocommit(True)
+    try:
+        await pg_checkpointer.setup()
+    finally:
+        await pg_conn.set_autocommit(False)
 
     session_manager.set_checkpointer(pg_checkpointer)
 
