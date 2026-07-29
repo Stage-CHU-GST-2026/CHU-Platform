@@ -139,7 +139,7 @@
 							</span>
 							{#if conv.dataset_name}
 								<span class="block text-[11px] text-muted truncate mt-0.5">
-									📊 {conv.dataset_name}
+									{conv.dataset_name}
 								</span>
 							{/if}
 						</div>

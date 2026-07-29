@@ -183,10 +183,10 @@ class ListDatasetsTool(BaseTool):
                 row_str = f"{rows:,}" if rows else "?"
                 col_str = f"{cols}" if cols else "?"
 
-                status_icon = "✅" if status == "ready" else "⏳" if status in (
-                    "uploading", "processing") else "❌"
+                status_tag = "[ready]" if status == "ready" else "[processing]" if status in (
+                    "uploading", "processing") else "[error]"
                 lines.append(
-                    f"  {status_icon} {fname}  "
+                    f"  {status_tag} {fname}  "
                     f"({row_str} rows × {col_str} cols, {size_str})"
                 )
 
@@ -216,7 +216,7 @@ class ListDatasetsTool(BaseTool):
                 size_str = f"{size / 1024:.1f} KB"
             else:
                 size_str = f"{size / 1024**2:.1f} MB"
-            lines.append(f"  📄 {ds.name}  ({size_str})")
+            lines.append(f"  [file] {ds.name}  ({size_str})")
         lines.append("\nUse a dataset by referencing its path, e.g.:")
         lines.append(f"  `data/{datasets[0].name}`")
         return "\n".join(lines)
