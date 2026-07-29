@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+_dil_src = str(Path(__file__).resolve().parents[4] / "packages" / "dil" / "src")
+if _dil_src not in sys.path:
+    sys.path.insert(0, _dil_src)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -47,6 +53,20 @@ async def lifespan(_app: FastAPI):
     # Startup: create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Ensure new DIL enum values exist in PostgreSQL dataset_status type
+        from sqlalchemy import text
+        for new_val in ["profiling", "profiled", "semantic_review"]:
+            try:
+                await conn.execute(text(f"ALTER TYPE dataset_status ADD VALUE IF NOT EXISTS '{new_val}'"))
+            except Exception:
+                pass
+
+        # Ensure new DIL JSONB columns exist in dataset_intelligence_records table
+        try:
+            await conn.execute(text("ALTER TABLE dataset_intelligence_records ADD COLUMN IF NOT EXISTS semantic_profile JSONB"))
+            await conn.execute(text("ALTER TABLE dataset_intelligence_records ADD COLUMN IF NOT EXISTS domain_profile JSONB"))
+        except Exception:
+            pass
 
     # ── Agent memory: Postgres checkpointer ──────────────────────
     from ai.memory import PostgresConfig

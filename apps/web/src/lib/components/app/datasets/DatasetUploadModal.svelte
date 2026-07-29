@@ -2,7 +2,7 @@
 	import { uploadDataset } from '$lib/api/datasets';
 	import type { DatasetUploadResponse } from '$lib/api/datasets';
 	import { clickOutside, trapFocus } from '../common/actions';
-	import { IconX, IconRefresh } from '@tabler/icons-svelte';
+	import { IconX, IconRefresh, IconCloudUpload } from '@tabler/icons-svelte';
 
 	let { open = $bindable(false), onUploaded }: { open: boolean; onUploaded?: (res: DatasetUploadResponse) => void } = $props();
 
@@ -121,7 +121,7 @@
 		role="presentation"
 	>
 		<div
-			class="bg-surface border border-border rounded-lg shadow-xl w-full max-w-xl min-h-[520px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+			class="bg-surface border border-border rounded-lg shadow-xl w-full max-w-md min-h-0 max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="upload-modal-title"
@@ -130,12 +130,12 @@
 			tabindex="-1"
 		>
 			<!-- Header with Icon-Only Close Button -->
-			<div class="flex items-center justify-between px-6 py-5 border-b border-border bg-surface-elevated shrink-0">
+			<div class="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-elevated shrink-0">
 				<div>
 					<h3 id="upload-modal-title" class="text-base font-semibold text-text-primary">
 						Upload Dataset
 					</h3>
-					<p class="text-sm text-muted mt-0.5">Maximum file size: 500 MB</p>
+					<p class="text-xs text-muted mt-0.5">Maximum file size: 500 MB</p>
 				</div>
 
 				<button
@@ -145,31 +145,31 @@
 					aria-label="Close dialog"
 					title="Close"
 				>
-					<IconX size={20} />
+					<IconX size={18} />
 				</button>
 			</div>
 
-			<!-- Body with Taller Spacing and Taller Dropzone -->
-			<div class="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+			<!-- Body with Compact Spacing and Dropzone -->
+			<div class="p-5 flex-1 flex flex-col gap-4 overflow-y-auto">
 				{#if error}
-					<div class="p-4 rounded-md bg-danger/10 border border-danger/20 text-danger text-sm font-medium shrink-0">
+					<div class="p-3.5 rounded-md bg-danger/10 border border-danger/20 text-danger text-xs font-medium shrink-0">
 						{error}
 					</div>
 				{/if}
 
 				{#if successMsg}
-					<div class="p-4 rounded-md bg-success/10 border border-success/20 text-success text-sm font-medium shrink-0">
+					<div class="p-3.5 rounded-md bg-success/10 border border-success/20 text-success text-xs font-medium shrink-0">
 						{successMsg}
 					</div>
 				{/if}
 
-				<!-- Taller Dropzone area -->
+				<!-- Dropzone area with animated hover effect -->
 				<div
-					class="border border-dashed rounded-lg flex-1 min-h-[260px] p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer {isDragging
-						? 'border-accent bg-accent/5'
+					class="group border border-dashed rounded-lg min-h-[170px] p-6 flex flex-col items-center justify-center text-center transition-all duration-200 ease-out cursor-pointer {isDragging
+						? 'border-accent bg-accent/10 scale-[1.01] shadow-md'
 						: selectedFile
 							? 'border-success/60 bg-success/5'
-							: 'border-border hover:border-text-secondary hover:bg-surface-hover/30'}"
+							: 'border-border hover:border-accent hover:bg-accent/5 hover:scale-[1.01] hover:shadow-xs'}"
 					onaria-droptarget={handleDrop}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
@@ -189,15 +189,15 @@
 					/>
 
 					{#if selectedFile}
-						<span class="text-sm font-mono font-semibold text-text-primary max-w-full truncate px-4">
+						<span class="text-xs font-mono font-semibold text-text-primary max-w-full truncate px-2">
 							{selectedFile.name}
 						</span>
-						<span class="text-xs font-mono text-muted mt-1.5">
+						<span class="text-[11px] font-mono text-muted mt-1">
 							{formatBytes(selectedFile.size)}
 						</span>
 						<button
 							type="button"
-							class="mt-4 text-sm text-accent hover:underline font-semibold"
+							class="mt-3 text-xs text-accent hover:underline font-semibold"
 							onclick={(e) => {
 								e.stopPropagation();
 								reset();
@@ -207,20 +207,23 @@
 							Select different file
 						</button>
 					{:else}
-						<p class="text-base font-medium text-text-primary">
+						<div class="p-2.5 rounded-full bg-surface-elevated border border-border group-hover:border-accent/40 group-hover:bg-accent/10 transition-all duration-200 mb-2">
+							<IconCloudUpload size={24} class="text-text-secondary group-hover:text-accent group-hover:scale-110 transition-all duration-200" />
+						</div>
+						<p class="text-sm font-medium text-text-primary group-hover:text-accent transition-colors">
 							Drag and drop dataset file here, or <span class="text-accent underline font-semibold">browse</span>
 						</p>
-						<p class="text-xs text-muted mt-2">
+						<p class="text-[11px] text-muted mt-1">
 							Accepted formats: CSV, TSV, XLSX, XLS, Parquet, JSON, Feather
 						</p>
 					{/if}
 				</div>
 
 				<!-- Formats list -->
-				<div class="flex flex-wrap items-center gap-2 pt-1 shrink-0">
-					<span class="text-xs text-muted font-mono font-medium mr-1">Formats:</span>
+				<div class="flex flex-wrap items-center gap-1.5 pt-0.5 shrink-0">
+					<span class="text-[11px] text-muted font-mono font-medium mr-1">Formats:</span>
 					{#each ALLOWED_EXTENSIONS as ext}
-						<span class="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-surface-elevated border border-border text-text-secondary">
+						<span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-surface-elevated border border-border text-text-secondary">
 							{ext}
 						</span>
 					{/each}
@@ -228,10 +231,10 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="px-6 py-4 bg-surface-elevated border-t border-border flex items-center justify-end gap-3 shrink-0">
+			<div class="px-5 py-3.5 bg-surface-elevated border-t border-border flex items-center justify-end gap-2.5 shrink-0">
 				<button
 					type="button"
-					class="px-4 py-2 rounded border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+					class="px-3.5 py-1.5 rounded border border-border text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
 					onclick={close}
 					disabled={isUploading}
 				>
@@ -240,7 +243,7 @@
 
 				<button
 					type="button"
-					class="px-5 py-2 rounded bg-accent text-white hover:bg-accent-hover text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-4 py-1.5 rounded bg-accent text-white hover:bg-accent-hover text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={startUpload}
 					disabled={!selectedFile || isUploading}
 				>

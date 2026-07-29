@@ -239,14 +239,14 @@
 							<th class="px-5 py-3.5 text-right">Actions</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border/40 text-text-secondary">
+					<tbody class="text-text-secondary">
 						{#each filteredDatasets as ds (ds.id)}
 							{@const ext = getFileExt(ds.original_filename)}
 							{@const dotColor = getStatusDotColor(ds.status)}
 
 							<tr class="hover:bg-surface-hover/50 transition-colors">
 								<!-- Format Badge -->
-								<td class="px-5 py-3.5">
+								<td class="px-5 py-3.5 border-b border-border/30">
 									<span
 										class="px-2.5 py-1 rounded bg-surface-elevated border border-border text-accent text-xs font-bold"
 									>
@@ -255,7 +255,7 @@
 								</td>
 
 								<!-- Filename (Clickable link to dataset detail page) -->
-								<td class="px-5 py-3.5 font-bold text-text-primary text-sm">
+								<td class="px-5 py-3.5 font-bold text-text-primary text-sm border-b border-border/30">
 									<a
 										href="/dashboard/datasets/{ds.id}"
 										class="hover:text-accent hover:underline transition-colors truncate block max-w-md"
@@ -269,7 +269,7 @@
 								</td>
 
 								<!-- Status -->
-								<td class="px-5 py-3.5">
+								<td class="px-5 py-3.5 border-b border-border/30">
 									<div class="flex items-center gap-2">
 										<span class="w-2.5 h-2.5 rounded-full {dotColor}"></span>
 										<span class="capitalize text-text-primary font-medium text-xs">{ds.status}</span
@@ -278,25 +278,25 @@
 								</td>
 
 								<!-- Rows -->
-								<td class="px-5 py-3.5 font-medium">
+								<td class="px-5 py-3.5 font-medium border-b border-border/30">
 									{ds.rows !== null && ds.rows !== undefined ? ds.rows.toLocaleString() : '—'}
 								</td>
 
 								<!-- Columns -->
-								<td class="px-5 py-3.5 font-medium">
+								<td class="px-5 py-3.5 font-medium border-b border-border/30">
 									{ds.columns !== null && ds.columns !== undefined ? ds.columns : '—'}
 								</td>
 
 								<!-- Size -->
-								<td class="px-5 py-3.5 font-medium">{formatBytes(ds.file_size)}</td>
+								<td class="px-5 py-3.5 font-medium border-b border-border/30">{formatBytes(ds.file_size)}</td>
 
 								<!-- Uploaded -->
-								<td class="px-5 py-3.5 font-sans text-muted text-xs"
+								<td class="px-5 py-3.5 font-sans text-muted text-xs border-b border-border/30"
 									>{formatRelativeTime(ds.created_at)}</td
 								>
 
 								<!-- Actions (Clean Icon Buttons) -->
-								<td class="px-5 py-3.5 text-right">
+								<td class="px-5 py-3.5 text-right border-b border-border/30">
 									<div class="flex items-center justify-end gap-1.5">
 										<!-- View Details Icon -->
 										<a

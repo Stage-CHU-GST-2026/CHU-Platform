@@ -16,15 +16,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.models.dataset import Dataset, DatasetStatus
+from api.models import Dataset, DatasetIntelligenceRecord, DatasetStatus
 from api.schemas.dataset import (
     ColumnInfo,
     DatasetDetail,
+    DatasetIntelligenceResponse,
     DatasetPreview,
     DatasetStatistics,
     DatasetSummary,
     DatasetUploadResponse,
     PreviewRow,
+    UpdateSemanticMappingRequest,
 )
 from api.services.dataset_service import (
     compute_statistics,
@@ -313,3 +315,145 @@ async def get_dataset_columns(
         )
 
     return [ColumnInfo(**col) for col in dataset.columns_info]
+
+
+# ── Intelligence ──────────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/intelligence", response_model=DatasetIntelligenceResponse)
+async def get_dataset_intelligence(
+    dataset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the Dataset Intelligence Record for a dataset."""
+    result = await db.execute(
+        select(DatasetIntelligenceRecord).where(
+            DatasetIntelligenceRecord.dataset_id == dataset_id
+        )
+    )
+    intel = result.scalar_one_or_none()
+    if intel is None:
+        check = await db.execute(
+            select(Dataset).where(Dataset.id == dataset_id)
+        )
+        ds = check.scalar_one_or_none()
+        if ds is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Dataset not found.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Intelligence record not yet generated for this dataset.",
+        )
+
+    return DatasetIntelligenceResponse.model_validate(intel)
+
+
+# ── Reprofile ─────────────────────────────────────────────────────────
+
+@router.post("/{dataset_id}/reprofile", status_code=status.HTTP_202_ACCEPTED)
+async def reprofile_dataset(
+    dataset_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger background re-profiling of a dataset."""
+    result = await db.execute(
+        select(Dataset).where(Dataset.id == dataset_id)
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found.",
+        )
+
+    background_tasks.add_task(process_dataset, dataset.id)
+    return {"message": "Re-profiling task queued in background.", "dataset_id": str(dataset_id)}
+
+
+# ── Update Semantic Mapping ───────────────────────────────────────────
+
+@router.post("/{dataset_id}/update-semantic-mapping", response_model=DatasetIntelligenceResponse)
+async def update_semantic_mapping(
+    dataset_id: uuid.UUID,
+    payload: UpdateSemanticMappingRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Override or update a column's semantic concept, role, and units."""
+    result = await db.execute(
+        select(DatasetIntelligenceRecord).where(
+            DatasetIntelligenceRecord.dataset_id == dataset_id
+        )
+    )
+    intel = result.scalar_one_or_none()
+    if intel is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Intelligence record not found for this dataset.",
+        )
+
+    sem_profile = intel.semantic_profile or {"columns": [], "overall_confidence": 1.0}
+    cols = sem_profile.get("columns", [])
+    found = False
+
+    for col in cols:
+        if col.get("column_name") == payload.column_name:
+            col["inferred_concept"] = payload.inferred_concept
+            col["semantic_role"] = payload.semantic_role
+            col["units"] = payload.units
+            col["entity_type"] = payload.entity_type
+            col["description"] = payload.description
+            col["confidence"] = 1.0
+            col["source"] = "human"
+            col["needs_review"] = False
+            found = True
+            break
+
+    if not found:
+        cols.append({
+            "column_name": payload.column_name,
+            "inferred_concept": payload.inferred_concept,
+            "semantic_role": payload.semantic_role,
+            "units": payload.units,
+            "entity_type": payload.entity_type,
+            "description": payload.description,
+            "confidence": 1.0,
+            "source": "human",
+            "needs_review": False,
+        })
+
+    # Recalculate overall confidence
+    conf_scores = [c.get("confidence", 1.0) for c in cols]
+    overall_conf = round(sum(conf_scores) / len(conf_scores), 2) if conf_scores else 1.0
+    sem_profile["columns"] = cols
+    sem_profile["overall_confidence"] = overall_conf
+
+    # Update intel record JSONB explicitly
+    intel.semantic_profile = dict(sem_profile)
+
+    # Recalculate readiness
+    from dil import (
+        DomainProfile,
+        QualityProfile,
+        SemanticProfile,
+        StructuralProfile,
+        calculate_readiness,
+    )
+    
+    if intel.structural_profile and intel.quality_profile:
+        sp = StructuralProfile.model_validate(intel.structural_profile)
+        qp = QualityProfile.model_validate(intel.quality_profile)
+        sem_p = SemanticProfile.model_validate(sem_profile)
+        dom_p = DomainProfile.model_validate(intel.domain_profile) if intel.domain_profile else None
+        
+        r_score, r_breakdown, r_warnings = calculate_readiness(sp, qp, sem_p, dom_p)
+        intel.readiness_score = r_score
+        intel.readiness_breakdown = r_breakdown.model_dump()
+        intel.warnings = r_warnings
+
+    intel.version += 1
+    await db.commit()
+    await db.refresh(intel)
+
+    return DatasetIntelligenceResponse.model_validate(intel)

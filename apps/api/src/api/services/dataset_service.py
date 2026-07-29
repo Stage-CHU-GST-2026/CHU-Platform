@@ -20,7 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import get_datasets_abs_dir
 from api.database import AsyncSessionLocal
-from api.models.dataset import Dataset, DatasetStatus
+from api.models import Dataset, DatasetIntelligenceRecord, DatasetStatus
+from dil import (
+    calculate_readiness,
+    detect_domain,
+    evaluate_quality,
+    generate_semantic_profile,
+    generate_structural_profile,
+)
 
 # ── Storage directory ─────────────────────────────────────────────────
 
@@ -105,7 +112,7 @@ def _profile_dataframe(df: pd.DataFrame) -> dict[str, Any]:
 
 
 async def process_dataset(dataset_id: uuid.UUID) -> None:
-    """Background task: load dataset, profile columns, update status.
+    """Background task: load dataset, run DIL profiling & quality pipeline, update status.
 
     Spawns CPU-bound pandas operations in a thread executor so the
     event loop is not blocked.
@@ -119,28 +126,99 @@ async def process_dataset(dataset_id: uuid.UUID) -> None:
             return
 
         try:
-            # Mark as processing
-            dataset.status = DatasetStatus.PROCESSING
-            await db.commit()
+            # Mark as profiling (with fallback to PROCESSING if enum type doesn't support PROFILING)
+            try:
+                dataset.status = DatasetStatus.PROFILING
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                dataset.status = DatasetStatus.PROCESSING
+                await db.commit()
 
-            # Load & profile in executor (CPU-bound)
+            # Load & run DIL pipeline in executor (CPU-bound)
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(None, _load_dataframe, dataset.filepath)
-            columns_info = await loop.run_in_executor(
-                None, _profile_dataframe, df
-            )
 
-            # Update with results
+            def _run_dil_pipeline(df_data: pd.DataFrame):
+                struct_profile = generate_structural_profile(df_data)
+                quality_profile = evaluate_quality(df_data, struct_profile)
+                semantic_profile = generate_semantic_profile(df_data, struct_profile)
+                domain_profile = detect_domain(struct_profile, semantic_profile)
+                readiness_score, readiness_breakdown, warnings = calculate_readiness(
+                    struct_profile, quality_profile, semantic_profile, domain_profile
+                )
+                return struct_profile, quality_profile, semantic_profile, domain_profile, readiness_score, readiness_breakdown, warnings
+
+            (
+                struct_profile,
+                quality_profile,
+                semantic_profile,
+                domain_profile,
+                readiness_score,
+                readiness_breakdown,
+                warnings,
+            ) = await loop.run_in_executor(None, _run_dil_pipeline, df)
+
+            columns_info = [c.model_dump() for c in struct_profile.columns]
+
+            # Update dataset entity
             dataset.rows = len(df)
             dataset.columns = len(df.columns)
             dataset.columns_info = columns_info
-            dataset.status = DatasetStatus.READY
+            
+            try:
+                dataset.status = DatasetStatus.READY if readiness_score >= 50.0 else DatasetStatus.PROFILED
+            except Exception:
+                dataset.status = DatasetStatus.READY
+
+            # Upsert DatasetIntelligenceRecord
+            intel_stmt = select(DatasetIntelligenceRecord).where(
+                DatasetIntelligenceRecord.dataset_id == dataset_id
+            )
+            intel_res = await db.execute(intel_stmt)
+            intel_rec = intel_res.scalar_one_or_none()
+
+            if intel_rec is None:
+                intel_rec = DatasetIntelligenceRecord(
+                    dataset_id=dataset_id,
+                    structural_profile=struct_profile.model_dump(),
+                    quality_profile=quality_profile.model_dump(),
+                    semantic_profile=semantic_profile.model_dump(),
+                    domain_profile=domain_profile.model_dump(),
+                    readiness_score=readiness_score,
+                    readiness_breakdown=readiness_breakdown.model_dump(),
+                    warnings=warnings,
+                    version=1,
+                )
+                db.add(intel_rec)
+            else:
+                intel_rec.structural_profile = struct_profile.model_dump()
+                intel_rec.quality_profile = quality_profile.model_dump()
+                intel_rec.semantic_profile = semantic_profile.model_dump()
+                intel_rec.domain_profile = domain_profile.model_dump()
+                intel_rec.readiness_score = readiness_score
+                intel_rec.readiness_breakdown = readiness_breakdown.model_dump()
+                intel_rec.warnings = warnings
+                intel_rec.version += 1
+                intel_rec.readiness_breakdown = readiness_breakdown.model_dump()
+                intel_rec.warnings = warnings
+                intel_rec.version += 1
+
             await db.commit()
 
         except Exception as exc:
-            dataset.status = DatasetStatus.ERROR
-            dataset.error_message = f"{type(exc).__name__}: {exc}"
-            await db.commit()
+            await db.rollback()
+            try:
+                result_err = await db.execute(
+                    select(Dataset).where(Dataset.id == dataset_id)
+                )
+                ds_err = result_err.scalar_one_or_none()
+                if ds_err:
+                    ds_err.status = DatasetStatus.ERROR
+                    ds_err.error_message = f"{type(exc).__name__}: {exc}"
+                    await db.commit()
+            except Exception:
+                pass
 
 
 # ── Statistics (lightweight, runs inline in request) ──────────────────

@@ -22,6 +22,9 @@ class DatasetStatus(str, PyEnum):
 
     UPLOADING = "uploading"
     PROCESSING = "processing"
+    PROFILING = "profiling"
+    PROFILED = "profiled"
+    SEMANTIC_REVIEW = "semantic_review"
     READY = "ready"
     ERROR = "error"
 

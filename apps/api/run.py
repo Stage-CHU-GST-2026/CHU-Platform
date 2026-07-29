@@ -15,8 +15,9 @@ _proj_root = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", ".."))
 os.chdir(_proj_root)
 
-# Allow imports from api/src and the root packages/
+# Allow imports from api/src, packages/dil/src, and the root packages/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(_proj_root, "packages", "dil", "src"))
 sys.path.insert(0, _proj_root)
 
 if __name__ == "__main__":

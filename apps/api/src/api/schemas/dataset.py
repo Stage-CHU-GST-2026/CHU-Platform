@@ -14,6 +14,9 @@ from pydantic import BaseModel, Field
 class DatasetStatus(str, Enum):
     UPLOADING = "uploading"
     PROCESSING = "processing"
+    PROFILING = "profiling"
+    PROFILED = "profiled"
+    SEMANTIC_REVIEW = "semantic_review"
     READY = "ready"
     ERROR = "error"
 
@@ -110,3 +113,33 @@ class DatasetUpdateRequest(BaseModel):
     """Optional payload to update dataset metadata."""
 
     original_filename: str | None = Field(default=None, max_length=255)
+
+
+class DatasetIntelligenceResponse(BaseModel):
+    """Full Dataset Intelligence Record response."""
+
+    id: uuid.UUID
+    dataset_id: uuid.UUID
+    structural_profile: dict | None = None
+    quality_profile: dict | None = None
+    semantic_profile: dict | None = None
+    domain_profile: dict | None = None
+    readiness_score: float = 0.0
+    readiness_breakdown: dict | None = None
+    warnings: list[str] | None = None
+    version: int = 1
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UpdateSemanticMappingRequest(BaseModel):
+    """Request payload to update or override a column's semantic mapping."""
+
+    column_name: str
+    inferred_concept: str
+    semantic_role: str = "measure"
+    units: str | None = None
+    entity_type: str | None = None
+    description: str | None = None
