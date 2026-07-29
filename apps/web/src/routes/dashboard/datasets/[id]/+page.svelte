@@ -89,7 +89,7 @@
 	}
 
 	// Preview Filters
-	let previewNumRows = $state(25);
+	let previewNumRows = $state(10);
 	let previewSearch = $state('');
 	let previewLoading = $state(false);
 
@@ -245,9 +245,9 @@
 	<meta name="description" content="Detailed profiling and preview for dataset." />
 </svelte:head>
 
-<div class="w-full h-full p-6 md:p-8 flex flex-col space-y-6 overflow-y-auto">
-	<!-- Top Navigation Breadcrumbs -->
-	<div class="flex items-center justify-between border-b border-border pb-4">
+<div class="w-full h-full flex flex-col overflow-hidden">
+	<!-- Breadcrumbs — always visible, never scrolls -->
+	<div class="flex-shrink-0 flex items-center justify-between border-b border-border px-6 md:px-8 py-4">
 		<a
 			href="/dashboard/datasets"
 			class="inline-flex items-center gap-2 text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors"
@@ -280,20 +280,20 @@
 	</div>
 
 	{#if loading}
-		<div class="h-64 border border-border rounded-lg p-8 flex flex-col items-center justify-center text-center bg-surface/30 space-y-3">
+		<div class="flex-1 flex flex-col items-center justify-center text-center gap-3 p-8">
 			<IconRefresh size={24} class="animate-spin text-accent" />
 			<p class="text-sm font-mono text-muted">Loading dataset details and profiling schemas…</p>
 		</div>
 	{:else if error || !dataset}
-		<div class="p-6 rounded-lg border border-danger/20 bg-danger/10 text-danger text-sm font-medium flex flex-col gap-3">
+		<div class="m-6 p-6 rounded-lg border border-danger/20 bg-danger/10 text-danger text-sm font-medium flex flex-col gap-3">
 			<span>{error || 'Dataset not found.'}</span>
 			<div>
 				<a href="/dashboard/datasets" class="underline text-sm font-semibold">Return to Datasets list</a>
 			</div>
 		</div>
 	{:else}
-		<!-- Header Information Banner (Full Width UX) -->
-		<div class="bg-surface border border-border rounded-lg p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+		<!-- Dataset Banner — fixed height, never scrolls -->
+		<div class="flex-shrink-0 px-6 md:px-8 py-5 bg-surface border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
 			<div class="space-y-3 min-w-0 flex-1">
 				<div class="flex flex-wrap items-center gap-3">
 					<span class="px-2.5 py-1 rounded bg-surface-elevated border border-border text-accent text-xs font-bold font-mono">
@@ -348,7 +348,7 @@
 				{/if}
 			</div>
 
-			<!-- Main Action Button -->
+			<!-- Action Buttons -->
 			<div class="flex items-center gap-3 shrink-0">
 				<button
 					class="px-3.5 py-2.5 rounded border border-border bg-surface hover:bg-surface-hover text-text-secondary hover:text-text-primary text-sm font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 font-mono"
@@ -374,8 +374,8 @@
 			</div>
 		</div>
 
-		<!-- Main Tab Navigation -->
-		<div class="border-b border-border flex items-center gap-4 text-sm overflow-x-auto">
+		<!-- Tab Navigation — fixed, never scrolls away -->
+		<div class="flex-shrink-0 border-b border-border flex items-center gap-1 text-sm overflow-x-auto bg-canvas px-6 md:px-8">
 			<button
 				class="px-5 py-3 border-b-2 font-medium font-mono transition-colors cursor-pointer inline-flex items-center gap-2 {activeTab === 'preview'
 					? 'border-accent text-text-primary font-bold'
@@ -440,7 +440,8 @@
 			</button>
 		</div>
 
-		<!-- TAB CONTENT PANES -->
+		<!-- TAB CONTENT PANES — this area scrolls independently -->
+		<div class="flex-1 overflow-y-auto px-6 md:px-8 py-6">
 		{#if activeTab === 'preview'}
 			<!-- Preview Pane -->
 			<div class="flex flex-col gap-4">
@@ -1074,21 +1075,35 @@
 					</div>
 				{/if}
 			</div>
-		{/if}
+			{/if}
+		</div>
 	{/if}
 </div>
 
 <!-- Change Semantic Mapping Modal -->
 {#if editingSemantic}
-	<div class="fixed inset-0 z-[var(--z-modal)] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-		<div class="bg-surface border border-border rounded-lg p-6 max-w-md w-full shadow-2xl space-y-4 font-mono">
-			<div class="flex items-center justify-between border-b border-border pb-3">
-				<div>
-					<h3 class="text-base font-bold text-text-primary">Change Semantic Mapping</h3>
-					<p class="text-xs text-muted mt-0.5">Override inferred concept & role for column "{editingSemantic.column_name}"</p>
+	<div
+		class="fixed inset-0 z-[var(--z-modal)] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+		onclick={(e) => { if (e.target === e.currentTarget) editingSemantic = null; }}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="sem-modal-title"
+	>
+		<div class="bg-surface border border-border rounded-xl p-8 max-w-lg w-full shadow-2xl font-mono flex flex-col gap-6">
+
+			<!-- Header -->
+			<div class="flex items-start justify-between gap-4">
+				<div class="flex flex-col gap-2">
+					<h3 id="sem-modal-title" class="text-lg font-bold text-text-primary">Change Semantic Mapping</h3>
+					<div class="flex items-center gap-2 flex-wrap">
+						<span class="text-xs text-muted">Column:</span>
+						<span class="px-2.5 py-0.5 rounded bg-accent/15 border border-accent/30 text-accent font-bold text-xs tracking-wide">
+							{editingSemantic.column_name}
+						</span>
+					</div>
 				</div>
 				<button
-					class="p-1.5 rounded text-muted hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+					class="p-2 rounded-lg text-muted hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer shrink-0 mt-0.5"
 					onclick={() => (editingSemantic = null)}
 					aria-label="Close dialog"
 					title="Close"
@@ -1097,56 +1112,67 @@
 				</button>
 			</div>
 
-			<div class="space-y-3.5 text-xs">
-				<div>
-					<label class="block text-text-primary font-bold mb-1" for="edit-concept-input">
+			<!-- Fields -->
+			<div class="flex flex-col gap-5">
+				<div class="flex flex-col gap-1.5">
+					<label class="text-sm font-bold text-text-primary" for="edit-concept-input">
 						Business Concept / Display Name
 					</label>
+					<p class="text-xs text-muted -mt-0.5">A human-readable label describing what this column represents.</p>
 					<input
 						id="edit-concept-input"
 						bind:value={editConcept}
 						type="text"
 						placeholder="e.g. Fasting Blood Glucose"
-						class="w-full px-3 py-2 bg-surface-elevated border border-border rounded text-text-primary focus:outline-none focus:border-accent text-xs"
+						class="w-full px-4 py-2.5 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-accent transition-colors"
 					/>
 				</div>
 
-				<div>
-					<label class="block text-text-primary font-bold mb-1" for="edit-role-select">
+				<div class="flex flex-col gap-1.5">
+					<label class="text-sm font-bold text-text-primary" for="edit-role-select">
 						Semantic Role
 					</label>
+					<p class="text-xs text-muted -mt-0.5">How this column is used in modelling and analysis pipelines.</p>
 					<select
 						id="edit-role-select"
 						bind:value={editRole}
-						class="w-full px-3 py-2 bg-surface-elevated border border-border rounded text-text-primary focus:outline-none focus:border-accent text-xs cursor-pointer"
+						class="w-full px-4 py-2.5 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
 					>
-						<option value="measure">Measure (Numeric/Metric)</option>
-						<option value="target">Target (Outcome Variable)</option>
-						<option value="identifier">Identifier (ID Primary Key)</option>
-						<option value="dimension">Dimension (Category/Group)</option>
-						<option value="datetime">Datetime / Timestamp</option>
-						<option value="text">Text / Freeform</option>
+						<option value="measure">Measure — Numeric / Metric</option>
+						<option value="target">Target — Outcome / Label Variable</option>
+						<option value="identifier">Identifier — ID / Primary Key</option>
+						<option value="dimension">Dimension — Category / Group</option>
+						<option value="datetime">Datetime — Timestamp / Date</option>
+						<option value="text">Text — Freeform / String</option>
 					</select>
 				</div>
 
-				<div>
-					<label class="block text-text-primary font-bold mb-1" for="edit-units-input">
-						Units of Measurement (Optional)
+				<div class="flex flex-col gap-1.5">
+					<label class="text-sm font-bold text-text-primary" for="edit-units-input">
+						Units of Measurement <span class="text-muted font-normal">(optional)</span>
 					</label>
+					<p class="text-xs text-muted -mt-0.5">Leave blank if this column has no physical unit.</p>
 					<input
 						id="edit-units-input"
 						bind:value={editUnits}
 						type="text"
-						placeholder="e.g. mg/dL, kg/m², years"
-						class="w-full px-3 py-2 bg-surface-elevated border border-border rounded text-text-primary focus:outline-none focus:border-accent text-xs"
+						placeholder="e.g. mg/dL, kg/m², years, USD"
+						class="w-full px-4 py-2.5 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-accent transition-colors"
 					/>
 				</div>
 			</div>
 
-			<div class="flex items-center justify-end gap-3 pt-2">
+			<!-- Divider + Info note -->
+			<div class="border-t border-border/60 pt-1 text-xs text-muted flex items-center gap-2">
+				<IconBulb size={13} class="shrink-0 text-accent" />
+				<span>Saved mappings override heuristic inference and are marked <strong class="text-success">HUMAN OVERRIDE</strong> in the table.</span>
+			</div>
+
+			<!-- Actions -->
+			<div class="flex items-center justify-end gap-3">
 				<button
 					type="button"
-					class="px-4 py-2 rounded border border-border text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover"
+					class="px-5 py-2.5 rounded-lg border border-border text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer disabled:opacity-40"
 					onclick={() => (editingSemantic = null)}
 					disabled={isSavingSemantic}
 				>
@@ -1154,11 +1180,17 @@
 				</button>
 				<button
 					type="button"
-					class="px-5 py-2 rounded bg-accent text-white hover:bg-accent-hover text-xs font-semibold shadow-xs"
+					class="px-6 py-2.5 rounded-lg bg-accent text-white hover:bg-accent-hover text-sm font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
 					onclick={handleSaveSemantic}
 					disabled={isSavingSemantic}
 				>
-					{isSavingSemantic ? 'Saving…' : 'Save Mapping'}
+					{#if isSavingSemantic}
+						<IconRefresh size={15} class="animate-spin" />
+						<span>Saving…</span>
+					{:else}
+						<IconCheck size={15} />
+						<span>Save Mapping</span>
+					{/if}
 				</button>
 			</div>
 		</div>

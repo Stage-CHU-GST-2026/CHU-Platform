@@ -19,6 +19,7 @@ from api.config import get_charts_abs_dir
 from api.models.artifact import Artifact
 from api.models.conversation import Conversation, Message
 from api.models.dataset import Dataset
+from api.models.intelligence_record import DatasetIntelligenceRecord
 from api.models.tool_evidence import ToolEvidence
 from api.schemas.artifact import ArtifactItem as ArtifactItemSchema
 from api.schemas.chat import ConversationChatRequest
@@ -55,6 +56,71 @@ def _fix_chart_urls(text: str) -> str:
         '](/api/v1/charts/',
         text,
     )
+
+
+def _build_intelligence_context(intel: "DatasetIntelligenceRecord") -> str:
+    """Serialise the DIL intelligence record into a concise context block
+    the agent can read at the start of its prompt.
+
+    Includes:
+    - Domain classification and confidence
+    - Readiness score
+    - Key quality metrics
+    - Per-column semantic mappings (with HUMAN OVERRIDE markers)
+    """
+    lines: list[str] = ["## Dataset Intelligence (pre-computed by DIL)"]
+
+    # Domain
+    dp = intel.domain_profile or {}
+    if dp.get("primary_domain"):
+        conf = round((dp.get("confidence", 1.0)) * 100)
+        lines.append(f"\n**Domain:** {dp['primary_domain']} (confidence: {conf}%)")
+        if dp.get("reasoning"):
+            lines.append(f"**Domain Reasoning:** {dp['reasoning']}")
+        if dp.get("subdomains"):
+            lines.append(f"**Subdomains:** {', '.join(dp['subdomains'])}")
+
+    # Readiness & quality
+    if intel.readiness_score is not None:
+        lines.append(f"\n**Dataset Readiness Score:** {intel.readiness_score}%")
+    qp = intel.quality_profile or {}
+    if qp:
+        lines.append(
+            f"**Quality:** completeness={qp.get('completeness', '?')}%, "
+            f"uniqueness={qp.get('uniqueness', '?')}%, "
+            f"consistency={qp.get('consistency', '?')}%"
+        )
+        issues = qp.get("issues", [])
+        if issues:
+            lines.append(f"**Quality Issues ({len(issues)}):** " + " | ".join(
+                f"{iss.get('column', '?')}: {iss.get('description', '')}" for iss in issues[:5]
+            ))
+
+    # Semantic column mappings
+    sp = intel.semantic_profile or {}
+    cols = sp.get("columns", [])
+    if cols:
+        lines.append("\n**Column Semantic Mappings:**")
+        lines.append("| Column | Concept | Role | Units | Source |")
+        lines.append("|--------|---------|------|-------|--------|")
+        for col in cols:
+            source_label = "HUMAN OVERRIDE" if col.get("source") == "human" else "heuristic"
+            units = col.get("units") or "—"
+            lines.append(
+                f"| {col.get('column_name', '?')} "
+                f"| {col.get('inferred_concept', '?')} "
+                f"| {col.get('semantic_role', '?')} "
+                f"| {units} "
+                f"| {source_label} |"
+            )
+        target_candidates = sp.get("target_candidates", [])
+        predictor_candidates = sp.get("predictor_candidates", [])
+        if target_candidates:
+            lines.append(f"\n**Candidate Target Variable(s):** {', '.join(target_candidates)}")
+        if predictor_candidates:
+            lines.append(f"**Candidate Predictors:** {', '.join(predictor_candidates)}")
+
+    return "\n".join(lines)
 
 
 # ── List ──────────────────────────────────────────────────────────────
@@ -301,10 +367,22 @@ async def chat_in_conversation(
 
         # If no explicit dataset_path, try to use the conversation's linked dataset
         resolved_dataset_path = body.dataset_path
-        if not resolved_dataset_path and conv.dataset_id:
+        intelligence_context: str | None = None
+        if conv.dataset_id:
             ds = await db.get(Dataset, conv.dataset_id)
-            if ds and ds.filepath:
-                resolved_dataset_path = ds.filepath
+            if ds:
+                if not resolved_dataset_path and ds.filepath:
+                    resolved_dataset_path = ds.filepath
+
+                # Load the intelligence record to build semantic context for the agent
+                intel_result = await db.execute(
+                    select(DatasetIntelligenceRecord).where(
+                        DatasetIntelligenceRecord.dataset_id == conv.dataset_id
+                    )
+                )
+                intel = intel_result.scalar_one_or_none()
+                if intel:
+                    intelligence_context = _build_intelligence_context(intel)
 
     # Get or create the agent session keyed on conversation_id
     thread_id = str(conversation_id)
@@ -339,6 +417,7 @@ async def chat_in_conversation(
             message=body.message,
             thread_id=thread_id,
             dataset_path=resolved_dataset_path,
+            intelligence_context=intelligence_context,
         ):
             if event_type == "token":
                 fixed = _fix_chart_urls(str(data))

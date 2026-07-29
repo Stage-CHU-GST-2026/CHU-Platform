@@ -61,23 +61,35 @@ class AgentService:
         """
         register_datasets(datasets)
 
-    def build_prompt(self, message: str, dataset_path: str | None = None) -> str:
-        """Prepend dataset context to the user message if provided."""
+    def build_prompt(
+        self,
+        message: str,
+        dataset_path: str | None = None,
+        intelligence_context: str | None = None,
+    ) -> str:
+        """Prepend dataset path and DIL intelligence context to the user message."""
+        parts: list[str] = []
+
         if dataset_path and dataset_path not in message:
-            return (
+            parts.append(
                 f"[Dataset: {dataset_path}]\n"
                 f"The dataset above is already linked to this conversation. "
                 f"Do NOT call list_datasets — use the provided path directly "
-                f"with analysis tools.\n\n"
-                f"{message}"
+                f"with analysis tools."
             )
-        return message
+
+        if intelligence_context:
+            parts.append(intelligence_context)
+
+        parts.append(message)
+        return "\n\n".join(parts)
 
     async def stream(
         self,
         message: str,
         thread_id: str,
         dataset_path: str | None = None,
+        intelligence_context: str | None = None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Stream agent events for a given message and thread.
 
@@ -95,7 +107,7 @@ class AgentService:
             ("artifact", json)       — plan artifact metadata JSON
             ("done", str)            — stream complete
         """
-        prompt = self.build_prompt(message, dataset_path)
+        prompt = self.build_prompt(message, dataset_path, intelligence_context)
 
         # Use the orchestrator for the full plan→execute→synthesize flow
         async for event_type, data in self._orchestrator.stream(

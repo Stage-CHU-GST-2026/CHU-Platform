@@ -14,6 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.database import get_db
 from api.models import Dataset, DatasetIntelligenceRecord, DatasetStatus
@@ -426,11 +427,14 @@ async def update_semantic_mapping(
     # Recalculate overall confidence
     conf_scores = [c.get("confidence", 1.0) for c in cols]
     overall_conf = round(sum(conf_scores) / len(conf_scores), 2) if conf_scores else 1.0
-    sem_profile["columns"] = cols
-    sem_profile["overall_confidence"] = overall_conf
 
-    # Update intel record JSONB explicitly
-    intel.semantic_profile = dict(sem_profile)
+    # Assign a brand-new dict so SQLAlchemy detects the change on JSONB columns
+    intel.semantic_profile = {
+        **sem_profile,
+        "columns": [dict(c) for c in cols],
+        "overall_confidence": overall_conf,
+    }
+    flag_modified(intel, "semantic_profile")
 
     # Recalculate readiness
     from dil import (
