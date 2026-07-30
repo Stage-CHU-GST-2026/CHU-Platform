@@ -71,7 +71,7 @@
 			<div
 				class="bg-surface px-5 py-2.5 border-t border-border-subtle flex items-center justify-between"
 			>
-				<span class="text-muted text-[12px] font-mono tracking-tight">{planArtifact.filename}</span>
+				<span class="text-muted text-[12px] tracking-tight">{planArtifact.filename}</span>
 				<span class="text-muted text-[12px]">{(planArtifact.file_size / 1024).toFixed(1)} KB</span>
 			</div>
 		</div>

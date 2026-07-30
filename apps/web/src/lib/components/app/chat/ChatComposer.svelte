@@ -17,17 +17,17 @@
 	import type { DatasetSummary } from '$lib/api/datasets';
 
 	interface Props {
-		input: string;
-		isStreaming: boolean;
-		onsubmit: () => void;
+		input?: string;
+		isStreaming?: boolean;
+		onsubmit?: () => void;
 		selectedDataset?: DatasetSummary | null;
 	}
 
 	let {
-		input = $bindable(),
-		isStreaming,
-		onsubmit,
-		selectedDataset = $bindable()
+		input = $bindable(''),
+		isStreaming = false,
+		onsubmit = () => {},
+		selectedDataset = $bindable(null)
 	} = $props<Props>();
 
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
@@ -43,7 +43,7 @@
 		{ label: 'ChatGPT', icon: IconMessageCircle, action: () => (selectedModel = 'ChatGPT') }
 	];
 
-	let hasText = $derived(input.trim().length > 0);
+	let hasText = $derived((input || '').trim().length > 0);
 
 	export function resizeTextarea() {
 		if (textareaEl) {

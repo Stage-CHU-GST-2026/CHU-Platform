@@ -134,7 +134,7 @@
 				/>
 				<div class="flex items-center gap-1 shrink-0">
 					<kbd
-						class="font-sans text-[10px] text-muted bg-canvas border border-border rounded px-1.5 py-0.5"
+						class="text-[10px] text-muted bg-canvas border border-border rounded px-1.5 py-0.5"
 						>ESC</kbd
 					>
 				</div>
@@ -192,12 +192,12 @@
 			>
 				<div class="flex items-center gap-4">
 					<span class="flex items-center gap-1">
-						<kbd class="font-sans bg-canvas border border-border rounded px-1">↑</kbd>
-						<kbd class="font-sans bg-canvas border border-border rounded px-1">↓</kbd>
+						<kbd class="bg-canvas border border-border rounded px-1">↑</kbd>
+						<kbd class="bg-canvas border border-border rounded px-1">↓</kbd>
 						to navigate
 					</span>
 					<span class="flex items-center gap-1">
-						<kbd class="font-sans bg-canvas border border-border rounded px-1">↵</kbd>
+						<kbd class="bg-canvas border border-border rounded px-1">↵</kbd>
 						to select
 					</span>
 				</div>

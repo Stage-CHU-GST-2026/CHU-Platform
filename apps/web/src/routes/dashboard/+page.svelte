@@ -61,7 +61,7 @@
 			<!-- Hint text -->
 			<p class="mt-3 text-xs text-muted tracking-tight flex items-center gap-1.5 opacity-80">
 				Press <kbd
-					class="px-1.5 py-0.5 rounded border border-border bg-surface font-mono text-[10px]"
+					class="px-1.5 py-0.5 rounded border border-border bg-surface text-[10px]"
 					>Enter</kbd
 				> to send
 			</p>

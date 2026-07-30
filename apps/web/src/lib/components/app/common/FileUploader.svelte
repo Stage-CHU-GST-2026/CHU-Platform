@@ -14,7 +14,7 @@
 
 	let isDragging = $state(false);
 	let files = $state<{ file: File; progress: number }[]>([]);
-	let fileInput: HTMLInputElement;
+	let fileInput = $state<HTMLInputElement | null>(null);
 
 	function handleDragEnter(e: DragEvent) {
 		e.preventDefault();
@@ -84,21 +84,18 @@
 </script>
 
 <div class="flex flex-col gap-4 {className}">
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer"
-		class:border-accent={isDragging}
-		class:bg-accent={isDragging}
-		class:bg-opacity-5={isDragging}
-		class:border-border={!isDragging}
-		class:bg-surface={!isDragging}
-		class:hover:border-muted={!isDragging}
+		class="group border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all duration-150 cursor-pointer select-none {isDragging
+			? 'border-accent bg-accent/10'
+			: 'border-border bg-surface-elevated hover:border-accent hover:bg-surface-hover'}"
 		ondragenter={handleDragEnter}
 		ondragover={handleDragEnter}
 		ondragleave={handleDragLeave}
 		ondrop={handleDrop}
-		onclick={() => fileInput.click()}
-		onkeydown={(e) => e.key === 'Enter' && fileInput.click()}
+		onclick={() => fileInput?.click()}
+		role="button"
+		tabindex="0"
+		onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput?.click()}
 	>
 		<input
 			bind:this={fileInput}
@@ -110,12 +107,12 @@
 		/>
 
 		<div
-			class="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-muted mb-4 pointer-events-none"
+			class="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center text-muted group-hover:text-accent group-hover:bg-accent/10 group-hover:border-accent/30 transition-colors duration-150 mb-3 pointer-events-none"
 		>
 			<IconCloudUpload size={24} />
 		</div>
 
-		<p class="text-[13px] font-medium text-text-primary mb-1 pointer-events-none">
+		<p class="text-[13px] font-medium text-text-primary group-hover:text-accent transition-colors mb-1 pointer-events-none">
 			Click to upload or drag and drop
 		</p>
 		<p class="text-[12px] text-text-secondary pointer-events-none">

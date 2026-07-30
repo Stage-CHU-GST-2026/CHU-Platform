@@ -3,7 +3,7 @@
 	import { IconLoader2 } from '@tabler/icons-svelte';
 
 	interface Props {
-		variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+		variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'success';
 		size?: 'sm' | 'md' | 'lg' | 'icon';
 		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
@@ -31,47 +31,46 @@
 	} = $props();
 
 	const variants = {
-		primary: 'bg-accent text-white hover:bg-accent/90 active:bg-accent/95 shadow-sm',
-		secondary: 'bg-surface text-text-primary border border-border hover:bg-surface-hover',
-		ghost: 'bg-transparent text-text-secondary hover:bg-surface-hover hover:text-text-primary',
-		danger: 'bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20',
-		outline: 'bg-transparent border border-border text-text-primary hover:bg-surface'
+		primary: 'bg-accent text-white hover:bg-accent/90 active:bg-accent/95 shadow-sm border border-transparent',
+		secondary: 'bg-surface-elevated text-text-primary border border-border/80 hover:bg-surface-hover hover:border-border',
+		ghost: 'bg-transparent text-text-secondary hover:bg-surface-hover hover:text-text-primary border border-transparent',
+		danger: 'bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 active:bg-danger/30',
+		outline: 'bg-transparent border border-border text-text-primary hover:bg-surface-hover hover:border-text-secondary',
+		success: 'bg-success/15 text-success border border-success/30 hover:bg-success/25'
 	};
 
 	const sizes = {
-		sm: 'py-[7px] px-[14px] text-[12.5px]',
-		md: 'py-[10px] px-[22px] text-[13.5px]',
-		lg: 'py-[12px] px-[28px] text-[15px]',
-		icon: 'h-[38px] w-[38px] p-0 flex justify-center items-center'
+		sm: 'py-2 px-3.5 text-xs font-semibold rounded-md gap-2',
+		md: 'py-2.5 px-5 text-sm font-semibold rounded-lg gap-2.5',
+		lg: 'py-3.5 px-7 text-base font-bold rounded-xl gap-3',
+		icon: 'h-10 w-10 p-0 flex justify-center items-center rounded-lg'
 	};
+
+	let iconSize = $derived(size === 'sm' ? 16 : size === 'lg' ? 20 : 18);
 </script>
 
 <button
 	{type}
-	class="inline-flex items-center justify-center font-medium tracking-normal transition-all duration-150 ease-out rounded-lg disabled:pointer-events-none disabled:opacity-50 {variants[
+	class="inline-flex items-center justify-center whitespace-nowrap cursor-pointer select-none transition-all duration-150 ease-out active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0 {variants[
 		variant
 	]} {sizes[size]} {className}"
-	{disabled}
+	disabled={disabled || loading}
 	{onclick}
 	aria-label={ariaLabel}
 >
 	{#if loading}
-		<IconLoader2 class="animate-spin {children ? 'mr-2' : ''}" size={size === 'sm' ? 14 : 16} />
+		<IconLoader2 class="animate-spin shrink-0" size={iconSize} />
 	{:else if Icon}
-		<Icon class={children ? 'mr-2' : ''} size={size === 'sm' ? 14 : 16} />
-	{/if}
-
-	{#if children && !loading && size === 'icon' && false}
-		<!-- Prevent rendering children if size is icon and no specific layout requested, but allow generally -->
+		<Icon class="shrink-0" size={iconSize} />
 	{/if}
 
 	{#if children}
-		<span class:opacity-0={loading && size === 'icon'}>
+		<span class="inline-flex items-center justify-center gap-2 whitespace-nowrap {loading && size === 'icon' ? 'opacity-0' : ''}">
 			{@render children()}
 		</span>
 	{/if}
 
 	{#if IconRight && !loading}
-		<IconRight class="ml-2" size={size === 'sm' ? 14 : 16} />
+		<IconRight class="shrink-0" size={iconSize} />
 	{/if}
 </button>

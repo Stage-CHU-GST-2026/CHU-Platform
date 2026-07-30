@@ -223,11 +223,11 @@
 				</p>
 			</div>
 		{:else}
-			<div class="border border-border rounded overflow-hidden bg-surface w-full">
+			<div class="border border-border-subtle rounded-lg overflow-hidden bg-surface w-full">
 				<table class="w-full text-left text-sm font-mono border-collapse">
 					<thead>
 						<tr
-							class="bg-surface-elevated border-b border-border text-xs text-text-primary uppercase font-bold tracking-wide"
+							class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wide"
 						>
 							<th class="px-5 py-3.5">Format</th>
 							<th class="px-5 py-3.5">Dataset Name</th>
@@ -239,7 +239,7 @@
 							<th class="px-5 py-3.5 text-right">Actions</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border/40 text-text-secondary">
+					<tbody class="text-text-secondary">
 						{#each filteredDatasets as ds (ds.id)}
 							{@const ext = getFileExt(ds.original_filename)}
 							{@const dotColor = getStatusDotColor(ds.status)}

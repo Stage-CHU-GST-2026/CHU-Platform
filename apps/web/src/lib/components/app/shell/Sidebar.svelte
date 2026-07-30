@@ -16,7 +16,8 @@
 		IconTrash,
 		IconLoader2,
 		IconSettings,
-		IconDatabase
+		IconDatabase,
+		IconSparkles
 	} from '@tabler/icons-svelte';
 	import { base } from '$app/paths';
 
@@ -159,6 +160,7 @@
 
 	<!-- Footer -->
 	<div class="p-3 flex flex-col gap-1 shrink-0 border-t border-border/60">
+		<SidebarItem href="/showcase" icon={IconSparkles} label="Design Showcase" {currentPath} />
 		<SidebarItem href="/dashboard/settings" icon={IconSettings} label="Settings" {currentPath} />
 	</div>
 </aside>

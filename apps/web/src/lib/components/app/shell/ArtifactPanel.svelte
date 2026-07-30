@@ -199,7 +199,7 @@
                                 <div class="w-full max-w-[560px] flex flex-col gap-5 py-2">
                                     <!-- Header -->
                                     <div>
-                                        <p class="text-[10.5px] font-mono text-muted uppercase tracking-widest mb-1">Execution Plan</p>
+                                        <p class="text-[10.5px] text-muted uppercase tracking-widest mb-1">Execution Plan</p>
                                         <h3 class="text-text-primary font-semibold text-[15px] tracking-tight leading-snug">
                                             {plan.plan_title || 'Unnamed Plan'}
                                         </h3>
@@ -220,7 +220,7 @@
                                                 <div class="flex-1 min-w-0">
                                                     <div class="flex items-center gap-2">
                                                         <span class="text-[13px] font-medium text-text-primary">{step.title}</span>
-                                                        <span class="text-[10.5px] text-success font-mono">done</span>
+                                                        <span class="text-[10.5px] text-success">done</span>
                                                     </div>
                                                     <p class="text-[12px] text-text-secondary mt-0.5 leading-relaxed">{step.description}</p>
                                                 </div>

@@ -184,7 +184,7 @@
                                 <span class="text-[14px] text-text-primary">OpenAI API</span>
                             </div>
                             <div class="flex items-center gap-6">
-                                <span class="text-[13.5px] font-mono text-muted">sk-proj-...8f92</span>
+                                <span class="text-[13.5px] text-muted">sk-proj-...8f92</span>
                                 <button class="text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100" aria-label="Delete key">
                                     <IconTrash size={16} stroke={1.5} />
                                 </button>
@@ -197,7 +197,7 @@
                                 <span class="text-[14px] text-text-primary">Anthropic API</span>
                             </div>
                             <div class="flex items-center gap-6">
-                                <span class="text-[13.5px] font-mono text-muted">sk-ant-...b1c2</span>
+                                <span class="text-[13.5px] text-muted">sk-ant-...b1c2</span>
                                 <button class="text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100" aria-label="Delete key">
                                     <IconTrash size={16} stroke={1.5} />
                                 </button>

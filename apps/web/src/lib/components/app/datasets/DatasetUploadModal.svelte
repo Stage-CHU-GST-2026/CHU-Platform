@@ -2,7 +2,8 @@
 	import { uploadDataset } from '$lib/api/datasets';
 	import type { DatasetUploadResponse } from '$lib/api/datasets';
 	import { clickOutside, trapFocus } from '../common/actions';
-	import { IconX, IconRefresh } from '@tabler/icons-svelte';
+	import Button from '../common/Button.svelte';
+	import { IconX, IconCloudUpload, IconFileCheck } from '@tabler/icons-svelte';
 
 	let { open = $bindable(false), onUploaded }: { open: boolean; onUploaded?: (res: DatasetUploadResponse) => void } = $props();
 
@@ -11,7 +12,7 @@
 	let isUploading = $state(false);
 	let error = $state<string | null>(null);
 	let successMsg = $state<string | null>(null);
-	let fileInputRef: HTMLInputElement;
+	let fileInputRef = $state<HTMLInputElement | null>(null);
 
 	const ALLOWED_EXTENSIONS = ['.csv', '.tsv', '.xlsx', '.xls', '.parquet', '.json', '.feather'];
 	const MAX_SIZE_MB = 500;
@@ -117,11 +118,14 @@
 
 {#if open}
 	<div
-		class="fixed inset-0 z-[var(--z-modal)] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+		class="fixed inset-0 z-[var(--z-modal)] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
 		role="presentation"
+		onclick={(e) => {
+			if (e.target === e.currentTarget && !isUploading) close();
+		}}
 	>
 		<div
-			class="bg-surface border border-border rounded-lg shadow-xl w-full max-w-xl min-h-[520px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+			class="bg-surface border border-border rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="upload-modal-title"
@@ -129,17 +133,17 @@
 			use:trapFocus={open}
 			tabindex="-1"
 		>
-			<!-- Header with Icon-Only Close Button -->
-			<div class="flex items-center justify-between px-6 py-5 border-b border-border bg-surface-elevated shrink-0">
+			<!-- Header -->
+			<div class="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
 				<div>
-					<h3 id="upload-modal-title" class="text-base font-semibold text-text-primary">
+					<h3 id="upload-modal-title" class="text-[17px] font-sans font-bold text-text-primary">
 						Upload Dataset
 					</h3>
-					<p class="text-sm text-muted mt-0.5">Maximum file size: 500 MB</p>
+					<p class="text-xs font-sans text-text-secondary mt-0.5">Maximum file size: {MAX_SIZE_MB} MB</p>
 				</div>
 
 				<button
-					class="p-1.5 rounded text-muted hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+					class="text-muted hover:text-text-primary transition-colors rounded-sm cursor-pointer"
 					onclick={close}
 					disabled={isUploading}
 					aria-label="Close dialog"
@@ -149,27 +153,27 @@
 				</button>
 			</div>
 
-			<!-- Body with Taller Spacing and Taller Dropzone -->
-			<div class="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+			<!-- Body -->
+			<div class="p-6 flex-1 flex flex-col gap-4 overflow-y-auto">
 				{#if error}
-					<div class="p-4 rounded-md bg-danger/10 border border-danger/20 text-danger text-sm font-medium shrink-0">
+					<div class="p-3.5 rounded-md bg-danger/10 border border-danger/20 text-danger text-sm font-medium shrink-0">
 						{error}
 					</div>
 				{/if}
 
 				{#if successMsg}
-					<div class="p-4 rounded-md bg-success/10 border border-success/20 text-success text-sm font-medium shrink-0">
+					<div class="p-3.5 rounded-md bg-success/10 border border-success/20 text-success text-sm font-medium shrink-0">
 						{successMsg}
 					</div>
 				{/if}
 
-				<!-- Taller Dropzone area -->
+				<!-- Dropzone area -->
 				<div
-					class="border border-dashed rounded-lg flex-1 min-h-[260px] p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer {isDragging
+					class="group border-2 border-dashed rounded-md p-6 min-h-[180px] flex flex-col items-center justify-center text-center transition-colors cursor-pointer select-none {isDragging
 						? 'border-accent bg-accent/5'
 						: selectedFile
 							? 'border-success/60 bg-success/5'
-							: 'border-border hover:border-text-secondary hover:bg-surface-hover/30'}"
+							: 'border-border bg-surface-elevated hover:border-text-secondary hover:bg-surface-hover/50'}"
 					onaria-droptarget={handleDrop}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
@@ -189,35 +193,41 @@
 					/>
 
 					{#if selectedFile}
-						<span class="text-sm font-mono font-semibold text-text-primary max-w-full truncate px-4">
+						<div class="w-12 h-12 rounded-full bg-success/15 text-success flex items-center justify-center mb-3">
+							<IconFileCheck size={24} />
+						</div>
+						<span class="text-sm font-mono font-semibold text-text-primary max-w-full truncate px-3">
 							{selectedFile.name}
 						</span>
-						<span class="text-xs font-mono text-muted mt-1.5">
+						<span class="text-xs font-mono text-muted mt-1">
 							{formatBytes(selectedFile.size)}
 						</span>
 						<button
 							type="button"
-							class="mt-4 text-sm text-accent hover:underline font-semibold"
+							class="mt-3 text-xs text-accent hover:underline font-semibold transition-colors"
 							onclick={(e) => {
 								e.stopPropagation();
 								reset();
 							}}
 							disabled={isUploading}
 						>
-							Select different file
+							Change file
 						</button>
 					{:else}
-						<p class="text-base font-medium text-text-primary">
-							Drag and drop dataset file here, or <span class="text-accent underline font-semibold">browse</span>
+						<div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-muted group-hover:text-text-primary transition-colors mb-3">
+							<IconCloudUpload size={24} />
+						</div>
+						<p class="text-sm font-sans font-semibold text-text-primary mb-1">
+							Click to upload or drag and drop
 						</p>
-						<p class="text-xs text-muted mt-2">
-							Accepted formats: CSV, TSV, XLSX, XLS, Parquet, JSON, Feather
+						<p class="text-xs font-sans text-text-secondary">
+							CSV, TSV, XLSX, Parquet, JSON, Feather (up to {MAX_SIZE_MB}MB)
 						</p>
 					{/if}
 				</div>
 
 				<!-- Formats list -->
-				<div class="flex flex-wrap items-center gap-2 pt-1 shrink-0">
+				<div class="flex flex-wrap items-center gap-1.5 pt-1 shrink-0">
 					<span class="text-xs text-muted font-mono font-medium mr-1">Formats:</span>
 					{#each ALLOWED_EXTENSIONS as ext}
 						<span class="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-surface-elevated border border-border text-text-secondary">
@@ -228,24 +238,19 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="px-6 py-4 bg-surface-elevated border-t border-border flex items-center justify-end gap-3 shrink-0">
-				<button
-					type="button"
-					class="px-4 py-2 rounded border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
-					onclick={close}
-					disabled={isUploading}
-				>
+			<div class="px-6 py-4 border-t border-border bg-surface-elevated rounded-b-lg flex items-center justify-end gap-3 shrink-0">
+				<Button variant="secondary" onclick={close} disabled={isUploading}>
 					Cancel
-				</button>
+				</Button>
 
-				<button
-					type="button"
-					class="px-5 py-2 rounded bg-accent text-white hover:bg-accent-hover text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+				<Button
+					variant="primary"
 					onclick={startUpload}
 					disabled={!selectedFile || isUploading}
+					loading={isUploading}
 				>
 					{isUploading ? 'Uploading…' : 'Upload & Process'}
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>

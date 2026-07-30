@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import '../lib/css/tokens.css';
 @import 'tailwindcss';
 @import '../lib/css/chat.css';
@@ -51,9 +51,12 @@ html.dark {
 }
 
 @keyframes fade-subtle {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
@@ -89,7 +92,7 @@ html.dark {
 @layer base {
 
     html {
-        font-size: 14px;
+        font-size: 16px;
         -webkit-text-size-adjust: 100%;
     }
 
@@ -99,7 +102,7 @@ html.dark {
         padding: 0;
         background: var(--color-bg);
         color: var(--color-text-primary);
-        font-family: var(--font-sans);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
         font-optical-sizing: auto;
         line-height: 1.5;
@@ -109,14 +112,45 @@ html.dark {
         text-rendering: optimizeLegibility;
     }
 
+    .font-mono {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+
     h1,
     h2,
     h3,
     h4,
     h5,
     h6 {
-        font-weight: 600;
-        letter-spacing: -0.02em;
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        color: var(--color-text-primary);
+    }
+
+    h1 {
+        font-size: 2.75rem;
+    }
+
+    h2 {
+        font-size: 2.2rem;
+    }
+
+    h3 {
+        font-size: 1.75rem;
+    }
+
+    h4 {
+        font-size: 1.4rem;
+    }
+
+    h5 {
+        font-size: 1.2rem;
+    }
+
+    h6 {
+        font-size: 1.05rem;
     }
 
     strong,

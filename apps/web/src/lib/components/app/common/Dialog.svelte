@@ -57,7 +57,7 @@
 			<div class="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
 				<div>
 					{#if title}
-						<h2 id="dialog-title" class="text-[16px] font-semibold text-text-primary">{title}</h2>
+						<h2 id="dialog-title" class="text-[17px] font-bold text-text-primary">{title}</h2>
 					{/if}
 					{#if description}
 						<p class="text-[13px] text-text-secondary mt-1">{description}</p>

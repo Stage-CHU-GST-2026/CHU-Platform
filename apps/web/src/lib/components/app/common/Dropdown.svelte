@@ -55,9 +55,17 @@
 </script>
 
 <div class="relative inline-block text-left" use:clickOutside={close} onkeydown={handleKeydown}>
-    <button type="button" aria-haspopup="true" aria-expanded={open} onclick={toggle}>
+    <div
+        role="button"
+        tabindex="0"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onclick={toggle}
+        onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggle()}
+        class="inline-block cursor-pointer"
+    >
         {@render trigger()}
-    </button>
+    </div>
 
     <dialog 
         bind:this={dialogEl}

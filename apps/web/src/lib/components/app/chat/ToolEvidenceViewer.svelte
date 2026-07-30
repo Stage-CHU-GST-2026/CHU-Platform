@@ -151,7 +151,7 @@
 				<span class="font-semibold text-text-primary">
 					Tool Evidence & Traceability
 				</span>
-				<span class="px-1.5 py-0.5 rounded-full bg-surface-subtle border border-border text-[10px] text-text-secondary font-mono">
+				<span class="px-1.5 py-0.5 rounded-full bg-surface-subtle border border-border text-[10px] text-text-secondary">
 					{evidences.length} {evidences.length === 1 ? 'tool' : 'tools'} used
 				</span>
 				{#if hasErrors}
@@ -164,7 +164,7 @@
 
 			<div class="flex items-center gap-3">
 				{#if totalDuration > 0}
-					<span class="flex items-center gap-1 text-[11px] text-muted font-mono">
+					<span class="flex items-center gap-1 text-[11px] text-muted">
 						<IconClock size={12} />
 						{formatDuration(totalDuration)}
 					</span>
@@ -200,11 +200,11 @@
 								{:else}
 									<IconCheck size={14} class="text-success flex-shrink-0" />
 								{/if}
-								<span class="font-mono font-medium text-text-primary truncate">
+								<span class="font-medium text-text-primary truncate">
 									{item.tool_name}
 								</span>
 								{#if item.step_id}
-									<span class="px-1.5 py-0.2 rounded text-[10px] bg-primary/10 text-primary border border-primary/20 font-mono">
+									<span class="px-1.5 py-0.2 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
 										Step {item.step_id}
 									</span>
 								{/if}
@@ -212,7 +212,7 @@
 
 							<div class="flex items-center gap-2.5 flex-shrink-0">
 								{#if item.execution_time_ms}
-									<span class="text-[10px] text-muted font-mono">
+									<span class="text-[10px] text-muted">
 										{formatDuration(item.execution_time_ms)}
 									</span>
 								{/if}
@@ -267,9 +267,9 @@
 
 								<!-- Tab Content with Prism syntax highlighting -->
 								{#if currentTab === 'params'}
-									<pre class="font-mono text-[11px] bg-surface-dark/90 p-2.5 rounded overflow-x-auto whitespace-pre-wrap max-h-48 border border-border/40 text-text-primary"><code>{@html highlightCode(paramText, 'json')}</code></pre>
+									<pre class="text-[11px] bg-surface-dark/90 p-2.5 rounded overflow-x-auto whitespace-pre-wrap max-h-48 border border-border/40 text-text-primary"><code>{@html highlightCode(paramText, 'json')}</code></pre>
 								{:else}
-									<pre class="font-mono text-[11px] bg-surface-dark/90 p-2.5 rounded overflow-x-auto whitespace-pre-wrap max-h-60 border border-border/40 text-text-primary"><code>{@html highlightCode(resultText, resultText.trim().startsWith('{') || resultText.trim().startsWith('[') ? 'json' : 'markdown')}</code></pre>
+									<pre class="text-[11px] bg-surface-dark/90 p-2.5 rounded overflow-x-auto whitespace-pre-wrap max-h-60 border border-border/40 text-text-primary"><code>{@html highlightCode(resultText, resultText.trim().startsWith('{') || resultText.trim().startsWith('[') ? 'json' : 'markdown')}</code></pre>
 								{/if}
 							</div>
 						{/if}
