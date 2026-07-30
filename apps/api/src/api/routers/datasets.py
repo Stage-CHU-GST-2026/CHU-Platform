@@ -1,4 +1,5 @@
-"""Dataset management endpoints — upload, list, preview, statistics, delete.
+"""Dataset management endpoints — upload, list, preview, statistics, delete,
+semantic mapping, and dataset context.
 
 Uploaded files are stored to ``apps/api/datasets/`` and processed in a
 background asyncio task (pandas loading + column profiling) so the
@@ -19,12 +20,16 @@ from api.database import get_db
 from api.models.dataset import Dataset, DatasetStatus
 from api.schemas.dataset import (
     ColumnInfo,
+    DatasetContextResponse,
+    DatasetContextUpdate,
     DatasetDetail,
     DatasetPreview,
     DatasetStatistics,
     DatasetSummary,
     DatasetUploadResponse,
     PreviewRow,
+    SemanticMappingItem,
+    SemanticMappingUpdate,
 )
 from api.services.dataset_service import (
     compute_statistics,
@@ -51,6 +56,20 @@ def _ensure_allowed(filename: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported file type '{ext}'. Allowed: {allowed}",
         )
+
+
+async def _get_dataset_or_404(dataset_id: uuid.UUID, db: AsyncSession) -> Dataset:
+    """Fetch a dataset by ID or raise 404."""
+    result = await db.execute(
+        select(Dataset).where(Dataset.id == dataset_id)
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found.",
+        )
+    return dataset
 
 
 # ── Upload ────────────────────────────────────────────────────────────
@@ -169,22 +188,16 @@ async def get_dataset(
     dataset_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Return full details for a single dataset."""
-    result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id)
-    )
-    dataset = result.scalar_one_or_none()
-    if dataset is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dataset not found.",
-        )
+    """Return full details for a single dataset, including semantic mappings and context."""
+    dataset = await _get_dataset_or_404(dataset_id, db)
 
     columns_info = None
     if dataset.columns_info:
-        columns_info = [
-            ColumnInfo(**col) for col in dataset.columns_info
-        ]
+        columns_info = [ColumnInfo(**col) for col in dataset.columns_info]
+
+    semantic_mappings = None
+    if dataset.semantic_mappings:
+        semantic_mappings = [SemanticMappingItem(**m) for m in dataset.semantic_mappings]
 
     return DatasetDetail(
         id=dataset.id,
@@ -196,6 +209,10 @@ async def get_dataset(
         rows=dataset.rows,
         columns=dataset.columns,
         columns_info=columns_info,
+        semantic_mappings=semantic_mappings,
+        context_description=dataset.context_description,
+        context_notes=dataset.context_notes,
+        context_tags=dataset.context_tags or [],
         created_at=dataset.created_at,
         updated_at=dataset.updated_at,
     )
@@ -209,15 +226,7 @@ async def delete_dataset(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a dataset and its file from disk."""
-    result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id)
-    )
-    dataset = result.scalar_one_or_none()
-    if dataset is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dataset not found.",
-        )
+    dataset = await _get_dataset_or_404(dataset_id, db)
 
     # Remove file from disk
     if dataset.filepath and os.path.isfile(dataset.filepath):
@@ -239,19 +248,10 @@ async def get_dataset_preview(
     """Preview the first N rows of a dataset."""
     result = await preview_dataset(dataset_id, n, db)
     if result is None:
-        # Check if dataset exists
-        check = await db.execute(
-            select(Dataset).where(Dataset.id == dataset_id)
-        )
-        ds = check.scalar_one_or_none()
-        if ds is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found.",
-            )
+        dataset = await _get_dataset_or_404(dataset_id, db)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Dataset is not ready (status: {ds.status.value}).",
+            detail=f"Dataset is not ready (status: {dataset.status.value}).",
         )
 
     return DatasetPreview(**result)
@@ -267,18 +267,10 @@ async def get_dataset_statistics(
     """Compute and return basic statistics for a dataset."""
     stats = await compute_statistics(dataset_id, db)
     if stats is None:
-        check = await db.execute(
-            select(Dataset).where(Dataset.id == dataset_id)
-        )
-        ds = check.scalar_one_or_none()
-        if ds is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found.",
-            )
+        dataset = await _get_dataset_or_404(dataset_id, db)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Dataset is not ready (status: {ds.status.value}).",
+            detail=f"Dataset is not ready (status: {dataset.status.value}).",
         )
 
     return DatasetStatistics(
@@ -297,15 +289,7 @@ async def get_dataset_columns(
     db: AsyncSession = Depends(get_db),
 ):
     """Return column metadata for a dataset."""
-    result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id)
-    )
-    dataset = result.scalar_one_or_none()
-    if dataset is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dataset not found.",
-        )
+    dataset = await _get_dataset_or_404(dataset_id, db)
     if dataset.columns_info is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -313,3 +297,86 @@ async def get_dataset_columns(
         )
 
     return [ColumnInfo(**col) for col in dataset.columns_info]
+
+
+# ── Semantic Mappings ─────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/semantic-mappings", response_model=list[SemanticMappingItem])
+async def get_semantic_mappings(
+    dataset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all semantic concept mappings for a dataset.
+
+    Returns an empty list if the dataset is not yet ready or
+    no mappings have been seeded yet.
+    """
+    dataset = await _get_dataset_or_404(dataset_id, db)
+    if dataset.semantic_mappings is None:
+        return []
+    return [SemanticMappingItem(**m) for m in dataset.semantic_mappings]
+
+
+@router.put("/{dataset_id}/semantic-mappings", response_model=list[SemanticMappingItem])
+async def save_semantic_mappings(
+    dataset_id: uuid.UUID,
+    payload: SemanticMappingUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace all semantic concept mappings for a dataset.
+
+    The client sends the full array; the previous state is overwritten.
+    """
+    dataset = await _get_dataset_or_404(dataset_id, db)
+
+    dataset.semantic_mappings = [m.model_dump() for m in payload.mappings]
+    await db.commit()
+    await db.refresh(dataset)
+
+    return [SemanticMappingItem(**m) for m in dataset.semantic_mappings]
+
+
+# ── Dataset Context ───────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/context", response_model=DatasetContextResponse)
+async def get_dataset_context(
+    dataset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the business context for a dataset (description, notes, tags)."""
+    dataset = await _get_dataset_or_404(dataset_id, db)
+    return DatasetContextResponse(
+        description=dataset.context_description,
+        notes=dataset.context_notes,
+        tags=dataset.context_tags or [],
+    )
+
+
+@router.patch("/{dataset_id}/context", response_model=DatasetContextResponse)
+async def update_dataset_context(
+    dataset_id: uuid.UUID,
+    payload: DatasetContextUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Partially update dataset context fields (description, notes, tags).
+
+    Only fields included in the request body are updated; omitted fields
+    retain their current values (true PATCH semantics).
+    """
+    dataset = await _get_dataset_or_404(dataset_id, db)
+
+    if payload.description is not None:
+        dataset.context_description = payload.description
+    if payload.notes is not None:
+        dataset.context_notes = payload.notes
+    if payload.tags is not None:
+        dataset.context_tags = payload.tags
+
+    await db.commit()
+    await db.refresh(dataset)
+
+    return DatasetContextResponse(
+        description=dataset.context_description,
+        notes=dataset.context_notes,
+        tags=dataset.context_tags or [],
+    )

@@ -15,6 +15,38 @@ export interface ColumnInfo {
     sample?: string | null;
 }
 
+// ── Semantic Mapping ──────────────────────────────────────────────────
+
+export interface SemanticMappingItem {
+    column_name: string;
+    dtype: string;
+    mapped_concept: string;
+    category: string;
+    confidence: number;
+    unit?: string | null;
+    is_custom?: boolean;
+}
+
+export interface SemanticMappingUpdate {
+    mappings: SemanticMappingItem[];
+}
+
+// ── Dataset Context ───────────────────────────────────────────────────
+
+export interface DatasetContext {
+    description: string | null;
+    notes: string | null;
+    tags: string[];
+}
+
+export interface DatasetContextUpdate {
+    description?: string | null;
+    notes?: string | null;
+    tags?: string[] | null;
+}
+
+// ── Core Dataset Types ─────────────────────────────────────────────────
+
 export interface DatasetSummary {
     id: string;
     original_filename: string;
@@ -30,6 +62,10 @@ export interface DatasetSummary {
 
 export interface DatasetDetail extends DatasetSummary {
     columns_info: ColumnInfo[] | null;
+    semantic_mappings: SemanticMappingItem[] | null;
+    context_description: string | null;
+    context_notes: string | null;
+    context_tags: string[];
 }
 
 export interface DatasetUploadResponse {
@@ -59,6 +95,8 @@ export interface DatasetStatistics {
     column_types: Record<string, string> | null;
 }
 
+// ── Upload ────────────────────────────────────────────────────────────
+
 /**
  * Upload a dataset file (CSV, TSV, XLSX, XLS, Parquet, JSON, Feather - up to 500MB).
  */
@@ -83,6 +121,8 @@ export async function uploadDataset(file: File): Promise<DatasetUploadResponse> 
     return res.json();
 }
 
+// ── List ──────────────────────────────────────────────────────────────
+
 /**
  * List all datasets with optional pagination and status filter.
  */
@@ -104,8 +144,11 @@ export async function listDatasets(
     return res.json();
 }
 
+// ── Get single ────────────────────────────────────────────────────────
+
 /**
- * Get full details for a single dataset (including column profiling metadata).
+ * Get full details for a single dataset (including column profiling, semantic
+ * mappings, and business context).
  */
 export async function getDataset(id: string): Promise<DatasetDetail> {
     const res = await fetch(`${API_BASE}/datasets/${encodeURIComponent(id)}`);
@@ -115,6 +158,8 @@ export async function getDataset(id: string): Promise<DatasetDetail> {
 
     return res.json();
 }
+
+// ── Delete ────────────────────────────────────────────────────────────
 
 /**
  * Delete a dataset and its file from disk.
@@ -128,6 +173,8 @@ export async function deleteDataset(id: string): Promise<void> {
         throw new Error(`Failed to delete dataset: ${res.status}`);
     }
 }
+
+// ── Preview ───────────────────────────────────────────────────────────
 
 /**
  * Preview first N rows of a ready dataset.
@@ -146,6 +193,8 @@ export async function getDatasetPreview(id: string, n = 10): Promise<DatasetPrev
     return res.json();
 }
 
+// ── Statistics ────────────────────────────────────────────────────────
+
 /**
  * Compute & return statistical summaries for numeric columns and missing value counts.
  */
@@ -163,6 +212,8 @@ export async function getDatasetStatistics(id: string): Promise<DatasetStatistic
     return res.json();
 }
 
+// ── Column info ───────────────────────────────────────────────────────
+
 /**
  * Return column schema metadata for a dataset.
  */
@@ -170,6 +221,101 @@ export async function getDatasetColumns(id: string): Promise<ColumnInfo[]> {
     const res = await fetch(`${API_BASE}/datasets/${encodeURIComponent(id)}/columns`);
     if (!res.ok) {
         throw new Error(`Failed to fetch column metadata: ${res.status}`);
+    }
+
+    return res.json();
+}
+
+// ── Semantic Mappings ─────────────────────────────────────────────────
+
+/**
+ * Fetch the semantic concept mappings for a dataset.
+ */
+export async function getSemanticMappings(id: string): Promise<SemanticMappingItem[]> {
+    const res = await fetch(`${API_BASE}/datasets/${encodeURIComponent(id)}/semantic-mappings`);
+    if (!res.ok) {
+        let detail = `Failed to load semantic mappings: status ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.detail) detail = err.detail;
+        } catch {}
+        throw new Error(detail);
+    }
+
+    return res.json();
+}
+
+/**
+ * Replace all semantic mappings for a dataset (full overwrite).
+ */
+export async function saveSemanticMappings(
+    id: string,
+    mappings: SemanticMappingItem[]
+): Promise<SemanticMappingItem[]> {
+    const res = await fetch(
+        `${API_BASE}/datasets/${encodeURIComponent(id)}/semantic-mappings`,
+        {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mappings }),
+        }
+    );
+
+    if (!res.ok) {
+        let detail = `Failed to save semantic mappings: status ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.detail) detail = err.detail;
+        } catch {}
+        throw new Error(detail);
+    }
+
+    return res.json();
+}
+
+// ── Dataset Context ───────────────────────────────────────────────────
+
+/**
+ * Fetch the business context (description, notes, tags) for a dataset.
+ */
+export async function getDatasetContext(id: string): Promise<DatasetContext> {
+    const res = await fetch(`${API_BASE}/datasets/${encodeURIComponent(id)}/context`);
+    if (!res.ok) {
+        let detail = `Failed to load dataset context: status ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.detail) detail = err.detail;
+        } catch {}
+        throw new Error(detail);
+    }
+
+    return res.json();
+}
+
+/**
+ * Partially update dataset context fields (PATCH semantics).
+ * Only fields included in the payload are updated.
+ */
+export async function updateDatasetContext(
+    id: string,
+    payload: DatasetContextUpdate
+): Promise<DatasetContext> {
+    const res = await fetch(
+        `${API_BASE}/datasets/${encodeURIComponent(id)}/context`,
+        {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        }
+    );
+
+    if (!res.ok) {
+        let detail = `Failed to update dataset context: status ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.detail) detail = err.detail;
+        } catch {}
+        throw new Error(detail);
     }
 
     return res.json();

@@ -134,6 +134,24 @@ async def process_dataset(dataset_id: uuid.UUID) -> None:
             dataset.rows = len(df)
             dataset.columns = len(df.columns)
             dataset.columns_info = columns_info
+
+            # Auto-seed semantic mappings if not already present.
+            # Use the raw column name as the initial mapped_concept so the
+            # UI always has rows to display immediately after processing.
+            if dataset.semantic_mappings is None:
+                dataset.semantic_mappings = [
+                    {
+                        "column_name": col["name"],
+                        "dtype": col["dtype"],
+                        "mapped_concept": col["name"],
+                        "category": "meta",
+                        "confidence": 0,
+                        "unit": None,
+                        "is_custom": False,
+                    }
+                    for col in columns_info
+                ]
+
             dataset.status = DatasetStatus.READY
             await db.commit()
 

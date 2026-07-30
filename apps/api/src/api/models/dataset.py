@@ -78,6 +78,22 @@ class Dataset(Base):
         JSONB(), nullable=True,
         comment="Column metadata: name, dtype, null count, unique count.",
     )
+    semantic_mappings: Mapped[list | None] = mapped_column(
+        JSONB(), nullable=True,
+        comment="User-curated semantic concept mappings per column (column_name, mapped_concept, category, confidence, unit, is_custom).",
+    )
+    context_description: Mapped[str | None] = mapped_column(
+        Text(), nullable=True,
+        comment="Free-form business context overview and purpose of the dataset.",
+    )
+    context_notes: Mapped[str | None] = mapped_column(
+        Text(), nullable=True,
+        comment="Business rules, domain assumptions, and data quality notes.",
+    )
+    context_tags: Mapped[list | None] = mapped_column(
+        JSONB(), nullable=True,
+        comment="Keyword and domain tags for search discoverability.",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

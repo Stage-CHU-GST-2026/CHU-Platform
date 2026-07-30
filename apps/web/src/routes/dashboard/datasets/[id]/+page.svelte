@@ -9,14 +9,21 @@
 		getDatasetPreview,
 		getDatasetColumns,
 		getDatasetStatistics,
-		deleteDataset
+		deleteDataset,
+		getSemanticMappings,
+		saveSemanticMappings as saveSemanticMappingsToAPI,
+		getDatasetContext,
+		updateDatasetContext
 	} from '$lib/api/datasets';
+	import { listSemanticCategories } from '$lib/api/semantic_categories';
+	import type { SemanticCategory } from '$lib/api/semantic_categories';
 	import type {
 		DatasetDetail,
 		DatasetPreview,
 		ColumnInfo,
 		DatasetStatistics,
-		DatasetStatus
+		DatasetStatus,
+		SemanticMappingItem
 	} from '$lib/api/datasets';
 	import {
 		IconArrowLeft,
@@ -44,6 +51,7 @@
 	let previewData = $state<DatasetPreview | null>(null);
 	let columnsData = $state<ColumnInfo[]>([]);
 	let statsData = $state<DatasetStatistics | null>(null);
+	let categories = $state<SemanticCategory[]>([]);
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -52,22 +60,53 @@
 	let activeTab = $state<'context' | 'semantics' | 'preview' | 'schema' | 'stats'>('context');
 
 	// Context Tab State
-	let datasetDescription = $state(
-		'This dataset contains patient clinical records, vitals measurements (blood pressure, heart rate, respiration), lab readings, and demographic indicators ingested for automated AI triaging and health outcomes modeling.'
-	);
-	let datasetNotes = $state(
-		'1. Blood pressure readings were collected using standardized digital monitors.\n2. Null values in respiration rate represent non-monitored outpatient visits.\n3. All patient records are anonymized according to HIPAA compliance rules.'
-	);
-	let datasetTags = $state(['#ClinicalVitals', '#EHRIngestion', '#PatientCohort', '#AIProfiling']);
+	let datasetDescription = $state<string>('');
+	let datasetNotes = $state<string>('');
+	let datasetTags = $state<string[]>([]);
 	let isEditingContext = $state(false);
 	let contextSaveMsg = $state<string | null>(null);
+	let isSavingContext = $state(false);
+	let contextError = $state<string | null>(null);
+	// Snapshot taken when edit mode is entered — used by Cancel to revert
+	let contextSnapshot = $state({ description: '', notes: '', tags: [] as string[] });
 
-	function saveContext() {
+	function enterEditContext() {
+		contextSnapshot = {
+			description: datasetDescription,
+			notes: datasetNotes,
+			tags: [...datasetTags]
+		};
+		isEditingContext = true;
+	}
+
+	function cancelEditContext() {
+		datasetDescription = contextSnapshot.description;
+		datasetNotes = contextSnapshot.notes;
+		datasetTags = [...contextSnapshot.tags];
 		isEditingContext = false;
-		contextSaveMsg = 'Dataset context updated successfully.';
-		setTimeout(() => {
-			contextSaveMsg = null;
-		}, 3000);
+		contextError = null;
+	}
+
+	async function saveContext() {
+		if (isSavingContext || !datasetId) return;
+		isSavingContext = true;
+		contextError = null;
+		try {
+			await updateDatasetContext(datasetId, {
+				description: datasetDescription,
+				notes: datasetNotes,
+				tags: datasetTags
+			});
+			isEditingContext = false;
+			contextSaveMsg = 'Dataset context updated successfully.';
+			setTimeout(() => {
+				contextSaveMsg = null;
+			}, 3000);
+		} catch (err: any) {
+			contextError = err?.message || 'Failed to save context.';
+		} finally {
+			isSavingContext = false;
+		}
 	}
 
 	// Preview Filters
@@ -81,131 +120,15 @@
 	// Stats Active Sub-Tab
 	let statsSubTab = $state<'numeric' | 'missing' | 'types'>('numeric');
 
-	// Semantic Mapping State & Mock Data
-	interface SemanticMappingItem {
-		column_name: string;
-		dtype: string;
-		mapped_concept: string;
-		category: string;
-		unit?: string;
-		confidence: number;
-		is_custom?: boolean;
-	}
-
+	// Semantic Mapping State
 	let semanticSearch = $state('');
 	let semanticCategoryFilter = $state('all');
 
-	let mockSemanticMappings = $state<SemanticMappingItem[]>([
-		{
-			column_name: 'RES_01',
-			dtype: 'float64',
-			mapped_concept: 'Patient Respiration Rate',
-			category: 'vitals',
-			unit: 'breaths/min',
-			confidence: 96
-		},
-		{
-			column_name: 'LAB_004',
-			dtype: 'int64',
-			mapped_concept: 'Systolic Blood Pressure',
-			category: 'vitals',
-			unit: 'mmHg',
-			confidence: 98
-		},
-		{
-			column_name: 'COL_01',
-			dtype: 'float64',
-			mapped_concept: 'Body Mass Index (BMI)',
-			category: 'vitals',
-			unit: 'kg/m²',
-			confidence: 94
-		},
-		{
-			column_name: 'UNKNOWN_2',
-			dtype: 'int64',
-			mapped_concept: 'Patient Age Category',
-			category: 'demographics',
-			unit: 'Years',
-			confidence: 82
-		},
-		{
-			column_name: 'FIELD_A',
-			dtype: 'int64',
-			mapped_concept: 'Smoking Status Flag',
-			category: 'demographics',
-			unit: 'Binary (0/1)',
-			confidence: 91
-		},
-		{
-			column_name: 'LAB_001',
-			dtype: 'int64',
-			mapped_concept: 'Fasting Blood Glucose',
-			category: 'labs',
-			unit: 'mg/dL',
-			confidence: 95
-		},
-		{
-			column_name: 'MEAS_01',
-			dtype: 'float64',
-			mapped_concept: 'Serum Cholesterol',
-			category: 'labs',
-			unit: 'mg/dL',
-			confidence: 88
-		},
-		{
-			column_name: 'MEAS_02',
-			dtype: 'int64',
-			mapped_concept: 'Heart Rate (Pulse)',
-			category: 'vitals',
-			unit: 'bpm',
-			confidence: 97
-		},
-		{
-			column_name: 'OBS_101',
-			dtype: 'float64',
-			mapped_concept: 'Oxygen Saturation (SpO2)',
-			category: 'vitals',
-			unit: '%',
-			confidence: 92
-		},
-		{
-			column_name: 'REC_ID',
-			dtype: 'int64',
-			mapped_concept: 'Patient Record Identifier',
-			category: 'identifiers',
-			unit: 'ID',
-			confidence: 99,
-			is_custom: true
-		},
-		{
-			column_name: 'IMPORT_BATCH',
-			dtype: 'string',
-			mapped_concept: 'EHR Ingestion Batch Code',
-			category: 'meta',
-			unit: 'Code',
-			confidence: 90
-		},
-		{
-			column_name: 'EXPORT_DATE',
-			dtype: 'string',
-			mapped_concept: 'Clinical Trial Record Date',
-			category: 'meta',
-			unit: 'YYYY-MM-DD',
-			confidence: 96
-		},
-		{
-			column_name: 'STATUS',
-			dtype: 'string',
-			mapped_concept: 'Clinical Triage Status Code',
-			category: 'vitals',
-			unit: 'Code',
-			confidence: 89,
-			is_custom: true
-		}
-	]);
+	let semanticMappings = $state<SemanticMappingItem[]>([]);
+	let semanticLoading = $state(false);
 
 	let filteredSemanticItems = $derived.by(() => {
-		let items = mockSemanticMappings;
+		let items = semanticMappings;
 		if (semanticCategoryFilter !== 'all') {
 			items = items.filter((i) => i.category === semanticCategoryFilter);
 		}
@@ -222,39 +145,46 @@
 	});
 
 	// Semantic Mapping Save & Reset State
-	let initialSemanticSnapshot = $state(JSON.stringify(mockSemanticMappings));
+	let initialSemanticSnapshot = $state('');
 	let isSavingSemantics = $state(false);
 	let semanticSaveSuccess = $state<string | null>(null);
+	let semanticError = $state<string | null>(null);
 
 	let hasUnsavedSemantics = $derived(
-		JSON.stringify(mockSemanticMappings) !== initialSemanticSnapshot
+		JSON.stringify(semanticMappings) !== initialSemanticSnapshot
 	);
 
-	async function saveSemanticMappings() {
-		if (!hasUnsavedSemantics || isSavingSemantics) return;
+	async function persistSemanticMappings() {
+		if (!hasUnsavedSemantics || isSavingSemantics || !datasetId) return;
 		isSavingSemantics = true;
 		semanticSaveSuccess = null;
+		semanticError = null;
 
-		await new Promise((resolve) => setTimeout(resolve, 500));
-
-		initialSemanticSnapshot = JSON.stringify(mockSemanticMappings);
-		isSavingSemantics = false;
-		semanticSaveSuccess = 'Semantic concept mappings saved successfully.';
-		setTimeout(() => {
-			semanticSaveSuccess = null;
-		}, 3000);
+		try {
+			await saveSemanticMappingsToAPI(datasetId, semanticMappings);
+			initialSemanticSnapshot = JSON.stringify(semanticMappings);
+			semanticSaveSuccess = 'Semantic concept mappings saved successfully.';
+			setTimeout(() => {
+				semanticSaveSuccess = null;
+			}, 3000);
+		} catch (err: any) {
+			semanticError = err?.message || 'Failed to save mappings.';
+		} finally {
+			isSavingSemantics = false;
+		}
 	}
 
 	function resetSemanticMappings() {
-		mockSemanticMappings = JSON.parse(initialSemanticSnapshot);
+		semanticMappings = JSON.parse(initialSemanticSnapshot);
+		semanticError = null;
 	}
 
 	function resetSingleSemanticItem(colName: string) {
 		const snapshot: SemanticMappingItem[] = JSON.parse(initialSemanticSnapshot);
 		const original = snapshot.find((i) => i.column_name === colName);
-		const currentIdx = mockSemanticMappings.findIndex((i) => i.column_name === colName);
+		const currentIdx = semanticMappings.findIndex((i) => i.column_name === colName);
 		if (original && currentIdx !== -1) {
-			mockSemanticMappings[currentIdx] = { ...original };
+			semanticMappings[currentIdx] = { ...original };
 		}
 	}
 
@@ -270,20 +200,37 @@
 		loading = true;
 		error = null;
 		try {
-			const ds = await getDataset(datasetId);
+			// Load categories and dataset detail concurrently — categories are
+			// needed by the Semantic Mapping dropdowns regardless of dataset status.
+			const [ds, cats] = await Promise.all([
+				getDataset(datasetId),
+				listSemanticCategories()
+			]);
 			dataset = ds;
+			categories = cats;
 
 			if (ds.status === 'ready') {
-				// Fetch preview, columns, and stats concurrently
-				const [preview, cols, stats] = await Promise.allSettled([
+				// Fetch preview, columns, stats, semantic mappings, and context concurrently
+				const [preview, cols, stats, semantics, ctx] = await Promise.allSettled([
 					getDatasetPreview(datasetId, previewNumRows),
 					getDatasetColumns(datasetId),
-					getDatasetStatistics(datasetId)
+					getDatasetStatistics(datasetId),
+					getSemanticMappings(datasetId),
+					getDatasetContext(datasetId)
 				]);
 
 				if (preview.status === 'fulfilled') previewData = preview.value;
 				if (cols.status === 'fulfilled') columnsData = cols.value;
 				if (stats.status === 'fulfilled') statsData = stats.value;
+				if (semantics.status === 'fulfilled') {
+					semanticMappings = semantics.value;
+					initialSemanticSnapshot = JSON.stringify(semantics.value);
+				}
+				if (ctx.status === 'fulfilled') {
+					datasetDescription = ctx.value.description ?? '';
+					datasetNotes = ctx.value.notes ?? '';
+					datasetTags = ctx.value.tags ?? [];
+				}
 			}
 		} catch (err: any) {
 			error = err?.message || 'Failed to load dataset details.';
@@ -953,6 +900,12 @@
 					</div>
 				{/if}
 
+				{#if semanticError}
+					<div class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium">
+						{semanticError}
+					</div>
+				{/if}
+
 				<!-- Search, Filter & Save Actions Bar -->
 				<div
 					class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-surface border border-border/80 rounded-xl p-4 shadow-xs"
@@ -969,28 +922,22 @@
 							bind:value={semanticCategoryFilter}
 							class="bg-surface-elevated border border-border/60 rounded-lg pl-3.5 pr-10 py-2 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer"
 						>
-							<option value="all">All Categories ({mockSemanticMappings.length})</option>
-							<option value="vitals"
-								>Clinical / Vitals ({mockSemanticMappings.filter((i) => i.category === 'vitals')
-									.length})</option
-							>
-							<option value="labs"
-								>Lab Tests ({mockSemanticMappings.filter((i) => i.category === 'labs')
-									.length})</option
-							>
-							<option value="demographics"
-								>Demographics ({mockSemanticMappings.filter((i) => i.category === 'demographics')
-									.length})</option
-							>
-							<option value="identifiers"
-								>Identifiers ({mockSemanticMappings.filter((i) => i.category === 'identifiers')
-									.length})</option
-							>
-							<option value="meta"
-								>Metadata ({mockSemanticMappings.filter((i) => i.category === 'meta')
-									.length})</option
-							>
+							<option value="all">All Categories ({semanticMappings.length})</option>
+							{#each categories as cat}
+								<option value={cat.name}>
+									{cat.label} ({semanticMappings.filter((i) => i.category === cat.name).length})
+								</option>
+							{/each}
 						</select>
+
+						<a
+							href="/dashboard/settings/semantic-categories"
+							class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-elevated border border-border/60 text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-accent/40 transition-colors shrink-0"
+							title="Manage domain categories"
+						>
+							<IconTag size={15} class="text-accent" />
+							<span>Manage</span>
+						</a>
 					</div>
 
 					<div class="flex items-center gap-2 shrink-0">
@@ -1008,7 +955,7 @@
 								variant="primary"
 								size="sm"
 								icon={IconDeviceFloppy}
-								onclick={saveSemanticMappings}
+								onclick={persistSemanticMappings}
 								loading={isSavingSemantics}
 							>
 								Save Changes
@@ -1032,7 +979,7 @@
 								<th class="px-4 py-3 text-right">Actions</th>
 							</tr>
 						</thead>
-						<tbody class="text-text-secondary divide-y divide-border/40">
+						<tbody class="text-text-secondary">
 							{#each filteredSemanticItems as item}
 								<tr class="hover:bg-surface-hover/40 transition-colors">
 									<!-- Raw Column -->
@@ -1075,11 +1022,12 @@
 											onchange={() => (item.is_custom = true)}
 											class="bg-surface-elevated border border-border/60 rounded-md pl-2.5 pr-7 py-1 text-xs text-text-secondary focus:outline-none focus:border-accent cursor-pointer capitalize"
 										>
-											<option value="vitals">vitals</option>
-											<option value="labs">labs</option>
-											<option value="demographics">demographics</option>
-											<option value="identifiers">identifiers</option>
-											<option value="meta">meta</option>
+											{#each categories as cat}
+												<option value={cat.name}>{cat.label}</option>
+											{/each}
+											{#if categories.length === 0}
+												<option value={item.category}>{item.category}</option>
+											{/if}
 										</select>
 									</td>
 
@@ -1128,20 +1076,26 @@
 					</div>
 
 					{#if !isEditingContext}
-						<Button variant="secondary" size="sm" onclick={() => (isEditingContext = true)}>
+						<Button variant="secondary" size="sm" onclick={enterEditContext}>
 							Edit Context
 						</Button>
 					{:else}
 						<div class="flex items-center gap-2">
-							<Button variant="secondary" size="sm" onclick={() => (isEditingContext = false)}>
+							<Button variant="secondary" size="sm" onclick={cancelEditContext} disabled={isSavingContext}>
 								Cancel
 							</Button>
-							<Button variant="primary" size="sm" icon={IconDeviceFloppy} onclick={saveContext}>
+							<Button variant="primary" size="sm" icon={IconDeviceFloppy} onclick={saveContext} loading={isSavingContext}>
 								Save Context
 							</Button>
 						</div>
 					{/if}
 				</div>
+
+				{#if contextError}
+					<div class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium">
+						{contextError}
+					</div>
+				{/if}
 
 				{#if isEditingContext}
 					<div class="flex flex-col gap-6">
@@ -1220,19 +1174,97 @@
 						</div>
 					</div>
 
-					<!-- Keywords & Tags Section -->
-					<div class="border-t border-border/60 pt-6 space-y-3">
-						<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
-							Domain Keywords & Search Tags
-						</h3>
-
-						<div class="flex flex-wrap items-center gap-2 pt-1">
-							{#each datasetTags as tag}
-								<span class="px-3 py-1 rounded-full bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary">
-									{tag}
-								</span>
-							{/each}
+					<!-- Column Semantic Mappings & Business Glossary Section -->
+					<div class="border-t border-border/80 pt-8 space-y-5">
+						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+							<div class="space-y-1">
+								<h3 class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2">
+									<span>Column Semantic Mappings & Business Terms</span>
+								</h3>
+								<p class="text-xs text-text-secondary">
+									Standardized business definitions and domain classifications for this dataset's physical columns.
+								</p>
+							</div>
+							<button
+								class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
+								onclick={() => (activeTab = 'semantics')}
+							>
+								<IconTag size={15} class="text-accent" />
+								<span>Manage Mappings</span>
+							</button>
 						</div>
+
+						{#if semanticMappings.length === 0}
+							<div class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center space-y-2">
+								<p class="text-sm font-mono text-muted">No semantic mappings recorded yet.</p>
+								<button
+									class="text-sm text-accent hover:underline font-semibold"
+									onclick={() => (activeTab = 'semantics')}
+								>
+									Configure column mappings
+								</button>
+							</div>
+						{:else}
+							<div class="border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs">
+								<div class="overflow-x-auto max-h-[500px]">
+									<table class="w-full text-left text-sm font-sans border-collapse">
+										<thead>
+											<tr class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wider border-b border-border/80 sticky top-0 z-10">
+												<th class="px-5 py-3.5">Raw Column</th>
+												<th class="px-5 py-3.5">Type</th>
+												<th class="px-5 py-3.5">Mapped Business Term / Concept</th>
+												<th class="px-5 py-3.5">Domain Category</th>
+												<th class="px-5 py-3.5 text-right">Confidence</th>
+											</tr>
+										</thead>
+										<tbody class="text-text-primary">
+											{#each semanticMappings as item}
+												{@const catObj = categories.find((c) => c.name === item.category)}
+												<tr class="hover:bg-surface-hover/50 transition-colors">
+													<!-- Raw Column -->
+													<td class="px-5 py-4 font-mono font-bold text-text-primary text-sm">
+														{item.column_name}
+													</td>
+
+													<!-- Data Type -->
+													<td class="px-5 py-4 font-mono text-xs text-accent">
+														<span class="px-2 py-0.5 rounded bg-surface-elevated border border-border/60 font-semibold">
+															{item.dtype}
+														</span>
+													</td>
+
+													<!-- Mapped Concept -->
+													<td class="px-5 py-4 text-sm font-semibold text-text-primary">
+														<span>{item.mapped_concept || item.column_name}</span>
+														{#if item.is_custom}
+															<span class="ml-2 text-xs font-semibold text-accent uppercase tracking-wide">
+																• Custom
+															</span>
+														{/if}
+													</td>
+
+													<!-- Category (Clean Text + Dot, No Tag Pills) -->
+													<td class="px-5 py-4 text-sm font-medium text-text-primary">
+														<div class="inline-flex items-center gap-2">
+															<span
+																class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+																style="background-color: {catObj?.color || '#3b82f6'}"
+															></span>
+															<span>{catObj?.label || item.category}</span>
+														</div>
+													</td>
+
+													<!-- Confidence -->
+													<td class="px-5 py-4 text-right font-mono font-semibold text-sm text-text-secondary">
+														{item.confidence}%
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>

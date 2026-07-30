@@ -9,7 +9,9 @@
         IconPlus,
         IconTrash,
         IconDownload,
-        IconKey
+        IconKey,
+        IconTag,
+        IconChevronRight
     } from '@tabler/icons-svelte';
 
     let activeTab = $state('appearance');
@@ -18,6 +20,7 @@
         { id: 'general', label: 'General', icon: IconSettings },
         { id: 'appearance', label: 'Appearance', icon: IconPalette },
         { id: 'ai-models', label: 'AI & Models', icon: IconBrain },
+        { id: 'semantics', label: 'Semantic Categories', icon: IconTag },
         { id: 'privacy', label: 'Data & Privacy', icon: IconShieldLock },
     ];
 </script>
@@ -203,6 +206,35 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+        {:else if activeTab === 'semantics'}
+            <div class="animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out flex flex-col">
+                <div class="border-b border-border-subtle pb-6 mb-10">
+                    <h2 class="text-[18px] font-semibold tracking-tight text-text-primary mb-1">Semantic Categories</h2>
+                    <p class="text-[13.5px] text-text-secondary">Configure domain classification buckets used in dataset column mappings.</p>
+                </div>
+
+                <div class="flex flex-col gap-6 p-6 border border-border-subtle rounded-xl bg-surface/30">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 rounded-lg bg-surface-elevated text-accent">
+                                <IconTag size={20} />
+                            </div>
+                            <div>
+                                <h3 class="text-[14px] font-medium text-text-primary">Manage Categories</h3>
+                                <p class="text-[12.5px] text-muted">Create, edit, or remove domain classification categories stored in the database.</p>
+                            </div>
+                        </div>
+                        <a 
+                            href="/dashboard/settings/semantic-categories" 
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-text-primary text-bg text-[13px] font-medium hover:opacity-90 transition-opacity"
+                        >
+                            Open Category Manager
+                            <IconChevronRight size={14} />
+                        </a>
                     </div>
                 </div>
             </div>

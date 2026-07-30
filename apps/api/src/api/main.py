@@ -13,10 +13,12 @@ from sqlalchemy import select
 from api.config import settings, get_charts_abs_dir, get_datasets_abs_dir
 from api.database import Base, engine, AsyncSessionLocal
 from api.models.dataset import Dataset
+from api.models.semantic_category import SemanticCategory, DEFAULT_CATEGORIES
 from api.routers.artifacts import router as artifacts_router
 from api.routers.chat import router as chat_router
 from api.routers.conversations import router as conversations_router
 from api.routers.datasets import router as datasets_router
+from api.routers.semantic_categories import router as semantic_categories_router
 from api.services.agent_service import AgentService
 from api.services.session import session_manager
 
@@ -86,6 +88,14 @@ async def lifespan(_app: FastAPI):
         ]
         AgentService.register_db_datasets(registry)
 
+    # ── Seed default semantic categories if the table is empty ──
+    async with AsyncSessionLocal() as db:
+        existing = await db.execute(select(SemanticCategory).limit(1))
+        if existing.scalar_one_or_none() is None:
+            for cat_data in DEFAULT_CATEGORIES:
+                db.add(SemanticCategory(**cat_data))
+            await db.commit()
+
     yield
 
     # Shutdown
@@ -107,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(conversations_router, prefix="/api/v1")
     app.include_router(artifacts_router, prefix="/api/v1")
     app.include_router(datasets_router, prefix="/api/v1")
+    app.include_router(semantic_categories_router, prefix="/api/v1")
 
     # ----- Static files: generated charts -----
     # Mount AFTER routers so API routes take precedence.

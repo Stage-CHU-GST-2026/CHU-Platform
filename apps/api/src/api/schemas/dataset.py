@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +31,44 @@ class ColumnInfo(BaseModel):
     sample: str | None = None
 
 
+# ── Semantic Mapping ──────────────────────────────────────────────────
+
+class SemanticMappingItem(BaseModel):
+    """A single column's semantic concept mapping."""
+
+    column_name: str
+    dtype: str
+    mapped_concept: str
+    category: str
+    confidence: int = Field(default=0, ge=0, le=100)
+    unit: str | None = None
+    is_custom: bool = False
+
+
+class SemanticMappingUpdate(BaseModel):
+    """Request body for replacing all semantic mappings of a dataset."""
+
+    mappings: list[SemanticMappingItem]
+
+
+# ── Dataset Context ───────────────────────────────────────────────────
+
+class DatasetContextResponse(BaseModel):
+    """Context information for a dataset."""
+
+    description: str | None = None
+    notes: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class DatasetContextUpdate(BaseModel):
+    """Partial update of dataset context fields (PATCH semantics)."""
+
+    description: str | None = Field(default=None)
+    notes: str | None = Field(default=None)
+    tags: list[str] | None = Field(default=None)
+
+
 # ── Responses ─────────────────────────────────────────────────────────
 
 class DatasetSummary(BaseModel):
@@ -50,7 +89,7 @@ class DatasetSummary(BaseModel):
 
 
 class DatasetDetail(BaseModel):
-    """Full dataset detail including column metadata."""
+    """Full dataset detail including column metadata, semantic mappings, and context."""
 
     id: uuid.UUID
     original_filename: str
@@ -61,6 +100,12 @@ class DatasetDetail(BaseModel):
     rows: int | None
     columns: int | None
     columns_info: list[ColumnInfo] | None
+    # Semantic mapping
+    semantic_mappings: list[SemanticMappingItem] | None = None
+    # Dataset context
+    context_description: str | None = None
+    context_notes: str | None = None
+    context_tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
