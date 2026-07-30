@@ -31,7 +31,11 @@
 		IconCheck,
 		IconSparkles,
 		IconDeviceFloppy,
-		IconRotateClockwise
+		IconRotateClockwise,
+		IconInfoCircle,
+		IconShieldCheck,
+		IconTag,
+		IconFileDescription
 	} from '@tabler/icons-svelte';
 
 	let datasetId = $derived(page.params.id);
@@ -45,7 +49,26 @@
 	let error = $state<string | null>(null);
 
 	// Tabs state
-	let activeTab = $state<'preview' | 'schema' | 'stats' | 'semantics'>('preview');
+	let activeTab = $state<'context' | 'semantics' | 'preview' | 'schema' | 'stats'>('context');
+
+	// Context Tab State
+	let datasetDescription = $state(
+		'This dataset contains patient clinical records, vitals measurements (blood pressure, heart rate, respiration), lab readings, and demographic indicators ingested for automated AI triaging and health outcomes modeling.'
+	);
+	let datasetNotes = $state(
+		'1. Blood pressure readings were collected using standardized digital monitors.\n2. Null values in respiration rate represent non-monitored outpatient visits.\n3. All patient records are anonymized according to HIPAA compliance rules.'
+	);
+	let datasetTags = $state(['#ClinicalVitals', '#EHRIngestion', '#PatientCohort', '#AIProfiling']);
+	let isEditingContext = $state(false);
+	let contextSaveMsg = $state<string | null>(null);
+
+	function saveContext() {
+		isEditingContext = false;
+		contextSaveMsg = 'Dataset context updated successfully.';
+		setTimeout(() => {
+			contextSaveMsg = null;
+		}, 3000);
+	}
 
 	// Preview Filters
 	let previewNumRows = $state(10);
@@ -510,6 +533,27 @@
 		>
 			<button
 				class="px-4 py-2.5 rounded-lg font-sans font-medium transition-all duration-150 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap {activeTab ===
+				'context'
+					? 'bg-surface-elevated text-text-primary font-bold shadow-xs border border-border/60'
+					: 'text-text-secondary hover:text-text-primary hover:bg-surface-hover/60 border border-transparent'}"
+				onclick={() => (activeTab = 'context')}
+			>
+				<IconInfoCircle size={18} />
+				<span>Context</span>
+			</button>
+
+			<button
+				class="px-4 py-2.5 rounded-lg font-sans font-medium transition-all duration-150 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap {activeTab ===
+				'semantics'
+					? 'bg-surface-elevated text-text-primary font-bold shadow-xs border border-border/60'
+					: 'text-text-secondary hover:text-text-primary hover:bg-surface-hover/60 border border-transparent'}"
+				onclick={() => (activeTab = 'semantics')}
+			>
+				<span>Semantic Mapping</span>
+			</button>
+
+			<button
+				class="px-4 py-2.5 rounded-lg font-sans font-medium transition-all duration-150 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap {activeTab ===
 				'preview'
 					? 'bg-surface-elevated text-text-primary font-bold shadow-xs border border-border/60'
 					: 'text-text-secondary hover:text-text-primary hover:bg-surface-hover/60 border border-transparent'}"
@@ -544,16 +588,6 @@
 			>
 				<IconChartBar size={18} />
 				<span>Statistical Summary</span>
-			</button>
-
-			<button
-				class="px-4 py-2.5 rounded-lg font-sans font-medium transition-all duration-150 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap {activeTab ===
-				'semantics'
-					? 'bg-surface-elevated text-text-primary font-bold shadow-xs border border-border/60'
-					: 'text-text-secondary hover:text-text-primary hover:bg-surface-hover/60 border border-transparent'}"
-				onclick={() => (activeTab = 'semantics')}
-			>
-				<span>Semantic Mapping</span>
 			</button>
 		</div>
 
@@ -1074,6 +1108,133 @@
 						</tbody>
 					</table>
 				</div>
+			</div>
+		{:else if activeTab === 'context'}
+			<!-- Context Pane (Clean Single Document Layout) -->
+			<div class="bg-surface border border-border/80 rounded-xl p-8 space-y-8 shadow-xs">
+				{#if contextSaveMsg}
+					<div
+						class="p-3.5 rounded-lg bg-success/10 border border-success/20 text-success text-sm font-medium flex items-center justify-between shadow-xs animate-in fade-in"
+					>
+						<span>{contextSaveMsg}</span>
+					</div>
+				{/if}
+
+				<!-- Header Row -->
+				<div class="flex items-center justify-between border-b border-border/60 pb-4">
+					<div class="flex items-center gap-2.5">
+						<IconFileDescription size={22} class="text-accent" />
+						<h2 class="text-lg font-sans font-bold text-text-primary">Dataset Business Context</h2>
+					</div>
+
+					{#if !isEditingContext}
+						<Button variant="secondary" size="sm" onclick={() => (isEditingContext = true)}>
+							Edit Context
+						</Button>
+					{:else}
+						<div class="flex items-center gap-2">
+							<Button variant="secondary" size="sm" onclick={() => (isEditingContext = false)}>
+								Cancel
+							</Button>
+							<Button variant="primary" size="sm" icon={IconDeviceFloppy} onclick={saveContext}>
+								Save Context
+							</Button>
+						</div>
+					{/if}
+				</div>
+
+				{#if isEditingContext}
+					<div class="flex flex-col gap-6">
+						<div class="space-y-2">
+							<label class="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
+								Overview & Description
+							</label>
+							<textarea
+								bind:value={datasetDescription}
+								rows={3}
+								class="w-full bg-surface-elevated border border-border/60 rounded-lg p-3 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-accent"
+							></textarea>
+						</div>
+
+						<div class="space-y-2">
+							<label class="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
+								Business Rules & Domain Notes
+							</label>
+							<textarea
+								bind:value={datasetNotes}
+								rows={4}
+								class="w-full bg-surface-elevated border border-border/60 rounded-lg p-3 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-accent"
+							></textarea>
+						</div>
+					</div>
+				{:else}
+					<!-- Business Context Content -->
+					<div class="space-y-6">
+						<div class="space-y-2">
+							<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
+								Overview & Purpose
+							</h3>
+							<p class="text-sm text-text-primary leading-relaxed max-w-4xl">
+								{datasetDescription}
+							</p>
+						</div>
+
+						<div class="space-y-2 pt-2">
+							<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
+								Business Rules & Domain Assumptions
+							</h3>
+							<p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line max-w-4xl">
+								{datasetNotes}
+							</p>
+						</div>
+					</div>
+
+					<!-- Governance & Metadata Grid -->
+					<div class="border-t border-border/60 pt-6 space-y-3">
+						<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
+							Data Governance & Provenance
+						</h3>
+
+						<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-1">
+							<div class="space-y-1">
+								<span class="block text-xs font-semibold text-text-secondary">Ingestion Source</span>
+								<span class="block text-sm font-medium text-text-primary">EHR Pipeline v2.4</span>
+							</div>
+
+							<div class="space-y-1">
+								<span class="block text-xs font-semibold text-text-secondary">Privacy Compliance</span>
+								<span class="inline-block px-2.5 py-0.5 rounded bg-success/10 border border-success/30 text-success text-xs font-semibold">
+									HIPAA De-Identified
+								</span>
+							</div>
+
+							<div class="space-y-1">
+								<span class="block text-xs font-semibold text-text-secondary">Storage Format</span>
+								<span class="block text-sm font-medium text-text-primary capitalize">{dataset?.storage_format || 'Parquet'}</span>
+							</div>
+
+							<div class="space-y-1">
+								<span class="block text-xs font-semibold text-text-secondary">Access Scope</span>
+								<span class="block text-sm font-medium text-text-primary">Internal Analytics</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Keywords & Tags Section -->
+					<div class="border-t border-border/60 pt-6 space-y-3">
+						<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
+							Domain Keywords & Search Tags
+						</h3>
+
+						<div class="flex flex-wrap items-center gap-2 pt-1">
+							{#each datasetTags as tag}
+								<span class="px-3 py-1 rounded-full bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary">
+									{tag}
+								</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	{/if}

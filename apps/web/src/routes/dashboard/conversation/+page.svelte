@@ -430,17 +430,17 @@
 		line-height: 1.3;
 	}
 	.prose-agent :global(h1) {
-		font-size: 1.6em;
+		font-size: 1.85em;
 	}
 	.prose-agent :global(h2) {
-		font-size: 1.4em;
+		font-size: 1.6em;
 	}
 	.prose-agent :global(h3) {
-		font-size: 1.25em;
+		font-size: 1.35em;
 	}
 	.prose-agent :global(h4) {
-		font-size: 1.15em;
-		font-weight: 500;
+		font-size: 1.2em;
+		font-weight: 700;
 	}
 
 	.prose-agent :global(p) {

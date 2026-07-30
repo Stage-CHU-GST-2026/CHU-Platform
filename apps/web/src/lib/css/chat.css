@@ -77,18 +77,18 @@
 .prose-agent h2,
 .prose-agent h3,
 .prose-agent h4 {
-    font-family: var(--font-ui);
+    font-family: var(--font-heading);
     color: var(--color-text-primary);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.02em;
     margin-top: 1.25em;
     margin-bottom: 0.4em;
     line-height: 1.3;
 }
-.prose-agent h1 { font-size: 1.5em; }
-.prose-agent h2 { font-size: 1.3em; }
-.prose-agent h3 { font-size: 1.15em; }
-.prose-agent h4 { font-size: 1.05em; font-weight: 600; }
+.prose-agent h1 { font-size: 1.85em; }
+.prose-agent h2 { font-size: 1.6em; }
+.prose-agent h3 { font-size: 1.35em; }
+.prose-agent h4 { font-size: 1.2em; font-weight: 700; }
 
 .prose-agent p {
     margin: 0.75em 0;
