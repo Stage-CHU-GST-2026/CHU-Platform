@@ -150,9 +150,7 @@
 	let semanticSaveSuccess = $state<string | null>(null);
 	let semanticError = $state<string | null>(null);
 
-	let hasUnsavedSemantics = $derived(
-		JSON.stringify(semanticMappings) !== initialSemanticSnapshot
-	);
+	let hasUnsavedSemantics = $derived(JSON.stringify(semanticMappings) !== initialSemanticSnapshot);
 
 	async function persistSemanticMappings() {
 		if (!hasUnsavedSemantics || isSavingSemantics || !datasetId) return;
@@ -202,10 +200,7 @@
 		try {
 			// Load categories and dataset detail concurrently — categories are
 			// needed by the Semantic Mapping dropdowns regardless of dataset status.
-			const [ds, cats] = await Promise.all([
-				getDataset(datasetId),
-				listSemanticCategories()
-			]);
+			const [ds, cats] = await Promise.all([getDataset(datasetId), listSemanticCategories()]);
 			dataset = ds;
 			categories = cats;
 
@@ -901,7 +896,9 @@
 				{/if}
 
 				{#if semanticError}
-					<div class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium">
+					<div
+						class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium"
+					>
 						{semanticError}
 					</div>
 				{/if}
@@ -1002,7 +999,10 @@
 											<input
 												type="text"
 												bind:value={item.mapped_concept}
-												oninput={() => (item.is_custom = true)}
+												oninput={() => {
+													item.is_custom = true;
+													item.confidence = 100;
+												}}
 												class="bg-surface-elevated border border-border/60 rounded-md px-3 py-1.5 text-sm font-medium text-text-primary placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none w-72 transition-colors"
 											/>
 											{#if item.is_custom}
@@ -1019,7 +1019,10 @@
 									<td class="px-4 py-3">
 										<select
 											bind:value={item.category}
-											onchange={() => (item.is_custom = true)}
+											onchange={() => {
+												item.is_custom = true;
+												item.confidence = 100;
+											}}
 											class="bg-surface-elevated border border-border/60 rounded-md pl-2.5 pr-7 py-1 text-xs text-text-secondary focus:outline-none focus:border-accent cursor-pointer capitalize"
 										>
 											{#each categories as cat}
@@ -1034,7 +1037,9 @@
 									<!-- Confidence -->
 									<td class="px-4 py-3">
 										<span
-											class="px-2 py-0.5 rounded bg-surface-elevated border border-border/60 text-text-secondary text-xs font-medium"
+											class="px-2 py-0.5 rounded text-xs font-medium border {item.confidence === 100
+												? 'bg-success/15 border-success/30 text-success font-semibold'
+												: 'bg-surface-elevated border-border/60 text-text-secondary'}"
 										>
 											{item.confidence}%
 										</span>
@@ -1076,15 +1081,24 @@
 					</div>
 
 					{#if !isEditingContext}
-						<Button variant="secondary" size="sm" onclick={enterEditContext}>
-							Edit Context
-						</Button>
+						<Button variant="secondary" size="sm" onclick={enterEditContext}>Edit Context</Button>
 					{:else}
 						<div class="flex items-center gap-2">
-							<Button variant="secondary" size="sm" onclick={cancelEditContext} disabled={isSavingContext}>
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={cancelEditContext}
+								disabled={isSavingContext}
+							>
 								Cancel
 							</Button>
-							<Button variant="primary" size="sm" icon={IconDeviceFloppy} onclick={saveContext} loading={isSavingContext}>
+							<Button
+								variant="primary"
+								size="sm"
+								icon={IconDeviceFloppy}
+								onclick={saveContext}
+								loading={isSavingContext}
+							>
 								Save Context
 							</Button>
 						</div>
@@ -1092,7 +1106,9 @@
 				</div>
 
 				{#if contextError}
-					<div class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium">
+					<div
+						class="p-3.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm font-medium"
+					>
 						{contextError}
 					</div>
 				{/if}
@@ -1100,7 +1116,9 @@
 				{#if isEditingContext}
 					<div class="flex flex-col gap-6">
 						<div class="space-y-2">
-							<label class="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
+							<label
+								class="block text-xs font-semibold text-text-secondary uppercase tracking-wider"
+							>
 								Overview & Description
 							</label>
 							<textarea
@@ -1111,7 +1129,9 @@
 						</div>
 
 						<div class="space-y-2">
-							<label class="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
+							<label
+								class="block text-xs font-semibold text-text-secondary uppercase tracking-wider"
+							>
 								Business Rules & Domain Notes
 							</label>
 							<textarea
@@ -1143,46 +1163,18 @@
 						</div>
 					</div>
 
-					<!-- Governance & Metadata Grid -->
-					<div class="border-t border-border/60 pt-6 space-y-3">
-						<h3 class="font-sans text-xs uppercase font-bold text-text-secondary tracking-wider">
-							Data Governance & Provenance
-						</h3>
-
-						<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-1">
-							<div class="space-y-1">
-								<span class="block text-xs font-semibold text-text-secondary">Ingestion Source</span>
-								<span class="block text-sm font-medium text-text-primary">EHR Pipeline v2.4</span>
-							</div>
-
-							<div class="space-y-1">
-								<span class="block text-xs font-semibold text-text-secondary">Privacy Compliance</span>
-								<span class="inline-block px-2.5 py-0.5 rounded bg-success/10 border border-success/30 text-success text-xs font-semibold">
-									HIPAA De-Identified
-								</span>
-							</div>
-
-							<div class="space-y-1">
-								<span class="block text-xs font-semibold text-text-secondary">Storage Format</span>
-								<span class="block text-sm font-medium text-text-primary capitalize">{dataset?.storage_format || 'Parquet'}</span>
-							</div>
-
-							<div class="space-y-1">
-								<span class="block text-xs font-semibold text-text-secondary">Access Scope</span>
-								<span class="block text-sm font-medium text-text-primary">Internal Analytics</span>
-							</div>
-						</div>
-					</div>
-
 					<!-- Column Semantic Mappings & Business Glossary Section -->
 					<div class="border-t border-border/80 pt-8 space-y-5">
 						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 							<div class="space-y-1">
-								<h3 class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2">
+								<h3
+									class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2"
+								>
 									<span>Column Semantic Mappings & Business Terms</span>
 								</h3>
 								<p class="text-xs text-text-secondary">
-									Standardized business definitions and domain classifications for this dataset's physical columns.
+									Standardized business definitions and domain classifications for this dataset's
+									physical columns.
 								</p>
 							</div>
 							<button
@@ -1195,7 +1187,9 @@
 						</div>
 
 						{#if semanticMappings.length === 0}
-							<div class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center space-y-2">
+							<div
+								class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center space-y-2"
+							>
 								<p class="text-sm font-mono text-muted">No semantic mappings recorded yet.</p>
 								<button
 									class="text-sm text-accent hover:underline font-semibold"
@@ -1209,7 +1203,9 @@
 								<div class="overflow-x-auto max-h-[500px]">
 									<table class="w-full text-left text-sm font-sans border-collapse">
 										<thead>
-											<tr class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wider border-b border-border/80 sticky top-0 z-10">
+											<tr
+												class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wider border-b border-border/80 sticky top-0 z-10"
+											>
 												<th class="px-5 py-3.5">Raw Column</th>
 												<th class="px-5 py-3.5">Type</th>
 												<th class="px-5 py-3.5">Mapped Business Term / Concept</th>
@@ -1228,7 +1224,9 @@
 
 													<!-- Data Type -->
 													<td class="px-5 py-4 font-mono text-xs text-accent">
-														<span class="px-2 py-0.5 rounded bg-surface-elevated border border-border/60 font-semibold">
+														<span
+															class="px-2 py-0.5 rounded bg-surface-elevated border border-border/60 font-semibold"
+														>
 															{item.dtype}
 														</span>
 													</td>
@@ -1237,7 +1235,9 @@
 													<td class="px-5 py-4 text-sm font-semibold text-text-primary">
 														<span>{item.mapped_concept || item.column_name}</span>
 														{#if item.is_custom}
-															<span class="ml-2 text-xs font-semibold text-accent uppercase tracking-wide">
+															<span
+																class="ml-2 text-xs font-semibold text-accent uppercase tracking-wide"
+															>
 																• Custom
 															</span>
 														{/if}
@@ -1255,7 +1255,9 @@
 													</td>
 
 													<!-- Confidence -->
-													<td class="px-5 py-4 text-right font-mono font-semibold text-sm text-text-secondary">
+													<td
+														class="px-5 py-4 text-right font-mono font-semibold text-sm text-text-secondary"
+													>
 														{item.confidence}%
 													</td>
 												</tr>
@@ -1263,6 +1265,193 @@
 										</tbody>
 									</table>
 								</div>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Physical Schema Profiling Section -->
+					<div class="border-t border-border/80 pt-8 space-y-5">
+						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+							<div class="space-y-1">
+								<h3
+									class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2"
+								>
+									<IconFileAnalytics size={18} class="text-accent" />
+									<span>Physical Schema & Profiling Overview</span>
+								</h3>
+								<p class="text-xs text-text-secondary">
+									Column-level data types, missing value percentages, unique counts, and sample values.
+								</p>
+							</div>
+							<button
+								class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
+								onclick={() => (activeTab = 'schema')}
+							>
+								<IconTable size={15} class="text-accent" />
+								<span>Full Schema View</span>
+							</button>
+						</div>
+
+						{#if columnsData.length === 0}
+							<div
+								class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-sm font-mono text-muted"
+							>
+								No schema profiling information available.
+							</div>
+						{:else}
+							<div class="border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs">
+								<div class="overflow-x-auto max-h-[450px]">
+									<table class="w-full text-left text-sm font-mono border-collapse">
+										<thead>
+											<tr
+												class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wider border-b border-border/80 sticky top-0 z-10"
+											>
+												<th class="px-4 py-3">#</th>
+												<th class="px-4 py-3">Column Name</th>
+												<th class="px-4 py-3">Data Type</th>
+												<th class="px-4 py-3">Null Count</th>
+												<th class="px-4 py-3">Null %</th>
+												<th class="px-4 py-3">Unique Values</th>
+												<th class="px-4 py-3">Sample Value</th>
+											</tr>
+										</thead>
+										<tbody class="text-text-secondary">
+											{#each columnsData as col, i}
+												{@const totalRows = dataset?.rows || 1}
+												{@const nullPct = Math.round((col.null_count / totalRows) * 100)}
+												<tr class="hover:bg-surface-hover/50 transition-colors">
+													<td class="px-4 py-2.5 text-muted select-none text-xs">{i + 1}</td>
+													<td class="px-4 py-2.5 font-bold text-text-primary font-sans">{col.name}</td>
+													<td class="px-4 py-2.5">
+														<span
+															class="px-2.5 py-1 rounded bg-surface-elevated border border-border-subtle text-accent font-semibold text-xs"
+														>
+															{col.dtype}
+														</span>
+													</td>
+													<td class="px-4 py-2.5 font-medium">{col.null_count.toLocaleString()}</td>
+													<td class="px-4 py-2.5">
+														<div class="flex items-center gap-2">
+															<span>{nullPct}%</span>
+															<div
+																class="w-20 h-2 bg-surface-elevated border border-border-subtle rounded overflow-hidden"
+															>
+																<div
+																	class="h-full {nullPct > 50 ? 'bg-danger' : nullPct > 0 ? 'bg-warning' : 'bg-success'}"
+																	style="width: {nullPct}%"
+																></div>
+															</div>
+														</div>
+													</td>
+													<td class="px-4 py-2.5 font-medium">{col.unique_count.toLocaleString()}</td>
+													<td class="px-4 py-2.5 text-muted truncate max-w-xs">{col.sample ?? '—'}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Dataset Statistics & Data Health Section -->
+					<div class="border-t border-border/80 pt-8 space-y-5">
+						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+							<div class="space-y-1">
+								<h3
+									class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2"
+								>
+									<IconChartBar size={18} class="text-accent" />
+									<span>Dataset Statistics & Profile Metrics</span>
+								</h3>
+								<p class="text-xs text-text-secondary">
+									Key statistical summary metrics, numerical distributions, and missing data indicators.
+								</p>
+							</div>
+							<button
+								class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
+								onclick={() => (activeTab = 'stats')}
+							>
+								<IconChartBar size={15} class="text-accent" />
+								<span>View Full Statistics</span>
+							</button>
+						</div>
+
+						{#if statsData}
+							<!-- Summary Metrics KPI Bar -->
+							<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
+									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Total Rows</span>
+									<p class="text-xl font-bold font-mono text-text-primary">
+										{dataset?.rows?.toLocaleString() ?? '—'}
+									</p>
+								</div>
+								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
+									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Total Columns</span>
+									<p class="text-xl font-bold font-mono text-text-primary">
+										{dataset?.columns?.toLocaleString() ?? '—'}
+									</p>
+								</div>
+								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
+									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Numeric Fields</span>
+									<p class="text-xl font-bold font-mono text-accent">
+										{statsData.numeric_summary ? Object.keys(statsData.numeric_summary).length : 0}
+									</p>
+								</div>
+								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
+									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Missing Value Fields</span>
+									<p class="text-xl font-bold font-mono text-warning">
+										{statsData.missing_values
+											? Object.values(statsData.missing_values).filter((v) => v > 0).length
+											: 0}
+									</p>
+								</div>
+							</div>
+
+							<!-- Numeric Summary Matrix Preview -->
+							{#if statsData.numeric_summary && Object.keys(statsData.numeric_summary).length > 0}
+								<div class="space-y-3 pt-2">
+									<h4 class="text-xs uppercase font-bold text-text-secondary tracking-wider">
+										Numeric Summary Matrix
+									</h4>
+									<div class="border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs">
+										<div class="overflow-x-auto max-h-[350px]">
+											<table class="w-full text-left text-sm font-mono border-collapse">
+												<thead>
+													<tr class="bg-surface-elevated text-xs uppercase font-bold text-text-primary border-b border-border/80">
+														<th class="px-4 py-3 bg-surface-elevated">Metric / Field</th>
+														{#each Object.keys(statsData.numeric_summary) as col}
+															<th class="px-4 py-3 text-accent whitespace-nowrap bg-surface-elevated">
+																{col}
+															</th>
+														{/each}
+													</tr>
+												</thead>
+												<tbody class="text-text-secondary">
+													{#each ['count', 'mean', 'std', 'min', '50%', 'max'] as metric}
+														<tr class="hover:bg-surface-hover/50 transition-colors">
+															<td class="px-4 py-2.5 font-bold text-text-primary capitalize bg-surface/50">
+																{metric}
+															</td>
+															{#each Object.keys(statsData.numeric_summary) as col}
+																{@const metricVal = statsData.numeric_summary[col]?.[metric]}
+																<td class="px-4 py-2.5 whitespace-nowrap">
+																	{formatNum(metricVal)}
+																</td>
+															{/each}
+														</tr>
+													{/each}
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</div>
+							{/if}
+						{:else}
+							<div
+								class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-sm font-mono text-muted"
+							>
+								Statistical metrics currently unavailable.
 							</div>
 						{/if}
 					</div>

@@ -326,10 +326,18 @@ async def save_semantic_mappings(
     """Replace all semantic concept mappings for a dataset.
 
     The client sends the full array; the previous state is overwritten.
+    If a mapping is marked as human updated (is_custom=True), its confidence is set to 100%.
     """
     dataset = await _get_dataset_or_404(dataset_id, db)
 
-    dataset.semantic_mappings = [m.model_dump() for m in payload.mappings]
+    sanitized_mappings = []
+    for m in payload.mappings:
+        item_dict = m.model_dump()
+        if m.is_custom:
+            item_dict["confidence"] = 100
+        sanitized_mappings.append(item_dict)
+
+    dataset.semantic_mappings = sanitized_mappings
     await db.commit()
     await db.refresh(dataset)
 

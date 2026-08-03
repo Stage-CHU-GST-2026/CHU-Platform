@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Enums ─────────────────────────────────────────────────────────────
@@ -43,6 +43,12 @@ class SemanticMappingItem(BaseModel):
     confidence: int = Field(default=0, ge=0, le=100)
     unit: str | None = None
     is_custom: bool = False
+
+    @model_validator(mode="after")
+    def update_human_confidence(self) -> SemanticMappingItem:
+        if self.is_custom:
+            self.confidence = 100
+        return self
 
 
 class SemanticMappingUpdate(BaseModel):
