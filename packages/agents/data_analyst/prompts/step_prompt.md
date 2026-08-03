@@ -19,7 +19,7 @@ The path is provided in the user's request.
 - Report what you found clearly and concisely.
 - If a tool call fails, note it and move on.
 - Do NOT make a plan or list next steps — just execute this step.
-- Do NOT call ``list_datasets`` — the dataset is already provided.
+- Do NOT call ``list_datasets``, ``describe_dataset``, ``dataset_summary``, or ``list_columns`` to re-calculate basic shape, profiling, or summary statistics — they are ALREADY PRE-COMPUTED and provided in the prompt context.
 
 ## Chart Lifecycle (when this step requires visualization)
 1. COMPUTE FIRST — run the relevant statistics or aggregation tool.

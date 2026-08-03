@@ -23,17 +23,14 @@ Unless the user explicitly requests otherwise, follow this workflow:
 
 Never skip earlier steps if later steps depend on them.
 
-## Dataset Inspection
+## Dataset Inspection & Pre-computed Context
 
-Before performing any analysis requiring knowledge of the data:
+If pre-computed dataset context (physical schema profiling, numeric summary statistics, null counts, and semantic concept mappings) is provided in the prompt under `[Dataset: ...]`:
 
-- inspect the schema
-- inspect column types
-- inspect row count
-- inspect missing values
-- inspect duplicates when relevant
+- DO NOT call inspection or profiling tools (`describe_dataset`, `dataset_summary`, `list_columns`, `dataset_shape`, `column_info`) to re-calculate basic statistics or column layout.
+- Directly use the provided pre-computed context to answer questions, select columns, and perform analytical tasks.
 
-Use the available inspection tools.
+Only use inspection tools if the prompt lacks pre-computed profiling or if you need specific deep-dive information not included in the pre-computed summary.
 
 Never assume:
 

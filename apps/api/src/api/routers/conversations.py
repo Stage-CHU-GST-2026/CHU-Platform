@@ -29,6 +29,7 @@ from api.schemas.conversation import (
     MessageItem,
     UpdateConversationRequest,
 )
+from api.services.dataset_service import compute_statistics
 from api.services.session import session_manager
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -301,10 +302,25 @@ async def chat_in_conversation(
 
         # If no explicit dataset_path, try to use the conversation's linked dataset
         resolved_dataset_path = body.dataset_path
-        if not resolved_dataset_path and conv.dataset_id:
+        dataset_info: dict | None = None
+        if conv.dataset_id:
             ds = await db.get(Dataset, conv.dataset_id)
-            if ds and ds.filepath:
-                resolved_dataset_path = ds.filepath
+            if ds:
+                if not resolved_dataset_path and ds.filepath:
+                    resolved_dataset_path = ds.filepath
+                stats = await compute_statistics(ds.id, db)
+                dataset_info = {
+                    "id": str(ds.id),
+                    "filename": ds.original_filename,
+                    "filepath": ds.filepath,
+                    "rows": ds.rows,
+                    "columns": ds.columns,
+                    "columns_info": ds.columns_info,
+                    "semantic_mappings": ds.semantic_mappings,
+                    "context_description": ds.context_description,
+                    "context_notes": ds.context_notes,
+                    "statistics": stats,
+                }
 
     # Get or create the agent session keyed on conversation_id
     thread_id = str(conversation_id)
@@ -339,6 +355,7 @@ async def chat_in_conversation(
             message=body.message,
             thread_id=thread_id,
             dataset_path=resolved_dataset_path,
+            dataset_info=dataset_info,
         ):
             if event_type == "token":
                 fixed = _fix_chart_urls(str(data))

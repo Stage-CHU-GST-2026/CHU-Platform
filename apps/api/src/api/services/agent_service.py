@@ -61,23 +61,114 @@ class AgentService:
         """
         register_datasets(datasets)
 
-    def build_prompt(self, message: str, dataset_path: str | None = None) -> str:
-        """Prepend dataset context to the user message if provided."""
-        if dataset_path and dataset_path not in message:
-            return (
-                f"[Dataset: {dataset_path}]\n"
-                f"The dataset above is already linked to this conversation. "
-                f"Do NOT call list_datasets — use the provided path directly "
-                f"with analysis tools.\n\n"
-                f"{message}"
-            )
-        return message
+    def build_prompt(
+        self,
+        message: str,
+        dataset_path: str | None = None,
+        dataset_info: dict | None = None,
+    ) -> str:
+        """Prepend dataset context, pre-computed schema profiling, summary statistics, and semantic mappings to the user message."""
+        if not dataset_path and dataset_info:
+            dataset_path = dataset_info.get("filepath")
+
+        if not dataset_path and not dataset_info:
+            return message
+
+        if dataset_path and f"[Dataset: {dataset_path}]" in message:
+            return message
+
+        context_blocks = [f"[Dataset: {dataset_path}]"]
+        context_blocks.append(
+            "The dataset above is linked to this conversation. ALL DATASET CONTEXT, PHYSICAL SCHEMA PROFILING, NUMERIC STATISTICS, AND SEMANTIC MAPPINGS ARE PRE-COMPUTED AND PROVIDED BELOW:"
+        )
+
+        if dataset_info:
+            if dataset_info.get("filename"):
+                context_blocks.append(f"- Original Filename: {dataset_info['filename']}")
+            if dataset_info.get("rows") is not None and dataset_info.get("columns") is not None:
+                context_blocks.append(
+                    f"- Dataset Shape: {dataset_info['rows']:,} rows × {dataset_info['columns']} columns"
+                )
+            if dataset_info.get("context_description"):
+                context_blocks.append(f"- Business Overview: {dataset_info['context_description']}")
+            if dataset_info.get("context_notes"):
+                context_blocks.append(f"- Business Rules & Notes: {dataset_info['context_notes']}")
+
+            cols_info = dataset_info.get("columns_info")
+            if cols_info:
+                context_blocks.append("\n### Pre-computed Physical Schema Profiling:")
+                context_blocks.append(
+                    f"{'Column Name':<25} {'Data Type':<12} {'Null Count':<12} {'Null %':<8} {'Unique':<8} {'Sample'}"
+                )
+                context_blocks.append("-" * 80)
+                tot_rows = dataset_info.get("rows") or 1
+                for c in cols_info:
+                    cn = str(c.get("name", ""))
+                    dt = str(c.get("dtype", ""))
+                    nc = c.get("null_count", 0)
+                    npct = f"{round((nc / tot_rows) * 100)}%"
+                    uc = c.get("unique_count", 0)
+                    samp = str(c.get("sample") or "—")[:25]
+                    context_blocks.append(
+                        f"{cn:<25} {dt:<12} {nc:<12} {npct:<8} {uc:<8} {samp}"
+                    )
+
+            stats = dataset_info.get("statistics")
+            if stats and isinstance(stats, dict):
+                num_summary = stats.get("numeric_summary")
+                if num_summary and isinstance(num_summary, dict):
+                    context_blocks.append("\n### Pre-computed Numeric Summary Matrix:")
+                    context_blocks.append(
+                        f"{'Metric':<10} " + " ".join([f"{col:<15}" for col in num_summary.keys()])
+                    )
+                    context_blocks.append("-" * 75)
+                    for metric in ["count", "mean", "std", "min", "50%", "max"]:
+                        row_vals = []
+                        for col, col_stats in num_summary.items():
+                            val = col_stats.get(metric)
+                            if isinstance(val, (int, float)):
+                                row_vals.append(f"{val:<15.4g}")
+                            else:
+                                row_vals.append(f"{'—':<15}")
+                        context_blocks.append(f"{metric:<10} " + " ".join(row_vals))
+
+            semantics = dataset_info.get("semantic_mappings")
+            if semantics and isinstance(semantics, list):
+                context_blocks.append("\n### Pre-computed Semantic Concept Mappings & Business Glossary:")
+                context_blocks.append(
+                    f"{'Raw Column':<25} {'DataType':<10} {'Mapped Concept':<30} {'Category':<15} {'Confidence'}"
+                )
+                context_blocks.append("-" * 90)
+                for m in semantics:
+                    r_col = str(m.get("column_name", ""))
+                    r_dt = str(m.get("dtype", ""))
+                    r_conc = str(m.get("mapped_concept", ""))
+                    r_cat = str(m.get("category", ""))
+                    r_conf = f"{m.get('confidence', 0)}%"
+                    context_blocks.append(
+                        f"{r_col:<25} {r_dt:<10} {r_conc:<30} {r_cat:<15} {r_conf}"
+                    )
+
+        context_blocks.append("\nCRITICAL INSTRUCTION FOR TOOL CALLING & PLANNING:")
+        context_blocks.append(
+            "- All schema profiling, basic statistics, column types, and semantic mappings are ALREADY PRE-COMPUTED and provided above."
+        )
+        context_blocks.append(
+            "- Do NOT call inspection/profiling tools (`describe_dataset`, `dataset_summary`, `list_columns`, `column_info`, `dataset_shape`, or `list_datasets`) to re-calculate basic statistics or schema information."
+        )
+        context_blocks.append(
+            "- Use the pre-computed dataset context directly for your analysis and reasoning."
+        )
+
+        formatted_context = "\n".join(context_blocks)
+        return f"{formatted_context}\n\n{message}"
 
     async def stream(
         self,
         message: str,
         thread_id: str,
         dataset_path: str | None = None,
+        dataset_info: dict | None = None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Stream agent events for a given message and thread.
 
@@ -95,7 +186,7 @@ class AgentService:
             ("artifact", json)       — plan artifact metadata JSON
             ("done", str)            — stream complete
         """
-        prompt = self.build_prompt(message, dataset_path)
+        prompt = self.build_prompt(message, dataset_path, dataset_info)
 
         # Use the orchestrator for the full plan→execute→synthesize flow
         async for event_type, data in self._orchestrator.stream(
@@ -110,12 +201,13 @@ class AgentService:
         message: str,
         thread_id: str,
         dataset_path: str | None = None,
+        dataset_info: dict | None = None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Legacy streaming mode — direct LLM tokens without planning.
 
         Useful as a fallback or for simple conversational turns.
         """
-        prompt = self.build_prompt(message, dataset_path)
+        prompt = self.build_prompt(message, dataset_path, dataset_info)
         async for chunk, metadata in self._agent.graph.astream(
             {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",
