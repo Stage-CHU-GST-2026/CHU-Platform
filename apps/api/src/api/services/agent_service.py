@@ -66,8 +66,9 @@ class AgentService:
         message: str,
         dataset_path: str | None = None,
         dataset_info: dict | None = None,
+        is_first_turn: bool = True,
     ) -> str:
-        """Prepend dataset context, pre-computed schema profiling, summary statistics, and semantic mappings to the user message."""
+        """Prepend dataset context. Full profiling is sent ONLY on the first turn of a conversation; subsequent turns use minimal dataset path header to conserve tokens."""
         if not dataset_path and dataset_info:
             dataset_path = dataset_info.get("filepath")
 
@@ -76,6 +77,11 @@ class AgentService:
 
         if dataset_path and f"[Dataset: {dataset_path}]" in message:
             return message
+
+        # On subsequent turns (is_first_turn=False), conversation memory already contains full context.
+        # Send only the minimal dataset tag header to save tokens.
+        if not is_first_turn:
+            return f"[Dataset: {dataset_path}]\n\n{message}"
 
         context_blocks = [f"[Dataset: {dataset_path}]"]
         context_blocks.append(
@@ -169,6 +175,7 @@ class AgentService:
         thread_id: str,
         dataset_path: str | None = None,
         dataset_info: dict | None = None,
+        is_first_turn: bool = True,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Stream agent events for a given message and thread.
 
@@ -186,7 +193,7 @@ class AgentService:
             ("artifact", json)       — plan artifact metadata JSON
             ("done", str)            — stream complete
         """
-        prompt = self.build_prompt(message, dataset_path, dataset_info)
+        prompt = self.build_prompt(message, dataset_path, dataset_info, is_first_turn)
 
         # Use the orchestrator for the full plan→execute→synthesize flow
         async for event_type, data in self._orchestrator.stream(
@@ -202,12 +209,13 @@ class AgentService:
         thread_id: str,
         dataset_path: str | None = None,
         dataset_info: dict | None = None,
+        is_first_turn: bool = True,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
         """Legacy streaming mode — direct LLM tokens without planning.
 
         Useful as a fallback or for simple conversational turns.
         """
-        prompt = self.build_prompt(message, dataset_path, dataset_info)
+        prompt = self.build_prompt(message, dataset_path, dataset_info, is_first_turn)
         async for chunk, metadata in self._agent.graph.astream(
             {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",

@@ -359,9 +359,7 @@ class Orchestrator:
         thread_id: str,
         dataset_path: str | None = None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
-        user_msg_lower = message.lower().strip()
-
-        if self._is_simple_question(user_msg_lower):
+        if self._is_simple_question(message):
             logger.info("Simple question detected, using fast path")
             async for event in self._fast_path(message, thread_id, dataset_path):
                 yield event
@@ -391,9 +389,17 @@ class Orchestrator:
 
     def _is_simple_question(self, message: str) -> bool:
         """Detect trivial conversational messages that don't need a plan."""
-        msg = message.lower().strip().rstrip("?!.")
-        conversational = {"hello", "hi", "hey", "thanks",
-                          "thank you", "ok", "okay", "yes", "no", "bye", "goodbye"}
+        raw_msg = message
+        # If the prompt is wrapped with a [Dataset: ...] context header, extract the actual user request
+        if "[Dataset:" in raw_msg and "\n\n" in raw_msg:
+            raw_msg = raw_msg.split("\n\n")[-1]
+
+        msg = raw_msg.lower().strip().rstrip("?!.")
+        conversational = {
+            "hello", "hi", "hey", "thanks", "thank you", "ok", "okay",
+            "yes", "no", "bye", "goodbye", "cool", "great", "awesome",
+            "perfect", "got it", "understood"
+        }
         if msg in conversational:
             return True
 
@@ -414,6 +420,17 @@ class Orchestrator:
         )
         if msg.startswith(simple_starts):
             return True
+
+        # Short non-analytical queries (< 20 chars) without analytical keywords
+        analytical_keywords = (
+            "analyze", "analysis", "plot", "chart", "graph", "stat", "stats",
+            "statistic", "describe", "correlation", "regression", "distribution",
+            "mean", "median", "summary", "column", "row", "filter", "group", "sort",
+            "clean", "missing", "null", "outlier", "predict", "model", "compare"
+        )
+        if len(msg) < 20 and not any(kw in msg for kw in analytical_keywords):
+            return True
+
         return False
 
     def _fallback_plan(self) -> ExecutionPlan:

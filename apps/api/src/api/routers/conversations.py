@@ -300,6 +300,13 @@ async def chat_in_conversation(
                 detail="Conversation not found",
             )
 
+        # Check if this is the first turn in the conversation to optimize token usage
+        existing_msg_res = await db.execute(
+            select(func.count(Message.id)).where(Message.conversation_id == conversation_id)
+        )
+        existing_count = existing_msg_res.scalar() or 0
+        is_first_turn = (existing_count == 0)
+
         # If no explicit dataset_path, try to use the conversation's linked dataset
         resolved_dataset_path = body.dataset_path
         dataset_info: dict | None = None
@@ -308,19 +315,21 @@ async def chat_in_conversation(
             if ds:
                 if not resolved_dataset_path and ds.filepath:
                     resolved_dataset_path = ds.filepath
-                stats = await compute_statistics(ds.id, db)
-                dataset_info = {
-                    "id": str(ds.id),
-                    "filename": ds.original_filename,
-                    "filepath": ds.filepath,
-                    "rows": ds.rows,
-                    "columns": ds.columns,
-                    "columns_info": ds.columns_info,
-                    "semantic_mappings": ds.semantic_mappings,
-                    "context_description": ds.context_description,
-                    "context_notes": ds.context_notes,
-                    "statistics": stats,
-                }
+                # Send full pre-computed context only on the first turn; memory handles subsequent turns
+                if is_first_turn:
+                    stats = await compute_statistics(ds.id, db)
+                    dataset_info = {
+                        "id": str(ds.id),
+                        "filename": ds.original_filename,
+                        "filepath": ds.filepath,
+                        "rows": ds.rows,
+                        "columns": ds.columns,
+                        "columns_info": ds.columns_info,
+                        "semantic_mappings": ds.semantic_mappings,
+                        "context_description": ds.context_description,
+                        "context_notes": ds.context_notes,
+                        "statistics": stats,
+                    }
 
     # Get or create the agent session keyed on conversation_id
     thread_id = str(conversation_id)
@@ -356,6 +365,7 @@ async def chat_in_conversation(
             thread_id=thread_id,
             dataset_path=resolved_dataset_path,
             dataset_info=dataset_info,
+            is_first_turn=is_first_turn,
         ):
             if event_type == "token":
                 fixed = _fix_chart_urls(str(data))
