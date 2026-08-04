@@ -38,12 +38,51 @@ API runs at `http://localhost:10000`.
 
 ---
 
+## Full stack with Docker (Nginx load balancer)
+
+Run the entire platform — Postgres, PgAdmin, API, and web app — behind a single Nginx load balancer:
+
+```bash
+# 1. Edit .env — set OPENAI_API_KEY (and POSTGRES_* for different credentials)
+
+# 2. Build & start everything
+ docker compose up -d --build
+
+# 3. Apply database migrations (once)
+docker compose exec api alembic upgrade head
+```
+
+Everything is served from one origin:
+
+| Service | URL |
+|---|---|
+| Web app | http://localhost (or `http://localhost:${NGINX_PORT}`) |
+| API | http://localhost/api/v1 (load-balanced across `API_REPLICAS` instances) |
+| PgAdmin | http://localhost/pgadmin (user: `${PGADMIN_EMAIL}`, pass: `${PGADMIN_PASSWORD}`) |
+
+Uploaded datasets and generated charts live in `apps/api/static/datasets` and
+`apps/api/static/charts`, which are bind-mounted into the API container so data
+persists and is shared across scaled replicas.
+
+### Scaling the API
+
+Nginx round-robins across every instance in the `api` upstream. Scale out with:
+
+```bash
+docker compose up -d --scale api=3
+```
+
+The default is `API_REPLICAS=1` in `.env`. Conversation/checkpoint state lives in Postgres, so any instance can serve any request.
+
+---
+
 ## Project structure
 
 ```
 apps/
   api/           # FastAPI backend (routers, models, schemas)
   web/           # Svelte frontend
+nginx/           # Nginx load balancer / reverse proxy config
 packages/
   agents/        # Data analyst agent definition
   ai/            # LangGraph agent framework

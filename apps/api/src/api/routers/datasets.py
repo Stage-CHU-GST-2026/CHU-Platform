@@ -37,6 +37,7 @@ from api.services.dataset_service import (
     guess_mime,
     preview_dataset,
     process_dataset,
+    resolve_dataset_path,
 )
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
@@ -197,7 +198,8 @@ async def get_dataset(
 
     semantic_mappings = None
     if dataset.semantic_mappings:
-        semantic_mappings = [SemanticMappingItem(**m) for m in dataset.semantic_mappings]
+        semantic_mappings = [SemanticMappingItem(
+            **m) for m in dataset.semantic_mappings]
 
     return DatasetDetail(
         id=dataset.id,
@@ -228,9 +230,11 @@ async def delete_dataset(
     """Delete a dataset and its file from disk."""
     dataset = await _get_dataset_or_404(dataset_id, db)
 
-    # Remove file from disk
-    if dataset.filepath and os.path.isfile(dataset.filepath):
-        os.remove(dataset.filepath)
+    # Remove file from disk (resolve host/container path differences)
+    if dataset.filepath:
+        resolved = resolve_dataset_path(dataset.filepath)
+        if os.path.isfile(resolved):
+            os.remove(resolved)
 
     await db.delete(dataset)
     await db.commit()

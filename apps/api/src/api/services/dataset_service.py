@@ -33,6 +33,24 @@ def ensure_datasets_dir() -> Path:
     return DATASETS_DIR
 
 
+def resolve_dataset_path(filepath: str) -> Path:
+    """Resolve a stored dataset filepath to an existing file.
+
+    Dataset records may store absolute paths created on a different host
+    or container (e.g. while running the API locally on the developer
+    machine). If the stored path does not exist, fall back to the same
+    filename inside the configured datasets directory, so existing DB
+    records keep working after containerization.
+    """
+    p = Path(filepath)
+    if p.exists():
+        return p
+    candidate = DATASETS_DIR / p.name
+    if candidate.exists():
+        return candidate
+    return p
+
+
 # ── Supported file types ──────────────────────────────────────────────
 
 SUPPORTED_EXTENSIONS: dict[str, str] = {
@@ -58,7 +76,7 @@ def guess_mime(filename: str) -> str:
 
 def _load_dataframe(filepath: str) -> pd.DataFrame:
     """Load a dataset into a pandas DataFrame (runs in executor thread)."""
-    p = Path(filepath)
+    p = resolve_dataset_path(filepath)
     ext = p.suffix.lower()
 
     if ext == ".csv":

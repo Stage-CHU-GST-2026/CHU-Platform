@@ -32,9 +32,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-
-    ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      # Serve PgAdmin under /pgadmin via the Nginx load balancer
+      SCRIPT_NAME: /pgadmin
 
     volumes:
       - pgadmin_data:/var/lib/pgadmin
@@ -42,6 +41,75 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+    networks:
+      - chu-network
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: api
+    restart: unless-stopped
+    # 1 instance by default; scale out with: docker compose up -d --scale api=N
+    scale: ${API_REPLICAS:-1}
+
+    environment:
+      # Inside the compose network, Postgres is reached at "postgres:5432"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-app}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://localhost:6060/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-gpt-4o-mini}
+      CHARTS_DIR: ${CHARTS_DIR:-static/charts}
+      HOST: 0.0.0.0
+      PORT: 10000
+      RELOAD: "false"
+
+    volumes:
+      # Share dataset/chart storage with the host so uploaded files and
+      # generated charts persist and all scaled API replicas see the same data.
+      - ./apps/api/static/datasets:/app/apps/api/static/datasets
+      - ./apps/api/static/charts:/app/apps/api/static/charts
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - chu-network
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    container_name: web
+    restart: unless-stopped
+
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+
+    depends_on:
+      - api
+
+    networks:
+      - chu-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+
+    ports:
+      - "${NGINX_PORT:-80}:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+    depends_on:
+      - api
+      - web
+      - pgadmin
 
     networks:
       - chu-network

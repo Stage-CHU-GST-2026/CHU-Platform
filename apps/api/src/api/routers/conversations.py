@@ -29,7 +29,7 @@ from api.schemas.conversation import (
     MessageItem,
     UpdateConversationRequest,
 )
-from api.services.dataset_service import compute_statistics
+from api.services.dataset_service import compute_statistics, resolve_dataset_path
 from api.services.session import session_manager
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -302,7 +302,8 @@ async def chat_in_conversation(
 
         # Check if this is the first turn in the conversation to optimize token usage
         existing_msg_res = await db.execute(
-            select(func.count(Message.id)).where(Message.conversation_id == conversation_id)
+            select(func.count(Message.id)).where(
+                Message.conversation_id == conversation_id)
         )
         existing_count = existing_msg_res.scalar() or 0
         is_first_turn = (existing_count == 0)
@@ -314,14 +315,15 @@ async def chat_in_conversation(
             ds = await db.get(Dataset, conv.dataset_id)
             if ds:
                 if not resolved_dataset_path and ds.filepath:
-                    resolved_dataset_path = ds.filepath
+                    resolved_dataset_path = str(
+                        resolve_dataset_path(ds.filepath))
                 # Send full pre-computed context only on the first turn; memory handles subsequent turns
                 if is_first_turn:
                     stats = await compute_statistics(ds.id, db)
                     dataset_info = {
                         "id": str(ds.id),
                         "filename": ds.original_filename,
-                        "filepath": ds.filepath,
+                        "filepath": str(resolve_dataset_path(ds.filepath)),
                         "rows": ds.rows,
                         "columns": ds.columns,
                         "columns_info": ds.columns_info,

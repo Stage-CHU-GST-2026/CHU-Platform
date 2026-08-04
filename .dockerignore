@@ -1,0 +1,36 @@
+# Root build context (used by the API image) — keep it lean.
+
+# VCS / CI
+.git
+.github
+
+# Python
+.venv
+**/__pycache__
+**/.pytest_cache
+*.pyc
+*.pyo
+
+# Node
+**/node_modules
+apps/web/.svelte-kit
+apps/web/build
+apps/web/.output
+
+# Local data / notebooks (not needed by the API image)
+data
+data__/
+files/
+notebooks/
+examples/
+test_*.py
+*.csv
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Charts are generated at runtime inside the container
+static/charts
+apps/api/static/charts

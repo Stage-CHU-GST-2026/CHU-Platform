@@ -24,6 +24,7 @@ from analysis.charts import ChartArtifact
 from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 from tools.planning import ARTIFACT_URL_PREFIX
 from tools.inspection.describe import register_datasets
+from api.services.dataset_service import resolve_dataset_path
 
 
 class AgentService:
@@ -58,8 +59,16 @@ class AgentService:
 
         Called once at startup so the ``list_datasets`` tool returns
         DB-backed datasets instead of scanning the filesystem.
+        Stored filepaths are resolved so host-absolute DB records still
+        work when the API runs inside a container.
         """
-        register_datasets(datasets)
+        resolved: list[dict] = []
+        for d in datasets:
+            item = dict(d)
+            if item.get("filepath"):
+                item["filepath"] = str(resolve_dataset_path(item["filepath"]))
+            resolved.append(item)
+        register_datasets(resolved)
 
     def build_prompt(
         self,
@@ -90,19 +99,23 @@ class AgentService:
 
         if dataset_info:
             if dataset_info.get("filename"):
-                context_blocks.append(f"- Original Filename: {dataset_info['filename']}")
+                context_blocks.append(
+                    f"- Original Filename: {dataset_info['filename']}")
             if dataset_info.get("rows") is not None and dataset_info.get("columns") is not None:
                 context_blocks.append(
                     f"- Dataset Shape: {dataset_info['rows']:,} rows × {dataset_info['columns']} columns"
                 )
             if dataset_info.get("context_description"):
-                context_blocks.append(f"- Business Overview: {dataset_info['context_description']}")
+                context_blocks.append(
+                    f"- Business Overview: {dataset_info['context_description']}")
             if dataset_info.get("context_notes"):
-                context_blocks.append(f"- Business Rules & Notes: {dataset_info['context_notes']}")
+                context_blocks.append(
+                    f"- Business Rules & Notes: {dataset_info['context_notes']}")
 
             cols_info = dataset_info.get("columns_info")
             if cols_info:
-                context_blocks.append("\n### Pre-computed Physical Schema Profiling:")
+                context_blocks.append(
+                    "\n### Pre-computed Physical Schema Profiling:")
                 context_blocks.append(
                     f"{'Column Name':<25} {'Data Type':<12} {'Null Count':<12} {'Null %':<8} {'Unique':<8} {'Sample'}"
                 )
@@ -123,9 +136,11 @@ class AgentService:
             if stats and isinstance(stats, dict):
                 num_summary = stats.get("numeric_summary")
                 if num_summary and isinstance(num_summary, dict):
-                    context_blocks.append("\n### Pre-computed Numeric Summary Matrix:")
                     context_blocks.append(
-                        f"{'Metric':<10} " + " ".join([f"{col:<15}" for col in num_summary.keys()])
+                        "\n### Pre-computed Numeric Summary Matrix:")
+                    context_blocks.append(
+                        f"{'Metric':<10} " +
+                        " ".join([f"{col:<15}" for col in num_summary.keys()])
                     )
                     context_blocks.append("-" * 75)
                     for metric in ["count", "mean", "std", "min", "50%", "max"]:
@@ -136,11 +151,13 @@ class AgentService:
                                 row_vals.append(f"{val:<15.4g}")
                             else:
                                 row_vals.append(f"{'—':<15}")
-                        context_blocks.append(f"{metric:<10} " + " ".join(row_vals))
+                        context_blocks.append(
+                            f"{metric:<10} " + " ".join(row_vals))
 
             semantics = dataset_info.get("semantic_mappings")
             if semantics and isinstance(semantics, list):
-                context_blocks.append("\n### Pre-computed Semantic Concept Mappings & Business Glossary:")
+                context_blocks.append(
+                    "\n### Pre-computed Semantic Concept Mappings & Business Glossary:")
                 context_blocks.append(
                     f"{'Raw Column':<25} {'DataType':<10} {'Mapped Concept':<30} {'Category':<15} {'Confidence'}"
                 )
@@ -155,7 +172,8 @@ class AgentService:
                         f"{r_col:<25} {r_dt:<10} {r_conc:<30} {r_cat:<15} {r_conf}"
                     )
 
-        context_blocks.append("\nCRITICAL INSTRUCTION FOR TOOL CALLING & PLANNING:")
+        context_blocks.append(
+            "\nCRITICAL INSTRUCTION FOR TOOL CALLING & PLANNING:")
         context_blocks.append(
             "- All schema profiling, basic statistics, column types, and semantic mappings are ALREADY PRE-COMPUTED and provided above."
         )
@@ -193,7 +211,8 @@ class AgentService:
             ("artifact", json)       — plan artifact metadata JSON
             ("done", str)            — stream complete
         """
-        prompt = self.build_prompt(message, dataset_path, dataset_info, is_first_turn)
+        prompt = self.build_prompt(
+            message, dataset_path, dataset_info, is_first_turn)
 
         # Use the orchestrator for the full plan→execute→synthesize flow
         async for event_type, data in self._orchestrator.stream(
@@ -215,7 +234,8 @@ class AgentService:
 
         Useful as a fallback or for simple conversational turns.
         """
-        prompt = self.build_prompt(message, dataset_path, dataset_info, is_first_turn)
+        prompt = self.build_prompt(
+            message, dataset_path, dataset_info, is_first_turn)
         async for chunk, metadata in self._agent.graph.astream(
             {"messages": [{"role": "user", "content": prompt}], "summary": ""},
             stream_mode="messages",
