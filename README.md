@@ -42,6 +42,9 @@ API runs at `http://localhost:10000`.
 
 Run the entire platform — Postgres, PgAdmin, API, and web app — behind a single Nginx load balancer:
 
+>  Full details in **[DOCKERISATION.md](DOCKERISATION.md)** — architecture,
+> Dockerfiles, environment variables, scaling, persistence, and gotchas.
+
 ```bash
 # 1. Edit .env — set OPENAI_API_KEY (and POSTGRES_* for different credentials)
 
