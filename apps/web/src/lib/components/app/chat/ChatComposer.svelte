@@ -16,6 +16,7 @@
 	import Dropdown, { type DropdownItem } from '$lib/components/app/common/Dropdown.svelte';
 	import { listDatasets } from '$lib/api/datasets';
 	import type { DatasetSummary } from '$lib/api/datasets';
+	import { t, m } from '$lib/i18n';
 
 	interface Props {
 		input?: string;
@@ -122,7 +123,7 @@
 				<button
 					onclick={clearDataset}
 					class="ml-1 p-1 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
-					title="Remove dataset attachment"
+					title={t(m.chat_remove_dataset)}
 					aria-label="Remove dataset"
 				>
 					<IconX size={13} stroke={2} />
@@ -140,7 +141,7 @@
 			: 'px-3 pt-2 text-[15.5px] leading-[1.7] min-h-[28px] max-h-48'} overflow-y-auto"
 		placeholder={selectedDataset
 			? `Ask about "${selectedDataset.original_filename}"...`
-			: 'Ask anything...'}
+			: t(m.chat_placeholder_default)}
 		rows={size === 'large' ? 2 : 1}
 		disabled={isStreaming}
 		onkeydown={handleKeydown}
@@ -165,7 +166,7 @@
 				>
 					<IconDatabase size={14} stroke={1.8} class={selectedDataset ? 'text-accent' : 'text-muted'} />
 					<span class="truncate max-w-44 font-sans">
-						{selectedDataset ? selectedDataset.original_filename : 'Attach Dataset'}
+						{selectedDataset ? selectedDataset.original_filename : t(m.chat_attach_dataset)}
 					</span>
 					<IconChevronDown size={13} stroke={2} class="opacity-50 shrink-0" />
 				</button>
@@ -187,14 +188,14 @@
 						<!-- Header with Search Input -->
 						<div class="p-2.5 border-b border-border/80 bg-surface flex flex-col gap-2">
 							<div class="flex items-center justify-between px-1">
-								<span class="text-xs font-bold text-text-primary uppercase tracking-wider">Select Dataset</span>
+								<span class="text-xs font-bold text-text-primary uppercase tracking-wider">{t(m.chat_select_dataset)}</span>
 								<span class="text-[11px] font-mono text-muted">{availableDatasets.length} ready</span>
 							</div>
 							<div class="relative w-full">
 								<input
 									type="text"
 									bind:value={datasetSearchQuery}
-									placeholder="Search datasets..."
+									placeholder={t(m.chat_search_datasets)}
 									class="w-full bg-surface-elevated border border-border/80 rounded-md px-2.5 py-1.5 pl-8 text-xs text-text-primary placeholder-muted focus:outline-none focus:border-accent"
 								/>
 								<IconSearch size={14} class="absolute left-2.5 top-2 text-muted" />

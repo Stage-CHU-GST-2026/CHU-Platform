@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
 	import type { DatasetSummary } from '$lib/api/datasets';
+	import { t, m, getPromptLanguageInstruction } from '$lib/i18n';
 
 	let input = $state('');
 	let isSubmitting = $state(false);
@@ -27,8 +28,8 @@
 </script>
 
 <svelte:head>
-	<title>New Chat | CHU Platform</title>
-	<meta name="description" content="Start a new conversation with the Data Analyst Agent." />
+	<title>{t(m.nav_new_chat)} | CHU Platform</title>
+	<meta name="description" content={t(m.chat_hero_subtitle)} />
 </svelte:head>
 
 <div
@@ -41,10 +42,10 @@
 				class="text-[32px] md:text-[40px] font-semibold tracking-[-0.02em] leading-[1.15] text-text-primary"
 				style="font-family: 'Cormorant Garamond', serif;"
 			>
-				What would you like to explore?
+				{t(m.chat_hero_title)}
 			</h1>
 			<p class="text-[14px] md:text-[15px] text-text-secondary max-w-[460px] leading-relaxed">
-				Ask questions about your data, generate reports, and uncover insights.
+				{t(m.chat_hero_subtitle)}
 			</p>
 		</div>
 

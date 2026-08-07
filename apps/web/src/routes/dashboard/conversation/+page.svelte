@@ -18,6 +18,7 @@
 	} from '$lib/api/chat';
 	import { convo } from '$lib/state/conversations.svelte';
 	import { app } from '$lib/state/app.svelte';
+	import { getPromptLanguageInstruction } from '$lib/i18n';
 	import { IconSparkles, IconDatabase } from '@tabler/icons-svelte';
 	import { listDatasets } from '$lib/api/datasets';
 	import type { DatasetSummary } from '$lib/api/datasets';
@@ -48,6 +49,14 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let selectedDataset = $state<DatasetSummary | null>(null);
+
+	function stripLanguageInstruction(text: string): string {
+		if (!text) return '';
+		return text
+			.replace(/\n\n\(Please answer in (French \/ Veuillez répondre en français|English)\)/gi, '')
+			.replace(/\n\n\(answer in (fr\/en|fr|en|French|English)\)/gi, '')
+			.trim();
+	}
 
 	// ── Helpers ─────────────────────────────────────────────────────────
 	/** Force Svelte 5 to notice a deep mutation by touching the array.
@@ -222,8 +231,8 @@
 				convo.refresh();
 			}
 
-			// Resolve dataset path — use the uploaded filepath (stored server-side)
-			await sendMessage(conversationId, text, {
+			const backendPrompt = `${text}${getPromptLanguageInstruction()}`;
+			await sendMessage(conversationId, backendPrompt, {
 				onToken(token) {
 					if (streamIdx < messages.length) {
 						messages[streamIdx].content += token;
@@ -364,7 +373,7 @@
 				{:else}
 					<ChatBubble
 						role={msg.role}
-						content={msg.content}
+						content={msg.role === 'user' ? stripLanguageInstruction(msg.content) : msg.content}
 						streaming={msg.streaming}
 						plan={msg.plan}
 						completedSteps={msg.completedSteps ?? new Set()}

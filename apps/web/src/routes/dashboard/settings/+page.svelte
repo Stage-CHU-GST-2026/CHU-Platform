@@ -1,5 +1,6 @@
 <script lang="ts">
     import { app } from '$lib/state/app.svelte';
+    import { i18n, t, m } from '$lib/i18n';
     import { 
         IconSettings, 
         IconPalette, 
@@ -11,7 +12,8 @@
         IconDownload,
         IconKey,
         IconTag,
-        IconChevronRight
+        IconChevronRight,
+        IconLanguage
     } from '@tabler/icons-svelte';
 
     let activeTab = $state('appearance');
@@ -26,15 +28,15 @@
 </script>
 
 <svelte:head>
-	<title>Settings | CHU Platform</title>
-	<meta name="description" content="Configure your CHU Platform preferences, models, and account settings." />
+	<title>{t(m.settings_title)} | CHU Platform</title>
+	<meta name="description" content={t(m.settings_subtitle)} />
 </svelte:head>
 
 <div class="w-full max-w-[1024px] mx-auto px-6 py-10 md:py-16 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-12 md:gap-24 items-start">
     
     <!-- Sidebar Navigation -->
     <aside class="flex flex-col gap-8 w-full sticky top-16">
-        <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-text-primary px-3">Settings</h1>
+        <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-text-primary px-3">{t(m.settings_title)}</h1>
         
         <nav class="flex flex-col gap-1">
             {#each tabs as tab}
@@ -55,8 +57,36 @@
         {#if activeTab === 'appearance'}
             <div class="animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out flex flex-col">
                 <div class="border-b border-border-subtle pb-6 mb-10">
-                    <h2 class="text-[18px] font-semibold tracking-tight text-text-primary mb-1">Appearance</h2>
-                    <p class="text-[13.5px] text-text-secondary">Customize the visual theme and density of your workspace.</p>
+                    <h2 class="text-[18px] font-semibold tracking-tight text-text-primary mb-1">{t(m.settings_theme)}</h2>
+                    <p class="text-[13.5px] text-text-secondary">{t(m.settings_theme_desc)}</p>
+                </div>
+
+                <!-- Language Selection -->
+                <div class="mb-12">
+                    <h3 class="text-[12px] font-medium uppercase tracking-[0.05em] text-muted mb-5">{t(m.settings_language)}</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                        <!-- English -->
+                        <button
+                            class="flex items-center justify-between p-3.5 rounded-lg border transition-all cursor-pointer {i18n.locale === 'en' ? 'border-accent bg-accent/10 text-accent font-semibold' : 'border-border-subtle bg-surface/30 text-text-secondary hover:text-text-primary hover:bg-surface/60'}"
+                            onclick={() => i18n.setLocale('en')}
+                        >
+                            <span class="text-[13.5px]">{t(m.settings_lang_en)}</span>
+                            {#if i18n.locale === 'en'}
+                                <IconCheck size={16} class="text-accent" />
+                            {/if}
+                        </button>
+
+                        <!-- French -->
+                        <button
+                            class="flex items-center justify-between p-3.5 rounded-lg border transition-all cursor-pointer {i18n.locale === 'fr' ? 'border-accent bg-accent/10 text-accent font-semibold' : 'border-border-subtle bg-surface/30 text-text-secondary hover:text-text-primary hover:bg-surface/60'}"
+                            onclick={() => i18n.setLocale('fr')}
+                        >
+                            <span class="text-[13.5px]">{t(m.settings_lang_fr)}</span>
+                            {#if i18n.locale === 'fr'}
+                                <IconCheck size={16} class="text-accent" />
+                            {/if}
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Theme Selection -->

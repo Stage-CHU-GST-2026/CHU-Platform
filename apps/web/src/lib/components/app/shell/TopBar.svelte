@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { i18n } from '$lib/i18n';
 	import { page } from '$app/stores';
 	import { app } from '$lib/state/app.svelte';
-	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck, IconDownload, IconSun, IconMoon } from '@tabler/icons-svelte';
+	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck, IconDownload, IconSun, IconMoon, IconLanguage } from '@tabler/icons-svelte';
 
 	let path = $derived($page.url.pathname);
 	let isConversation = $derived(path.startsWith('/dashboard/conversation'));
@@ -78,6 +79,17 @@
 				<IconDownload size={16} stroke={1.5} />
 			</button>
 		{/if}
+
+		<!-- Language Switcher Button -->
+		<button
+			class="px-2 py-1 rounded-md text-[11px] font-mono font-bold border border-border/80 text-text-secondary hover:text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer flex items-center gap-1"
+			title="Switch language (EN / FR)"
+			onclick={() => i18n.toggleLocale()}
+			aria-label="Toggle language"
+		>
+			<IconLanguage size={14} stroke={1.5} />
+			<span>{i18n.locale.toUpperCase()}</span>
+		</button>
 
 		<!-- Theme Toggle Button -->
 		<button
