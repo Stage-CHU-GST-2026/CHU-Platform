@@ -1,6 +1,6 @@
-import { languageTag, setLanguageTag, availableLanguageTags } from '$lib/paraglide/runtime.js';
+import { languageTag, setLanguageTag, availableLanguageTags } from './runtime-helper';
 import * as m from '$lib/paraglide/messages.js';
 
 export { i18n, t, getPromptLanguageInstruction } from './i18n.svelte';
-export { m, languageTag, setLanguageTag, availableLanguageTags };
+export { languageTag, setLanguageTag, availableLanguageTags, m };
 export type { Locale } from './i18n.svelte';

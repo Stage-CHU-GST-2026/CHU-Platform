@@ -1,4 +1,4 @@
-import { languageTag, setLanguageTag, availableLanguageTags } from '$lib/paraglide/runtime.js';
+import { languageTag, setLanguageTag } from './runtime-helper';
 
 export type Locale = 'en' | 'fr';
 
@@ -7,23 +7,34 @@ class ParaglideI18nState {
 
 	constructor() {
 		if (typeof window !== 'undefined') {
-			const saved = localStorage.getItem('PARAGLIDE_LOCALE') as Locale | null;
-			const initialTag = (saved === 'en' || saved === 'fr') 
-				? saved 
-				: ((languageTag() || 'en') as Locale);
-			
-			this.locale = initialTag;
-			setLanguageTag(initialTag);
+			try {
+				const saved = localStorage.getItem('PARAGLIDE_LOCALE') as Locale | null;
+				const initialTag = (saved === 'en' || saved === 'fr') 
+					? saved 
+					: ((typeof languageTag === 'function' ? languageTag() : 'en') as Locale);
+				
+				this.locale = initialTag;
+				if (typeof setLanguageTag === 'function') {
+					setLanguageTag(initialTag);
+				}
+			} catch (e) {
+				console.warn('[i18n] Failed to initialize locale from storage:', e);
+			}
 		}
 	}
 
 	setLocale(loc: Locale) {
-		setLanguageTag(loc);
-		this.locale = loc;
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('PARAGLIDE_LOCALE', loc);
-			// Set cookie as well for server/SSR strategies
-			document.cookie = `PARAGLIDE_LOCALE=${loc}; path=/; max-age=31536000`;
+		try {
+			if (typeof setLanguageTag === 'function') {
+				setLanguageTag(loc);
+			}
+			this.locale = loc;
+			if (typeof window !== 'undefined') {
+				localStorage.setItem('PARAGLIDE_LOCALE', loc);
+				document.cookie = `PARAGLIDE_LOCALE=${loc}; path=/; max-age=31536000`;
+			}
+		} catch (e) {
+			console.error('[i18n] Failed to set locale:', e);
 		}
 	}
 
@@ -31,11 +42,19 @@ class ParaglideI18nState {
 		this.setLocale(this.locale === 'en' ? 'fr' : 'en');
 	}
 
-	// Reactive translation function that explicitly accesses `this.locale`
-	// so Svelte 5 fine-grained reactivity tracks language state changes!
-	t(msgFn: (params?: any, options?: { languageTag?: Locale }) => string, params?: any): string {
+	// Reactive translation function with defensive error guards
+	t(msgFn: any, params?: any): string {
 		const currentTag = this.locale;
-		return msgFn(params, { languageTag: currentTag });
+		if (typeof msgFn !== 'function') {
+			if (typeof msgFn === 'string') return msgFn;
+			return '';
+		}
+		try {
+			return msgFn(params, { languageTag: currentTag }) || '';
+		} catch (err) {
+			console.error('[i18n] Error rendering translation:', err);
+			return '';
+		}
 	}
 
 	// Generates a prompt language instruction suffix based on the active locale
@@ -48,5 +67,5 @@ class ParaglideI18nState {
 }
 
 export const i18n = new ParaglideI18nState();
-export const t = (msgFn: (params?: any, options?: { languageTag?: Locale }) => string, params?: any) => i18n.t(msgFn, params);
+export const t = (msgFn: any, params?: any) => i18n.t(msgFn, params);
 export const getPromptLanguageInstruction = () => i18n.getLanguageInstruction();
