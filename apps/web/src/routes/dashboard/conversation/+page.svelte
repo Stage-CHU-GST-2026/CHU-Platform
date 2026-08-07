@@ -141,12 +141,16 @@
 	$effect(() => {
 		const id = $page.url.searchParams.get('id');
 		const q = $page.url.searchParams.get('q');
+		const draft = $page.url.searchParams.get('draft');
 
 		if (id && id !== conversationId) {
 			messages = [];
 			conversationId = id;
 			loadConversation(id).then(() => {
-				if (q) {
+				if (draft) {
+					input = draft;
+					goto(`/dashboard/conversation?id=${id}`, { replaceState: true });
+				} else if (q) {
 					input = q;
 					goto(`/dashboard/conversation?id=${id}`, { replaceState: true });
 					submit();

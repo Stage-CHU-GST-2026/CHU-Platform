@@ -10,7 +10,8 @@
 		IconSquare,
 		IconDatabase,
 		IconX,
-		IconCheck
+		IconCheck,
+		IconSearch
 	} from '@tabler/icons-svelte';
 	import Dropdown, { type DropdownItem } from '$lib/components/app/common/Dropdown.svelte';
 	import { listDatasets } from '$lib/api/datasets';
@@ -21,13 +22,19 @@
 		isStreaming?: boolean;
 		onsubmit?: () => void;
 		selectedDataset?: DatasetSummary | null;
+		showModelSelector?: boolean;
+		showMicrophone?: boolean;
+		size?: 'default' | 'large';
 	}
 
 	let {
 		input = $bindable(''),
 		isStreaming = false,
 		onsubmit = () => {},
-		selectedDataset = $bindable(null)
+		selectedDataset = $bindable(null),
+		showModelSelector = true,
+		showMicrophone = true,
+		size = 'default'
 	} = $props<Props>();
 
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
@@ -36,6 +43,7 @@
 	let showDatasetPicker = $state(false);
 	let availableDatasets = $state<DatasetSummary[]>([]);
 	let loadingDatasets = $state(false);
+	let datasetSearchQuery = $state('');
 
 	const modelItems: DropdownItem[] = [
 		{ label: 'Gemini', icon: IconSparkles, action: () => (selectedModel = 'Gemini') },
@@ -44,6 +52,12 @@
 	];
 
 	let hasText = $derived((input || '').trim().length > 0);
+
+	let filteredAvailableDatasets = $derived.by(() => {
+		if (!datasetSearchQuery.trim()) return availableDatasets;
+		const q = datasetSearchQuery.toLowerCase();
+		return availableDatasets.filter((d) => d.original_filename.toLowerCase().includes(q));
+	});
 
 	export function resizeTextarea() {
 		if (textareaEl) {
@@ -72,6 +86,7 @@
 		}
 		loadingDatasets = true;
 		showDatasetPicker = true;
+		datasetSearchQuery = '';
 		try {
 			availableDatasets = await listDatasets(100, 0, 'ready');
 		} catch (e) {
@@ -92,22 +107,25 @@
 	}
 </script>
 
-<div class="composer {focused ? 'composer-focused' : ''}">
+<div class="composer {focused ? 'composer-focused' : ''} {size === 'large' ? '!rounded-2xl !p-3.5 !shadow-md border border-border/90' : ''}">
 	<!-- Selected dataset badge -->
 	{#if selectedDataset}
 		<div class="flex items-center gap-2 px-3 pt-2 pb-1">
 			<div
-				class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent/10 border border-accent/20 text-[12px] font-medium text-accent"
+				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-elevated border border-accent/40 text-xs font-sans text-text-primary shadow-xs"
 			>
-				<IconDatabase size={13} stroke={1.5} />
-				<span class="truncate max-w-50">{selectedDataset.original_filename}</span>
-				<span class="text-muted">({selectedDataset.rows?.toLocaleString() ?? '?'} rows)</span>
+				<IconDatabase size={14} stroke={1.8} class="text-accent shrink-0" />
+				<span class="font-bold text-text-primary truncate max-w-64">{selectedDataset.original_filename}</span>
+				<span class="text-[11px] font-mono text-muted border-l border-border/80 pl-2">
+					{selectedDataset.rows?.toLocaleString() ?? '?'} rows &middot; {selectedDataset.columns ?? '?'} cols
+				</span>
 				<button
 					onclick={clearDataset}
-					class="ml-1 p-0.5 rounded hover:bg-accent/20 transition-colors cursor-pointer"
+					class="ml-1 p-1 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+					title="Remove dataset attachment"
 					aria-label="Remove dataset"
 				>
-					<IconX size={12} stroke={2} />
+					<IconX size={13} stroke={2} />
 				</button>
 			</div>
 		</div>
@@ -117,11 +135,13 @@
 	<textarea
 		bind:this={textareaEl}
 		bind:value={input}
-		class="w-full bg-transparent text-text-primary placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none px-3 pt-2 text-[15.5px] leading-[1.7] min-h-[28px] max-h-48 overflow-y-auto disabled:opacity-40"
+		class="w-full bg-transparent text-text-primary placeholder-muted resize-none focus:outline-none focus:ring-0 border-0 shadow-none disabled:opacity-40 {size === 'large'
+			? 'px-4 pt-3.5 pb-2 text-[16px] md:text-[17px] leading-[1.6] min-h-[72px] max-h-60'
+			: 'px-3 pt-2 text-[15.5px] leading-[1.7] min-h-[28px] max-h-48'} overflow-y-auto"
 		placeholder={selectedDataset
 			? `Ask about "${selectedDataset.original_filename}"...`
 			: 'Ask anything...'}
-		rows="1"
+		rows={size === 'large' ? 2 : 1}
 		disabled={isStreaming}
 		onkeydown={handleKeydown}
 		oninput={resizeTextarea}
@@ -130,76 +150,111 @@
 
 	<!-- Toolbar row at the bottom -->
 	<div class="flex items-center justify-between w-full px-1.5 pb-0.5">
-		<!-- Left side: + button (dataset picker) & Model selector -->
-		<div class="flex items-center gap-1 relative">
+		<!-- Left side: Dataset Picker Chip & Model Selector -->
+		<div class="flex items-center gap-1.5 relative">
 			<div class="relative">
+				<!-- Interactive Dataset Chip Button -->
 				<button
 					onclick={toggleDatasetPicker}
-					class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors shrink-0 cursor-pointer disabled:opacity-30 {selectedDataset
-						? 'text-accent'
-						: ''}"
+					class="inline-flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-[12.5px] font-medium transition-all cursor-pointer border disabled:opacity-30 {selectedDataset
+						? 'bg-accent/15 border-accent/30 text-accent font-semibold shadow-xs'
+						: 'bg-surface-elevated/60 hover:bg-surface-hover border-border/80 text-text-secondary hover:text-text-primary'}"
 					aria-label="Select dataset"
 					disabled={isStreaming}
-					title="Select dataset"
+					title="Attach dataset context"
 				>
-					<IconDatabase size={16} stroke={2} />
+					<IconDatabase size={14} stroke={1.8} class={selectedDataset ? 'text-accent' : 'text-muted'} />
+					<span class="truncate max-w-44 font-sans">
+						{selectedDataset ? selectedDataset.original_filename : 'Attach Dataset'}
+					</span>
+					<IconChevronDown size={13} stroke={2} class="opacity-50 shrink-0" />
 				</button>
 
-				<!-- Dataset picker dropdown -->
+				<!-- Dataset Picker Popup -->
 				{#if showDatasetPicker}
+					<!-- Backdrop overlay to dismiss on click outside -->
 					<div
-						class="absolute bottom-full left-0 mb-1 w-72 max-h-64 overflow-y-auto rounded-lg border border-border bg-surface-elevated shadow-lg z-50"
+						class="fixed inset-0 z-40"
+						onclick={() => (showDatasetPicker = false)}
+						aria-hidden="true"
+					></div>
+
+					<div
+						class="absolute bottom-full left-0 mb-2 w-80 max-h-80 flex flex-col rounded-xl border border-border bg-surface-elevated shadow-xl z-50 overflow-hidden font-sans"
 						role="listbox"
 						aria-label="Available datasets"
 					>
-						<div
-							class="px-3 py-2 text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-border"
-						>
-							Select a dataset
-						</div>
-						{#if loadingDatasets}
-							<div class="px-3 py-4 text-center text-[12px] text-muted">Loading datasets...</div>
-						{:else if availableDatasets.length === 0}
-							<div class="px-3 py-4 text-center text-[12px] text-muted">
-								No ready datasets found.
-								<a href="/dashboard/datasets" class="text-accent hover:underline">Upload one</a>
+						<!-- Header with Search Input -->
+						<div class="p-2.5 border-b border-border/80 bg-surface flex flex-col gap-2">
+							<div class="flex items-center justify-between px-1">
+								<span class="text-xs font-bold text-text-primary uppercase tracking-wider">Select Dataset</span>
+								<span class="text-[11px] font-mono text-muted">{availableDatasets.length} ready</span>
 							</div>
-						{:else}
-							{#each availableDatasets as ds}
-								<button
-									class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[13px] hover:bg-surface-hover transition-colors cursor-pointer border-b border-border/30 last:border-0"
-									onclick={() => selectDataset(ds)}
-									role="option"
-									aria-selected={selectedDataset?.id === ds.id}
-								>
-									<IconDatabase size={14} stroke={1.5} class="shrink-0 text-muted" />
-									<div class="flex-1 min-w-0">
-										<div class="font-medium text-text-primary truncate">{ds.original_filename}</div>
-										<div class="text-[11px] text-muted">
-											{ds.rows?.toLocaleString() ?? '?'} rows &middot; {ds.columns ?? '?'} cols
+							<div class="relative w-full">
+								<input
+									type="text"
+									bind:value={datasetSearchQuery}
+									placeholder="Search datasets..."
+									class="w-full bg-surface-elevated border border-border/80 rounded-md px-2.5 py-1.5 pl-8 text-xs text-text-primary placeholder-muted focus:outline-none focus:border-accent"
+								/>
+								<IconSearch size={14} class="absolute left-2.5 top-2 text-muted" />
+							</div>
+						</div>
+
+						<!-- Dataset List -->
+						<div class="overflow-y-auto flex-1 divide-y divide-border/40">
+							{#if loadingDatasets}
+								<div class="p-6 text-center text-xs text-muted font-mono">Loading datasets...</div>
+							{:else if filteredAvailableDatasets.length === 0}
+								<div class="p-6 text-center text-xs text-muted">
+									No matching datasets found.
+									<a href="/dashboard/datasets" class="block mt-1 text-accent font-semibold hover:underline">Upload new dataset &rarr;</a>
+								</div>
+							{:else}
+								{#each filteredAvailableDatasets as ds}
+									<button
+										class="w-full flex items-center justify-between px-3.5 py-2.5 text-left hover:bg-surface-hover/80 transition-colors cursor-pointer group {selectedDataset?.id === ds.id ? 'bg-accent/10' : ''}"
+										onclick={() => selectDataset(ds)}
+										role="option"
+										aria-selected={selectedDataset?.id === ds.id}
+									>
+										<div class="flex items-center gap-2.5 min-w-0">
+											<div class="w-7 h-7 rounded-md bg-surface border border-border/80 flex items-center justify-center text-accent shrink-0">
+												<IconDatabase size={14} />
+											</div>
+											<div class="min-w-0">
+												<div class="text-xs font-bold text-text-primary truncate group-hover:text-accent transition-colors">
+													{ds.original_filename}
+												</div>
+												<div class="text-[11px] font-mono text-muted">
+													{ds.rows?.toLocaleString() ?? '?'} rows &middot; {ds.columns ?? '?'} cols
+												</div>
+											</div>
 										</div>
-									</div>
-									{#if selectedDataset?.id === ds.id}
-										<IconCheck size={14} stroke={2} class="text-accent shrink-0" />
-									{/if}
-								</button>
-							{/each}
-						{/if}
+										{#if selectedDataset?.id === ds.id}
+											<IconCheck size={16} class="text-accent shrink-0" />
+										{/if}
+									</button>
+								{/each}
+							{/if}
+						</div>
 					</div>
 				{/if}
 			</div>
 
-			<Dropdown items={modelItems} align="left" direction="up" width="w-48">
-				{#snippet trigger()}
-					<button
-						class="flex items-center gap-1.5 px-2.5 h-8 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[12.5px] font-medium"
-					>
-						<IconSparkles size={14} stroke={1.5} />
-						<span>{selectedModel}</span>
-						<IconChevronDown size={12} stroke={2} class="opacity-40" />
-					</button>
-				{/snippet}
-			</Dropdown>
+			{#if showModelSelector}
+				<Dropdown items={modelItems} align="left" direction="up" width="w-48">
+					{#snippet trigger()}
+						<button
+							class="flex items-center gap-1.5 px-2.5 h-8 rounded-md hover:bg-surface-hover text-muted hover:text-text-secondary transition-colors text-[12.5px] font-medium"
+						>
+							<IconSparkles size={14} stroke={1.5} />
+							<span>{selectedModel}</span>
+							<IconChevronDown size={12} stroke={2} class="opacity-40" />
+						</button>
+					{/snippet}
+				</Dropdown>
+			{/if}
 
 			<!-- Hint text -->
 			<span class="hidden sm:inline text-[11.5px] text-muted/50 ml-2 select-none"
@@ -209,12 +264,14 @@
 
 		<!-- Right side: Actions -->
 		<div class="flex items-center gap-2">
-			<button
-				class="flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors cursor-pointer"
-				aria-label="Voice input"
-			>
-				<IconMicrophone size={16} stroke={1.5} />
-			</button>
+			{#if showMicrophone}
+				<button
+					class="flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors cursor-pointer"
+					aria-label="Voice input"
+				>
+					<IconMicrophone size={16} stroke={1.5} />
+				</button>
+			{/if}
 
 			{#if isStreaming}
 				<button

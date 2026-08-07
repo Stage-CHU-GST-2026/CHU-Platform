@@ -83,7 +83,7 @@
 		try {
 			const conv = await createConversation(`Dataset: ${dataset.original_filename}`, dataset.id);
 			const initialPrompt = `I want to analyze the dataset "${dataset.original_filename}" (${dataset.rows?.toLocaleString() ?? 0} rows, ${dataset.columns ?? 0} columns). Could you summarize its structure and key trends?`;
-			await goto(`/dashboard/conversation?id=${conv.id}&q=${encodeURIComponent(initialPrompt)}`);
+			await goto(`/dashboard/conversation?id=${conv.id}&draft=${encodeURIComponent(initialPrompt)}`);
 		} catch (err) {
 			console.error('Failed to launch conversation for dataset', err);
 		}

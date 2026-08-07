@@ -275,9 +275,9 @@
 	async function startAnalysis() {
 		if (!dataset) return;
 		try {
-			const conv = await createConversation(`Dataset: ${dataset.original_filename}`);
+			const conv = await createConversation(`Dataset: ${dataset.original_filename}`, dataset.id);
 			const initialPrompt = `I want to analyze the dataset "${dataset.original_filename}" (${dataset.rows?.toLocaleString() ?? 0} rows, ${dataset.columns ?? 0} columns). Could you summarize its structure and key trends?`;
-			await goto(`/dashboard/conversation?id=${conv.id}&q=${encodeURIComponent(initialPrompt)}`);
+			await goto(`/dashboard/conversation?id=${conv.id}&draft=${encodeURIComponent(initialPrompt)}`);
 		} catch (err) {
 			console.error('Failed to launch conversation for dataset', err);
 		}
@@ -1269,73 +1269,76 @@
 						{/if}
 					</div>
 
-					<!-- Physical Schema Profiling Section -->
-					<div class="border-t border-border/80 pt-8 space-y-5">
+					<!-- Physical Schema Profiling Section (Simplified UX) -->
+					<div class="border-t border-border/80 pt-8 space-y-4">
 						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 							<div class="space-y-1">
-								<h3
-									class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2"
-								>
-									<IconFileAnalytics size={18} class="text-accent" />
-									<span>Physical Schema & Profiling Overview</span>
-								</h3>
+								<div class="flex items-center gap-2">
+									<h3
+										class="font-sans text-sm uppercase font-bold text-text-primary tracking-wider flex items-center gap-2"
+									>
+										<IconFileAnalytics size={18} class="text-accent" />
+										<span>Physical Schema & Profiling Overview</span>
+									</h3>
+									{#if columnsData.length > 0}
+										<span
+											class="px-2 py-0.5 rounded-full bg-surface-elevated text-xs border border-border/60 text-muted font-mono font-semibold"
+										>
+											{columnsData.length} cols
+										</span>
+									{/if}
+								</div>
 								<p class="text-xs text-text-secondary">
-									Column-level data types, missing value percentages, unique counts, and sample values.
+									Column data types, missing percentages, and sample values.
 								</p>
 							</div>
 							<button
-								class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
+								class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
 								onclick={() => (activeTab = 'schema')}
 							>
-								<IconTable size={15} class="text-accent" />
-								<span>Full Schema View</span>
+								<IconTable size={14} class="text-accent" />
+								<span>Full Schema Tab →</span>
 							</button>
 						</div>
 
 						{#if columnsData.length === 0}
 							<div
-								class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-sm font-mono text-muted"
+								class="p-6 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-xs font-mono text-muted"
 							>
 								No schema profiling information available.
 							</div>
 						{:else}
 							<div class="border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs">
-								<div class="overflow-x-auto max-h-[450px]">
-									<table class="w-full text-left text-sm font-mono border-collapse">
+								<div class="overflow-x-auto">
+									<table class="w-full text-left text-xs font-mono border-collapse">
 										<thead>
 											<tr
-												class="bg-surface-elevated text-xs text-text-primary uppercase font-bold tracking-wider border-b border-border/80 sticky top-0 z-10"
+												class="bg-surface-elevated text-[11px] text-text-primary uppercase font-bold tracking-wider border-b border-border/80"
 											>
-												<th class="px-4 py-3">#</th>
-												<th class="px-4 py-3">Column Name</th>
-												<th class="px-4 py-3">Data Type</th>
-												<th class="px-4 py-3">Null Count</th>
-												<th class="px-4 py-3">Null %</th>
-												<th class="px-4 py-3">Unique Values</th>
-												<th class="px-4 py-3">Sample Value</th>
+												<th class="px-4 py-2.5">Column Name</th>
+												<th class="px-4 py-2.5">Data Type</th>
+												<th class="px-4 py-2.5">Null %</th>
+												<th class="px-4 py-2.5">Unique</th>
+												<th class="px-4 py-2.5">Sample Value</th>
 											</tr>
 										</thead>
-										<tbody class="text-text-secondary">
-											{#each columnsData as col, i}
+										<tbody class="text-text-secondary divide-y divide-border/40">
+											{#each columnsData.slice(0, 5) as col}
 												{@const totalRows = dataset?.rows || 1}
 												{@const nullPct = Math.round((col.null_count / totalRows) * 100)}
 												<tr class="hover:bg-surface-hover/50 transition-colors">
-													<td class="px-4 py-2.5 text-muted select-none text-xs">{i + 1}</td>
-													<td class="px-4 py-2.5 font-bold text-text-primary font-sans">{col.name}</td>
-													<td class="px-4 py-2.5">
+													<td class="px-4 py-2 font-bold text-text-primary font-sans">{col.name}</td>
+													<td class="px-4 py-2">
 														<span
-															class="px-2.5 py-1 rounded bg-surface-elevated border border-border-subtle text-accent font-semibold text-xs"
+															class="px-2 py-0.5 rounded bg-surface-elevated border border-border-subtle text-accent font-semibold text-[11px]"
 														>
 															{col.dtype}
 														</span>
 													</td>
-													<td class="px-4 py-2.5 font-medium">{col.null_count.toLocaleString()}</td>
-													<td class="px-4 py-2.5">
-														<div class="flex items-center gap-2">
+													<td class="px-4 py-2">
+														<div class="inline-flex items-center gap-1.5">
 															<span>{nullPct}%</span>
-															<div
-																class="w-20 h-2 bg-surface-elevated border border-border-subtle rounded overflow-hidden"
-															>
+															<div class="w-12 h-1.5 bg-surface-elevated rounded overflow-hidden">
 																<div
 																	class="h-full {nullPct > 50 ? 'bg-danger' : nullPct > 0 ? 'bg-warning' : 'bg-success'}"
 																	style="width: {nullPct}%"
@@ -1343,19 +1346,32 @@
 															</div>
 														</div>
 													</td>
-													<td class="px-4 py-2.5 font-medium">{col.unique_count.toLocaleString()}</td>
-													<td class="px-4 py-2.5 text-muted truncate max-w-xs">{col.sample ?? '—'}</td>
+													<td class="px-4 py-2 font-medium">{col.unique_count.toLocaleString()}</td>
+													<td class="px-4 py-2 text-muted truncate max-w-[200px]">{col.sample ?? '—'}</td>
 												</tr>
 											{/each}
 										</tbody>
 									</table>
 								</div>
+								{#if columnsData.length > 5}
+									<div
+										class="px-4 py-2 bg-surface-elevated/50 border-t border-border/60 flex items-center justify-between text-xs text-text-secondary"
+									>
+										<span>Showing 5 of {columnsData.length} columns</span>
+										<button
+											class="text-accent font-semibold hover:underline cursor-pointer"
+											onclick={() => (activeTab = 'schema')}
+										>
+											View all {columnsData.length} columns →
+										</button>
+									</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
 
-					<!-- Dataset Statistics & Data Health Section -->
-					<div class="border-t border-border/80 pt-8 space-y-5">
+					<!-- Dataset Statistics & Profile Metrics Section (Simplified UX) -->
+					<div class="border-t border-border/80 pt-8 space-y-4">
 						<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 							<div class="space-y-1">
 								<h3
@@ -1365,77 +1381,59 @@
 									<span>Dataset Statistics & Profile Metrics</span>
 								</h3>
 								<p class="text-xs text-text-secondary">
-									Key statistical summary metrics, numerical distributions, and missing data indicators.
+									Key statistical metrics summary and distribution preview.
 								</p>
 							</div>
 							<button
-								class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
+								class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-elevated border border-border/80 text-xs font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors cursor-pointer shrink-0"
 								onclick={() => (activeTab = 'stats')}
 							>
-								<IconChartBar size={15} class="text-accent" />
-								<span>View Full Statistics</span>
+								<IconChartBar size={14} class="text-accent" />
+								<span>Full Statistics Tab →</span>
 							</button>
 						</div>
 
 						{#if statsData}
-							<!-- Summary Metrics KPI Bar -->
-							<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
-									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Total Rows</span>
-									<p class="text-xl font-bold font-mono text-text-primary">
-										{dataset?.rows?.toLocaleString() ?? '—'}
-									</p>
-								</div>
-								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
-									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Total Columns</span>
-									<p class="text-xl font-bold font-mono text-text-primary">
-										{dataset?.columns?.toLocaleString() ?? '—'}
-									</p>
-								</div>
-								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
-									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Numeric Fields</span>
-									<p class="text-xl font-bold font-mono text-accent">
-										{statsData.numeric_summary ? Object.keys(statsData.numeric_summary).length : 0}
-									</p>
-								</div>
-								<div class="bg-surface-elevated/40 border border-border/60 rounded-xl p-4 space-y-1">
-									<span class="text-xs text-text-secondary font-semibold uppercase tracking-wider">Missing Value Fields</span>
-									<p class="text-xl font-bold font-mono text-warning">
-										{statsData.missing_values
-											? Object.values(statsData.missing_values).filter((v) => v > 0).length
-											: 0}
-									</p>
-								</div>
-							</div>
-
-							<!-- Numeric Summary Matrix Preview -->
+							<!-- Numeric Summary Matrix Preview (Compact) -->
 							{#if statsData.numeric_summary && Object.keys(statsData.numeric_summary).length > 0}
-								<div class="space-y-3 pt-2">
-									<h4 class="text-xs uppercase font-bold text-text-secondary tracking-wider">
-										Numeric Summary Matrix
-									</h4>
+								<div class="space-y-2 pt-1">
+									<div class="flex items-center justify-between">
+										<h4 class="text-[11px] uppercase font-bold text-text-secondary tracking-wider">
+											Numeric Summary Matrix Preview
+										</h4>
+										<button
+											class="text-xs text-accent font-semibold hover:underline cursor-pointer"
+											onclick={() => (activeTab = 'stats')}
+										>
+											View Full Matrix →
+										</button>
+									</div>
 									<div class="border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs">
-										<div class="overflow-x-auto max-h-[350px]">
-											<table class="w-full text-left text-sm font-mono border-collapse">
+										<div class="overflow-x-auto max-h-[220px]">
+											<table class="w-full text-left text-xs font-mono border-collapse">
 												<thead>
-													<tr class="bg-surface-elevated text-xs uppercase font-bold text-text-primary border-b border-border/80">
-														<th class="px-4 py-3 bg-surface-elevated">Metric / Field</th>
-														{#each Object.keys(statsData.numeric_summary) as col}
-															<th class="px-4 py-3 text-accent whitespace-nowrap bg-surface-elevated">
+													<tr
+														class="bg-surface-elevated text-[11px] uppercase font-bold text-text-primary border-b border-border/80 sticky top-0 z-10"
+													>
+														<th class="px-3.5 py-2 bg-surface-elevated">Metric</th>
+														{#each Object.keys(statsData.numeric_summary).slice(0, 6) as col}
+															<th class="px-3.5 py-2 text-accent whitespace-nowrap bg-surface-elevated">
 																{col}
 															</th>
 														{/each}
 													</tr>
 												</thead>
-												<tbody class="text-text-secondary">
+												<tbody class="text-text-secondary divide-y divide-border/40">
 													{#each ['count', 'mean', 'std', 'min', '50%', 'max'] as metric}
 														<tr class="hover:bg-surface-hover/50 transition-colors">
-															<td class="px-4 py-2.5 font-bold text-text-primary capitalize bg-surface/50">
+															<td
+																class="px-3.5 py-1.5 font-bold text-text-primary capitalize bg-surface/50"
+															>
 																{metric}
 															</td>
-															{#each Object.keys(statsData.numeric_summary) as col}
+															{#each Object.keys(statsData.numeric_summary).slice(0, 6) as col}
 																{@const metricVal = statsData.numeric_summary[col]?.[metric]}
-																<td class="px-4 py-2.5 whitespace-nowrap">
+																<td class="px-3.5 py-1.5 whitespace-nowrap">
 																	{formatNum(metricVal)}
 																</td>
 															{/each}
@@ -1449,7 +1447,7 @@
 							{/if}
 						{:else}
 							<div
-								class="p-8 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-sm font-mono text-muted"
+								class="p-6 rounded-xl border border-dashed border-border/80 bg-surface-elevated/30 text-center text-xs font-mono text-muted"
 							>
 								Statistical metrics currently unavailable.
 							</div>

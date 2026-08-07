@@ -22,6 +22,67 @@ class QuantileSchema(ColumnSchema):
     )
 
 
+class ComputeStatsSchema(BaseModel):
+    path: str = Field(description="Path to the dataset file.")
+    columns: list[str] | None = Field(
+        default=None,
+        description="Optional list of column names to compute statistics for. If omitted, computes statistics for all numeric columns.",
+    )
+    metrics: list[str] | None = Field(
+        default=None,
+        description="Optional list of metrics to compute (e.g. ['mean', 'median', 'std', 'min', 'max', 'count', '25%', '75%']). If omitted, computes complete statistical summary.",
+    )
+
+
+class ComputeStatsTool(BaseTool):
+    name: str = "compute_statistics"
+    description: str = (
+        "Compute comprehensive statistical metrics (count, mean, std, min, median, max, quantiles) "
+        "for one or multiple columns in a single call. Use this tool instead of invoking multiple individual stat tools."
+    )
+    args_schema: type[BaseModel] = ComputeStatsSchema
+
+    def _run(
+        self,
+        path: str,
+        columns: list[str] | None = None,
+        metrics: list[str] | None = None,
+    ) -> str:
+        df = _engine.load(path)
+
+        if columns:
+            invalid_cols = [c for c in columns if c not in df.columns]
+            if invalid_cols:
+                return f"Error: Column(s) {invalid_cols} not found in dataset. Available columns: {list(df.columns)}"
+            target_df = df[columns]
+        else:
+            target_df = df.select_dtypes(include="number")
+            if target_df.empty:
+                return "No numeric columns found in dataset to compute statistics."
+
+        desc = target_df.describe().T
+
+        if metrics:
+            metric_map = {m.lower(): m for m in desc.columns}
+            matched_cols = []
+            for m in metrics:
+                mlower = m.lower()
+                if mlower in metric_map:
+                    matched_cols.append(metric_map[mlower])
+                elif mlower in ["50%", "p50", "median"]:
+                    matched_cols.append("50%")
+                elif mlower in ["25%", "p25"]:
+                    matched_cols.append("25%")
+                elif mlower in ["75%", "p75"]:
+                    matched_cols.append("75%")
+            if matched_cols:
+                desc = desc[matched_cols]
+
+        lines = ["### Statistical Metrics Summary:"]
+        lines.append(desc.to_string())
+        return "\n".join(lines)
+
+
 class MeanTool(BaseTool):
     name: str = "mean"
     description: str = "Compute the mean (average) of a numeric column."

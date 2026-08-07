@@ -17,6 +17,7 @@ from .inspection import (
     ListColumnsTool,
 )
 from .statistics import (
+    ComputeStatsTool,
     MaxTool,
     MeanTool,
     MedianTool,
@@ -53,6 +54,7 @@ _TOOL_CLASSES = [
     ListColumnsTool,
     ColumnInfoTool,
     # Statistics
+    ComputeStatsTool,
     MeanTool,
     MedianTool,
     MinTool,
@@ -86,6 +88,7 @@ __all__ = [
     "DatasetShapeTool",
     "ListColumnsTool",
     "ColumnInfoTool",
+    "ComputeStatsTool",
     "MeanTool",
     "MedianTool",
     "MinTool",

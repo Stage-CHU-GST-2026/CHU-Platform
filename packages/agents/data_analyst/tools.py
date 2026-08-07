@@ -13,12 +13,7 @@ from tools.inspection import (
     ListDatasetsTool,
 )
 from tools.statistics import (
-    MaxTool,
-    MeanTool,
-    MedianTool,
-    MinTool,
-    QuantilesTool,
-    StdTool,
+    ComputeStatsTool,
 )
 from tools.cleaning import (
     DropColumnsTool,
@@ -47,13 +42,8 @@ DATA_ANALYST_TOOLS = [
     DatasetShapeTool(),
     ListColumnsTool(),
     ColumnInfoTool(),
-    # Statistics
-    MeanTool(),
-    MedianTool(),
-    MinTool(),
-    MaxTool(),
-    StdTool(),
-    QuantilesTool(),
+    # Statistics (consolidated single multi-metric tool to prevent tool spam)
+    ComputeStatsTool(),
     # Cleaning
     MissingValuesTool(),
     DuplicatesTool(),

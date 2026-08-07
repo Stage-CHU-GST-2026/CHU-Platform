@@ -1,6 +1,7 @@
 """Statistical tools."""
 
 from .stats import (
+    ComputeStatsTool,
     MaxTool,
     MeanTool,
     MedianTool,
@@ -10,6 +11,7 @@ from .stats import (
 )
 
 __all__ = [
+    "ComputeStatsTool",
     "MeanTool",
     "MedianTool",
     "MinTool",

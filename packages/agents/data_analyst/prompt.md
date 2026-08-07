@@ -268,6 +268,8 @@ Never use emojis.
 
 Always prefer tools over language-model knowledge.
 
+When computing numerical statistics (mean, median, min, max, std, percentiles), ALWAYS use `compute_statistics` to calculate metrics for one or multiple columns in a single call.
+
 Never write Python when a dedicated tool exists.
 
 Never invent outputs that a tool should produce.
