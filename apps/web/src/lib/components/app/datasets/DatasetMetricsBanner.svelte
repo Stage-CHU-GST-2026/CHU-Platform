@@ -43,18 +43,18 @@
 	});
 </script>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 w-full">
 	{#each metrics as metric}
-		<div class="bg-surface border border-border rounded-lg p-5 flex flex-col justify-between">
-			<span class="text-xs font-mono font-semibold text-text-secondary tracking-wider">
+		<div class="bg-surface border border-border rounded-lg p-4 md:p-5 flex flex-col justify-between">
+			<span class="text-xs font-mono font-semibold text-text-secondary tracking-wider truncate">
 				{metric.label}
 			</span>
-			<div class="mt-2.5 mb-1.5 flex items-baseline gap-2">
-				<span class="text-3xl font-bold font-mono text-text-primary tracking-tight">
+			<div class="mt-2 mb-1 flex items-baseline gap-2">
+				<span class="text-2xl md:text-3xl font-bold font-mono text-text-primary tracking-tight">
 					{metric.value}
 				</span>
 			</div>
-			<span class="text-sm text-muted font-sans">{metric.subtext}</span>
+			<span class="text-xs md:text-sm text-muted font-sans truncate">{metric.subtext}</span>
 		</div>
 	{/each}
 </div>

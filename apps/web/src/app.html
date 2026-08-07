@@ -5,6 +5,21 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="text-scale" content="scale" />
+	<script>
+		(function() {
+			try {
+				var saved = localStorage.getItem('app-theme');
+				var theme = (saved === 'dark' || saved === 'light') ? saved : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+				if (theme === 'light') {
+					document.documentElement.classList.add('light');
+					document.documentElement.classList.remove('dark');
+				} else {
+					document.documentElement.classList.add('dark');
+					document.documentElement.classList.remove('light');
+				}
+			} catch (e) {}
+		})();
+	</script>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link

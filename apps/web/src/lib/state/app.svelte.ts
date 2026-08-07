@@ -30,6 +30,14 @@ class AppState {
                     this._openArtifactTabs = JSON.parse(savedTabs);
                 } catch (e) {}
             }
+
+            const savedTheme = localStorage.getItem('app-theme') as 'dark' | 'light' | null;
+            if (savedTheme === 'dark' || savedTheme === 'light') {
+                this.theme = savedTheme;
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                this.theme = 'light';
+            }
+            this.applyTheme();
         }
     }
 
@@ -84,8 +92,19 @@ class AppState {
         this.cmdPaletteOpen = false;
     }
 
+    setTheme(val: 'dark' | 'light') {
+        this.theme = val;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('app-theme', val);
+            this.applyTheme();
+        }
+    }
+
     toggleTheme() {
-        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+        this.setTheme(this.theme === 'dark' ? 'light' : 'dark');
+    }
+
+    private applyTheme() {
         if (typeof document !== 'undefined') {
             document.documentElement.classList.toggle('dark', this.theme === 'dark');
             document.documentElement.classList.toggle('light', this.theme === 'light');

@@ -65,14 +65,17 @@
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                         
                         <!-- System Theme -->
-                        <button class="flex flex-col gap-3 group text-left" onclick={() => app.toggleTheme()}>
+                        <button class="flex flex-col gap-3 group text-left cursor-pointer" onclick={() => {
+                            const isSystemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                            app.setTheme(isSystemLight ? 'light' : 'dark');
+                        }}>
                             <div class="aspect-[4/3] w-full rounded-lg border border-border-subtle bg-gradient-to-br from-gray-100 to-[#1a1a1a] flex items-center justify-center transition-colors group-hover:border-text-secondary">
                             </div>
                             <span class="text-[13px] font-medium text-text-primary">System</span>
                         </button>
 
                         <!-- Light Theme -->
-                        <button class="flex flex-col gap-3 group text-left" onclick={() => { if(app.theme === 'dark') app.toggleTheme() }}>
+                        <button class="flex flex-col gap-3 group text-left cursor-pointer" onclick={() => app.setTheme('light')}>
                             <div class="aspect-[4/3] w-full rounded-lg border {app.theme === 'light' ? 'border-text-primary' : 'border-border-subtle group-hover:border-text-secondary'} bg-[#f4f4f5] flex flex-col gap-2 p-3 transition-colors relative">
                                 <div class="w-full h-2 bg-white rounded-sm"></div>
                                 <div class="w-2/3 h-2 bg-white rounded-sm"></div>
@@ -81,7 +84,7 @@
                         </button>
 
                         <!-- Dark Theme -->
-                        <button class="flex flex-col gap-3 group text-left" onclick={() => { if(app.theme === 'light') app.toggleTheme() }}>
+                        <button class="flex flex-col gap-3 group text-left cursor-pointer" onclick={() => app.setTheme('dark')}>
                             <div class="aspect-[4/3] w-full rounded-lg border {app.theme === 'dark' ? 'border-text-primary' : 'border-border-subtle group-hover:border-text-secondary'} bg-[#0a0a0a] flex flex-col gap-2 p-3 transition-colors relative">
                                 <div class="w-full h-2 bg-[#1f1f1f] rounded-sm"></div>
                                 <div class="w-2/3 h-2 bg-[#1f1f1f] rounded-sm"></div>

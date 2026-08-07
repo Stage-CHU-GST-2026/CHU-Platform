@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { app } from '$lib/state/app.svelte';
-	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck, IconDownload } from '@tabler/icons-svelte';
+	import { IconDotsVertical, IconLayoutSidebar, IconLayoutSidebarRight, IconLayoutDashboard, IconFileCheck, IconDownload, IconSun, IconMoon } from '@tabler/icons-svelte';
 
 	let path = $derived($page.url.pathname);
 	let isConversation = $derived(path.startsWith('/dashboard/conversation'));
@@ -78,6 +78,20 @@
 				<IconDownload size={16} stroke={1.5} />
 			</button>
 		{/if}
+
+		<!-- Theme Toggle Button -->
+		<button
+			class="w-8 h-8 rounded-md flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+			title="Toggle Dark / Light Theme"
+			onclick={() => app.toggleTheme()}
+			aria-label="Toggle theme"
+		>
+			{#if app.theme === 'dark'}
+				<IconSun size={16} stroke={1.5} />
+			{:else}
+				<IconMoon size={16} stroke={1.5} />
+			{/if}
+		</button>
 
 		<button
 			class="w-8 h-8 rounded-md flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
