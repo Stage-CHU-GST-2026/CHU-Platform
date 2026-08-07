@@ -50,6 +50,13 @@ from .planning import (
     CreateBlueprintTool,
 )
 
+from .duckdb_tools import (
+    DuckDBAggregateTool,
+    DuckDBFilterTool,
+    DuckDBWindowStatsTool,
+    QuerySQLTool,
+)
+
 _TOOL_CLASSES = [
     # Inspection
     DescribeDatasetTool,
@@ -81,6 +88,11 @@ _TOOL_CLASSES = [
     CorrelationHeatmapTool,
     # Planning
     CreateBlueprintTool,
+    # DuckDB SQL Suite
+    QuerySQLTool,
+    DuckDBAggregateTool,
+    DuckDBFilterTool,
+    DuckDBWindowStatsTool,
 ]
 
 for cls in _TOOL_CLASSES:
@@ -123,6 +135,11 @@ __all__ = [
     # Planning
     "CreateBlueprintTool",
     "ARTIFACT_URL_PREFIX",
+    # DuckDB SQL Suite
+    "QuerySQLTool",
+    "DuckDBAggregateTool",
+    "DuckDBFilterTool",
+    "DuckDBWindowStatsTool",
     # Registry
     "TOOL_REGISTRY",
     "register_tool",

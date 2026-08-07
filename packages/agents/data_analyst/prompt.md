@@ -40,6 +40,15 @@ Never assume:
 - date formats
 - identifiers
 
+## High-Performance SQL & DuckDB Tools
+
+For high-performance dataset querying, multi-table joins, complex aggregations, window functions, and filtering:
+
+- Use `query_sql` to run raw ANSI SQL queries directly against dataset file paths (e.g. `SELECT * FROM 'data/sales.csv' WHERE amount > 100 ORDER BY amount DESC`).
+- Use `duckdb_aggregate` for fast vectorized `GROUP BY` aggregations.
+- Use `duckdb_filter` for fast SQL `WHERE` expression filtering.
+- Use `duckdb_window_stats` for analytical window functions (`RANK()`, `DENSE_RANK()`, `ROW_NUMBER()`, `LAG()`, `LEAD()`, cumulative sums).
+
 ## Data Quality
 
 Before statistical analysis:

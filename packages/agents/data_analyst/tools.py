@@ -13,6 +13,14 @@ from tools.cleaning import (
     DuplicatesTool,
     MissingValuesTool,
 )
+
+from tools.duckdb_tools import (
+    DuckDBAggregateTool,
+    DuckDBFilterTool,
+    DuckDBWindowStatsTool,
+    QuerySQLTool,
+)
+
 from tools.inspection import (
     ColumnInfoTool,
     DatasetHeadTool,
@@ -35,6 +43,11 @@ DATA_ANALYST_TOOLS = [
     DatasetShapeTool(),
     ListColumnsTool(),
     ColumnInfoTool(),
+    # High-Performance DuckDB SQL Suite
+    QuerySQLTool(),
+    DuckDBAggregateTool(),
+    DuckDBFilterTool(),
+    DuckDBWindowStatsTool(),
     # Analytics & Statistics
     ComputeStatsTool(),
     AggregateTool(),
