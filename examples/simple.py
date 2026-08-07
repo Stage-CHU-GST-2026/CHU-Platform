@@ -1,10 +1,10 @@
 import asyncio
 
-from ai.services import create_agent
+from agents.data_analyst import create_data_analyst
 
 
 async def main():
-    agent = create_agent()
+    agent = create_data_analyst()
 
     response = await agent.run(
         "Hello!"

@@ -53,10 +53,10 @@ members = ["apps/api"]
 Homepage = "https://github.com/example/chu-platform"
 
 [tool.hatch.build]
-packages = ["packages/ai", "packages/analysis", "packages/tools", "packages/agents"]
+packages = ["packages/analysis", "packages/tools", "packages/agents"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["packages/ai", "packages/analysis", "packages/tools", "packages/agents"]
+packages = ["packages/analysis", "packages/tools", "packages/agents"]
 
 [tool.ruff]
 target-version = "py310"

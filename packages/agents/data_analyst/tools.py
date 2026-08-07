@@ -1,8 +1,18 @@
-"""Allowed tools for the Data Analyst agent.
+"""Allowed tools for the Data Analyst agent."""
 
-Only tools listed here can be used by this agent.
-"""
-
+from tools.analytics import (
+    AggregateTool,
+    ComputeStatsTool,
+    CorrelationTool,
+    FilterTool,
+    OutlierDetectionTool,
+    SortTool,
+)
+from tools.cleaning import (
+    DropColumnsTool,
+    DuplicatesTool,
+    MissingValuesTool,
+)
 from tools.inspection import (
     ColumnInfoTool,
     DatasetHeadTool,
@@ -12,28 +22,11 @@ from tools.inspection import (
     ListColumnsTool,
     ListDatasetsTool,
 )
-from tools.statistics import (
-    ComputeStatsTool,
-)
-from tools.cleaning import (
-    DropColumnsTool,
-    DuplicatesTool,
-    MissingValuesTool,
-)
-from tools.aggregation import (
-    AggregateTool,
-    FilterTool,
-    SortTool,
-)
-from tools.relationships import (
-    CorrelationTool,
-    OutlierDetectionTool,
-)
-from tools.visualization import GenerateChartTool, CorrelationHeatmapTool
 from tools.planning import CreateBlueprintTool
+from tools.visualization import CorrelationHeatmapTool, GenerateChartTool
 
 DATA_ANALYST_TOOLS = [
-    # Discovery — call this first when no dataset is known
+    # Discovery
     ListDatasetsTool(),
     # Inspection
     DescribeDatasetTool(),
@@ -42,19 +35,17 @@ DATA_ANALYST_TOOLS = [
     DatasetShapeTool(),
     ListColumnsTool(),
     ColumnInfoTool(),
-    # Statistics (consolidated single multi-metric tool to prevent tool spam)
+    # Analytics & Statistics
     ComputeStatsTool(),
+    AggregateTool(),
+    FilterTool(),
+    SortTool(),
+    CorrelationTool(),
+    OutlierDetectionTool(),
     # Cleaning
     MissingValuesTool(),
     DuplicatesTool(),
     DropColumnsTool(),
-    # Aggregation
-    AggregateTool(),
-    FilterTool(),
-    SortTool(),
-    # Relationships
-    CorrelationTool(),
-    OutlierDetectionTool(),
     # Visualization
     GenerateChartTool(),
     CorrelationHeatmapTool(),

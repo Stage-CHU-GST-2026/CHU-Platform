@@ -13,8 +13,8 @@ import re
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from ai.models.config import AgentConfig
-from ai.logger import get_logger
+from .config import DataAnalystConfig, AgentConfig
+from .logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,4 +1,4 @@
-"""Dataset description tools — bridge between LLM and AnalysisEngine."""
+"""Dataset inspection tools — bridge between LLM and AnalysisEngine."""
 
 from __future__ import annotations
 
@@ -9,14 +9,13 @@ from analysis.engine import AnalysisEngine
 
 _engine = AnalysisEngine()
 
-
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 
+
 class PathSchema(BaseModel):
-    path: str = Field(
-        description="Path to the dataset file (CSV, Excel, Parquet, etc.)")
+    path: str = Field(description="Path to the dataset file (CSV, Excel, Parquet, etc.)")
 
 
 class HeadSchema(PathSchema):
@@ -30,6 +29,7 @@ class ColumnSchema(PathSchema):
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
 
 class DescribeDatasetTool(BaseTool):
     name: str = "describe_dataset"
@@ -89,8 +89,7 @@ class ListColumnsTool(BaseTool):
         for col in df.columns:
             nulls = df[col].isna().sum()
             uniq = df[col].nunique()
-            lines.append(
-                f"{col:30s} {str(df[col].dtype):12s}  {nulls:>6}  {uniq:>6}")
+            lines.append(f"{col:30s} {str(df[col].dtype):12s}  {nulls:>6}  {uniq:>6}")
         return "\n".join(lines)
 
 
@@ -111,23 +110,11 @@ class ColumnInfoTool(BaseTool):
 # Dataset discovery — supports both DB-backed and filesystem modes
 # ---------------------------------------------------------------------------
 
-# Module-level registry that the API can populate at startup with DB records.
-# Each entry should be a dict with at least "original_filename", "filepath",
-# "rows", "columns", "file_size", and "status" keys.
 _registered_datasets: list[dict] = []
 
 
 def register_datasets(datasets: list[dict]) -> None:
-    """Inject a list of datasets from the database (called by the API at startup).
-
-    Each dict should contain at least:
-        original_filename (str): The user-facing filename.
-        filepath (str):           Absolute path to the file on disk.
-        rows (int | None):        Row count.
-        columns (int | None):     Column count.
-        file_size (int | None):   File size in bytes.
-        status (str):             Processing status (e.g. 'ready').
-    """
+    """Inject a list of datasets from the database (called by the API at startup)."""
     global _registered_datasets
     _registered_datasets = list(datasets)
 
@@ -140,6 +127,7 @@ def clear_registered_datasets() -> None:
 
 class _NoArgs(BaseModel):
     """Placeholder schema — no arguments needed."""
+
     pass
 
 
@@ -153,23 +141,19 @@ class ListDatasetsTool(BaseTool):
     args_schema: type[BaseModel] = _NoArgs
 
     def _run(self, **kwargs: str) -> str:
-        # ── Prefer registered (DB-backed) datasets ────────────────
         if _registered_datasets:
-            ready = [d for d in _registered_datasets if d.get(
-                "status") == "ready"]
+            ready = [d for d in _registered_datasets if d.get("status") == "ready"]
             if not ready:
                 ready = _registered_datasets
 
             lines = [f"Found {len(ready)} dataset(s):\n"]
             for ds in ready:
                 fname = ds.get("original_filename", "unknown")
-                fpath = ds.get("filepath", "")
                 rows = ds.get("rows")
                 cols = ds.get("columns")
                 size_bytes = ds.get("file_size")
                 status = ds.get("status", "unknown")
 
-                # Format size
                 if size_bytes:
                     if size_bytes < 1024:
                         size_str = f"{size_bytes} B"
@@ -183,11 +167,15 @@ class ListDatasetsTool(BaseTool):
                 row_str = f"{rows:,}" if rows else "?"
                 col_str = f"{cols}" if cols else "?"
 
-                status_tag = "[ready]" if status == "ready" else "[processing]" if status in (
-                    "uploading", "processing") else "[error]"
+                status_tag = (
+                    "[ready]"
+                    if status == "ready"
+                    else "[processing]"
+                    if status in ("uploading", "processing")
+                    else "[error]"
+                )
                 lines.append(
-                    f"  {status_tag} {fname}  "
-                    f"({row_str} rows × {col_str} cols, {size_str})"
+                    f"  {status_tag} {fname}  ({row_str} rows × {col_str} cols, {size_str})"
                 )
 
             lines.append("\nReference a dataset by its full path, e.g.:")
@@ -196,8 +184,7 @@ class ListDatasetsTool(BaseTool):
                 lines.append(f"  `{first_path}`")
             return "\n".join(lines)
 
-        # ── Fallback: scan the data/ folder ───────────────────────
-        from analysis.engine import _list_datasets, _find_data_dir
+        from analysis.engine import _find_data_dir, _list_datasets
 
         data_dir = _find_data_dir()
         if data_dir is None:

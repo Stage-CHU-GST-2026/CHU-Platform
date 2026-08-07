@@ -1,6 +1,5 @@
 import asyncio
-from ai.agent import Agent
-from ai.models.config import AgentConfig
+from agents.data_analyst import DataAnalystAgent as Agent, DataAnalystConfig as AgentConfig
 from langchain.tools import BaseTool
 
 class BadTool(BaseTool):

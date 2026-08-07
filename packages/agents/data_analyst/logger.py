@@ -1,3 +1,7 @@
+"""Structured logger for the Data Analyst agent."""
+
+from __future__ import annotations
+
 import logging
 import sys
 
@@ -5,14 +9,7 @@ import structlog
 
 
 def _configure_structlog() -> None:
-    """Set up structlog with a standard-library handler so logs are visible.
-
-    Without this, ``structlog.stdlib.LoggerFactory()`` sends events into
-    Python's ``logging`` machinery — but if no handler is installed the
-    messages are silently dropped.
-    """
-    # Ensure there is at least one handler on the root logger
-    # so structlog events are not swallowed.
+    """Set up structlog with standard library handler."""
     root = logging.getLogger()
     if not root.handlers:
         handler = logging.StreamHandler(sys.stdout)
@@ -35,7 +32,7 @@ def _configure_structlog() -> None:
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    """Return a structured logger, configuring once on first call."""
+    """Return a structured logger for the Data Analyst package."""
     if not structlog.is_configured():
         _configure_structlog()
     return structlog.get_logger(name)

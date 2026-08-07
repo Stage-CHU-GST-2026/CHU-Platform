@@ -18,12 +18,9 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 
-from agents.data_analyst import create_data_analyst, Orchestrator
-from ai import Agent
+from agents.data_analyst import create_data_analyst, Orchestrator, DataAnalystAgent as Agent
 from analysis.charts import ChartArtifact
-from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
-from tools.planning import ARTIFACT_URL_PREFIX
-from tools.inspection.describe import register_datasets
+from tools import ARTIFACT_URL_PREFIX, CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX, register_datasets
 from api.services.dataset_service import resolve_dataset_path
 
 

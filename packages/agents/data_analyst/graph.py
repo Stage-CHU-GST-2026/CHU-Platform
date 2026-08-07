@@ -1,4 +1,4 @@
-"""LangGraph workflow builder — generic, no hardcoded tools."""
+"""LangGraph workflow builder for Data Analyst agent."""
 
 from __future__ import annotations
 
@@ -7,38 +7,24 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.store.base import BaseStore
 
-from ai.models.config import AgentConfig
-from ai.nodes.llm import make_llm_node
-from ai.nodes.memory import make_summary_node
-from ai.nodes.tools import make_tools_node
-from ai.state import AgentState
-from ai.tool_protocol import ToolProtocol
-from ai.logger import get_logger
+from .config import DataAnalystConfig
+from .logger import get_logger
+from .nodes import make_llm_node, make_summary_node, make_tools_node
+from .state import DataAnalystState
 
 logger = get_logger(__name__)
 
 
-def build_graph(
-    config: AgentConfig,
-    tools: list[ToolProtocol],
-    prompt: str = "You are a helpful assistant.",
+def build_data_analyst_graph(
+    config: DataAnalystConfig,
+    tools: list,
+    prompt: str = "You are a helpful data analyst.",
     checkpointer: InMemorySaver | None = None,
     store: BaseStore | None = None,
 ) -> StateGraph:
-    """Build a compiled LangGraph workflow.
+    """Build a compiled LangGraph workflow for Data Analyst."""
 
-    Args:
-        config: Model configuration.
-        tools: List of tool objects to make available to the LLM.
-        prompt: System prompt for the LLM.
-        checkpointer: Optional checkpointer for multi-turn conversations.
-        store: Optional store for long-term cross-conversation memory.
-
-    Returns:
-        Compiled StateGraph.
-    """
-
-    def call_model(state: AgentState, _config: RunnableConfig | None = None):
+    def call_model(state: DataAnalystState, _config: RunnableConfig | None = None):
         return make_llm_node(
             state=state,
             config=config,
@@ -47,7 +33,7 @@ def build_graph(
             runnable_config=_config,
         )
 
-    def should_continue(state: AgentState) -> str:
+    def should_continue(state: DataAnalystState) -> str:
         last = state["messages"][-1]
         if getattr(last, "tool_calls", None):
             tool_names = [tc["name"] for tc in last.tool_calls]
@@ -59,23 +45,32 @@ def build_graph(
     tools_node = make_tools_node(tools)
     summarize_node = make_summary_node(config)
 
-    builder = StateGraph(AgentState)
+    builder = StateGraph(DataAnalystState)
     builder.add_node("agent", call_model)
-    
-    def wrapped_tools_node(state: AgentState):
+
+    def wrapped_tools_node(state: DataAnalystState):
         logger.info("Executing tools step")
         result = tools_node.invoke(state)
         logger.info("Tools execution completed")
         return result
-        
+
     builder.add_node("tools", wrapped_tools_node)
     builder.add_node("summarize", summarize_node)
+
     builder.add_edge(START, "agent")
-    builder.add_conditional_edges("agent", should_continue, {
-        "tools": "tools",
-        "summarize": "summarize",
-    })
+    builder.add_conditional_edges(
+        "agent",
+        should_continue,
+        {
+            "tools": "tools",
+            "summarize": "summarize",
+        },
+    )
     builder.add_edge("tools", "agent")
     builder.add_edge("summarize", END)
 
     return builder.compile(checkpointer=checkpointer, store=store)
+
+
+# Alias for backward compatibility
+build_graph = build_data_analyst_graph

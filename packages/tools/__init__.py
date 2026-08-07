@@ -1,8 +1,4 @@
-"""Tools — bridge between the AI framework and analysis logic.
-
-Each tool wraps one function from the analysis engine.
-The LLM calls tools; tools call analysis; results go back to the LLM.
-"""
+"""Tools — bridge between the AI framework and analysis logic."""
 
 # isort: skip_file
 
@@ -15,35 +11,44 @@ from .inspection import (
     DatasetSummaryTool,
     DescribeDatasetTool,
     ListColumnsTool,
+    ListDatasetsTool,
+    register_datasets,
+    clear_registered_datasets,
 )
-from .statistics import (
+
+from .analytics import (
+    AggregateTool,
     ComputeStatsTool,
+    CorrelationTool,
+    FilterTool,
     MaxTool,
     MeanTool,
     MedianTool,
     MinTool,
+    OutlierDetectionTool,
     QuantilesTool,
+    SortTool,
     StdTool,
 )
+
 from .cleaning import (
     DropColumnsTool,
     DuplicatesTool,
     MissingValuesTool,
 )
-from .aggregation import (
-    AggregateTool,
-    FilterTool,
-    SortTool,
-)
-from .relationships import (
-    CorrelationTool,
-    OutlierDetectionTool,
-)
-from .visualization import GenerateChartTool, CorrelationHeatmapTool
 
-# ---------------------------------------------------------------------------
-# Register all tools so they can be discovered by name
-# ---------------------------------------------------------------------------
+from .visualization import (
+    CHARTS_DIR,
+    CHART_ARTIFACT_PREFIX,
+    CHART_URL_PREFIX,
+    CorrelationHeatmapTool,
+    GenerateChartTool,
+)
+
+from .planning import (
+    ARTIFACT_URL_PREFIX,
+    CreateBlueprintTool,
+)
 
 _TOOL_CLASSES = [
     # Inspection
@@ -53,7 +58,8 @@ _TOOL_CLASSES = [
     DatasetShapeTool,
     ListColumnsTool,
     ColumnInfoTool,
-    # Statistics
+    ListDatasetsTool,
+    # Analytics & Statistics
     ComputeStatsTool,
     MeanTool,
     MedianTool,
@@ -61,33 +67,37 @@ _TOOL_CLASSES = [
     MaxTool,
     StdTool,
     QuantilesTool,
+    AggregateTool,
+    FilterTool,
+    SortTool,
+    CorrelationTool,
+    OutlierDetectionTool,
     # Cleaning
     MissingValuesTool,
     DuplicatesTool,
     DropColumnsTool,
-    # Aggregation
-    AggregateTool,
-    FilterTool,
-    SortTool,
-    # Relationships
-    CorrelationTool,
-    OutlierDetectionTool,
     # Visualization
     GenerateChartTool,
     CorrelationHeatmapTool,
+    # Planning
+    CreateBlueprintTool,
 ]
 
 for cls in _TOOL_CLASSES:
     register_tool(cls)
 
-
 __all__ = [
+    # Inspection
     "DescribeDatasetTool",
     "DatasetSummaryTool",
     "DatasetHeadTool",
     "DatasetShapeTool",
     "ListColumnsTool",
     "ColumnInfoTool",
+    "ListDatasetsTool",
+    "register_datasets",
+    "clear_registered_datasets",
+    # Analytics
     "ComputeStatsTool",
     "MeanTool",
     "MedianTool",
@@ -95,16 +105,25 @@ __all__ = [
     "MaxTool",
     "StdTool",
     "QuantilesTool",
-    "MissingValuesTool",
-    "DuplicatesTool",
-    "DropColumnsTool",
     "AggregateTool",
     "FilterTool",
     "SortTool",
     "CorrelationTool",
     "OutlierDetectionTool",
+    # Cleaning
+    "MissingValuesTool",
+    "DuplicatesTool",
+    "DropColumnsTool",
+    # Visualization
     "GenerateChartTool",
     "CorrelationHeatmapTool",
+    "CHARTS_DIR",
+    "CHART_ARTIFACT_PREFIX",
+    "CHART_URL_PREFIX",
+    # Planning
+    "CreateBlueprintTool",
+    "ARTIFACT_URL_PREFIX",
+    # Registry
     "TOOL_REGISTRY",
     "register_tool",
 ]

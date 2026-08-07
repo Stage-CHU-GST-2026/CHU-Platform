@@ -79,7 +79,7 @@ async def main():
     print()
 
     if args.postgres:
-        from ai.memory import PostgresConfig, create_checkpointer, create_store
+        from agents.data_analyst.memory import PostgresConfig, create_checkpointer, create_store
 
         pg_config = PostgresConfig(enable_store=args.store)
         async with (

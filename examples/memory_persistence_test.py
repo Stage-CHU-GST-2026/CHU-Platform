@@ -37,7 +37,7 @@ async def main():
     import pandas as pd
     import tempfile
 
-    from ai.memory import PostgresConfig, create_checkpointer
+    from agents.data_analyst.memory import PostgresConfig, create_checkpointer
     # Credentials come from .env (MEMORY_DATABASE_URL or DATABASE_URL)
 
     rng = np.random.default_rng(42)
