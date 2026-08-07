@@ -13,8 +13,11 @@
 
     let { agent, class: className = '' } = $props();
 
-    // Map icon string to actual component from tabler icons
-    let Icon = $derived((Icons as Record<string, any>)[agent.icon] || Icons.IconRobot);
+    // Safely map icon string to actual component function with fallback to IconRobot
+    let Icon = $derived.by(() => {
+        const candidate = (Icons as Record<string, any>)[agent.icon];
+        return typeof candidate === 'function' ? candidate : Icons.IconRobot;
+    });
 </script>
 
 <Card hoverable class={className}>

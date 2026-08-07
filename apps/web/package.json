@@ -7,7 +7,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide && (svelte-kit sync || echo '')",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
@@ -38,6 +38,8 @@
 		"vite": "^8.0.16"
 	},
 	"dependencies": {
+		"@inlang/paraglide-js": "^2.23.2",
+		"@inlang/paraglide-sveltekit": "^0.16.1",
 		"@tabler/icons-svelte": "^3.44.0",
 		"@types/dompurify": "^3.2.0",
 		"@types/marked": "^6.0.0",
@@ -48,4 +50,3 @@
 		"prismjs": "^1.29.0"
 	}
 }
-

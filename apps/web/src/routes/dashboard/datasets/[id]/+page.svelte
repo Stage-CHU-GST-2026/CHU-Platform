@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/app/common/Button.svelte';
 	import { createConversation } from '$lib/api/chat';
+	import { getPromptLanguageInstruction } from '$lib/i18n';
 	import {
 		getDataset,
 		getDatasetPreview,

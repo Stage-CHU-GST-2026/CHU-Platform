@@ -388,25 +388,43 @@ class Orchestrator:
     # ── Internal methods ────────────────────────────────────────────────
 
     def _is_simple_question(self, message: str) -> bool:
-        """Detect trivial conversational messages that don't need a plan."""
+        """Detect trivial conversational messages that don't need a multi-step plan."""
         raw_msg = message
-        # If the prompt is wrapped with a [Dataset: ...] context header, extract the actual user request
-        if "[Dataset:" in raw_msg and "\n\n" in raw_msg:
-            raw_msg = raw_msg.split("\n\n")[-1]
 
-        msg = raw_msg.lower().strip().rstrip("?!.")
+        # 1. Strip language instruction suffix if present
+        raw_msg = re.sub(r'\n\n\(Please answer in [^\)]+\)', '', raw_msg, flags=re.IGNORECASE)
+        raw_msg = re.sub(r'\n\n\(answer in [^\)]+\)', '', raw_msg, flags=re.IGNORECASE)
+
+        # 2. Extract actual user message if wrapped in dataset context header
+        if "[Dataset:" in raw_msg and "\n\n" in raw_msg:
+            parts = [p.strip() for p in raw_msg.split("\n\n") if p.strip()]
+            if parts:
+                for part in reversed(parts):
+                    if not part.startswith("[Dataset:") and not part.startswith("CRITICAL INSTRUCTION") and not part.startswith("The dataset above"):
+                        raw_msg = part
+                        break
+
+        msg = raw_msg.lower().strip().rstrip("?!.,;:")
+
         conversational = {
+            # English
             "hello", "hi", "hey", "thanks", "thank you", "ok", "okay",
             "yes", "no", "bye", "goodbye", "cool", "great", "awesome",
-            "perfect", "got it", "understood"
+            "perfect", "got it", "understood", "help",
+            # French
+            "salut", "bonjour", "coucou", "bonsoir", "merci", "merci beaucoup",
+            "d'accord", "daccord", "oui", "non", "ca va", "ça va", "au revoir",
+            "a bientot", "à bientôt", "super", "genial", "génial", "parfait",
+            "compris", "qui es-tu", "qui es tu", "aide", "au secours"
         }
         if msg in conversational:
             return True
 
         simple_starts = (
+            # English
             "what can you do", "how do you work",
             "who are you", "help",
-            "what is my", "what's my",         # personal info (name, etc.)
+            "what is my", "what's my",         # personal info
             "do you remember",                   # memory recall
             "who am i",                          # identity
             "what did we", "what was",           # conversation recall
@@ -417,18 +435,34 @@ class Orchestrator:
             "good evening", "how are you",       # social
             "how's it going", "what's up",       # casual
             "see you", "talk to you later",      # farewells
+            # French
+            "que peux-tu faire", "que peux tu faire", "que sais-tu faire", "que sais tu faire",
+            "qu'est-ce que tu peux", "qu'est ce que tu peux", "qu'est-ce que tu sais",
+            "comment tu marches", "comment tu fonctionnes", "comment ca marche", "comment ça marche",
+            "qui es-tu", "qui es tu", "aide-moi", "aide moi",
+            "mon nom est", "je suis", "je m'appelle",
+            "enchante", "enchanté", "bonjour", "bonsoir", "salut",
+            "comment vas-tu", "comment vas tu", "comment ca va", "comment ça va",
+            "tu te souviens", "te souviens-tu", "te souviens tu"
         )
         if msg.startswith(simple_starts):
             return True
 
-        # Short non-analytical queries (< 20 chars) without analytical keywords
+        # Short non-analytical queries (< 25 chars) without analytical keywords (EN & FR)
         analytical_keywords = (
+            # English
             "analyze", "analysis", "plot", "chart", "graph", "stat", "stats",
             "statistic", "describe", "correlation", "regression", "distribution",
             "mean", "median", "summary", "column", "row", "filter", "group", "sort",
-            "clean", "missing", "null", "outlier", "predict", "model", "compare"
+            "clean", "missing", "null", "outlier", "predict", "model", "compare",
+            # French
+            "analyser", "analyse", "graphique", "graphe", "statistique", "décrire",
+            "decrire", "corrélation", "correlation", "régression", "regression",
+            "distribution", "moyenne", "médiane", "mediane", "résumé", "resume",
+            "colonne", "ligne", "filtrer", "filtre", "grouper", "trier", "nettoyer",
+            "manquant", "manquante", "anomalie", "prédire", "predire", "modèle", "modele", "comparer"
         )
-        if len(msg) < 20 and not any(kw in msg for kw in analytical_keywords):
+        if len(msg) < 25 and not any(kw in msg for kw in analytical_keywords):
             return True
 
         return False

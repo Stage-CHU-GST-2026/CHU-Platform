@@ -4,6 +4,7 @@
 	import { listDatasets, type DatasetSummary } from '$lib/api/datasets';
 	import { listConversations, createConversation, type ConversationSummary } from '$lib/api/chat';
 	import { IconLoader2 } from '@tabler/icons-svelte';
+	import { t, m } from '$lib/i18n';
 
 	let datasets = $state<DatasetSummary[]>([]);
 	let conversations = $state<ConversationSummary[]>([]);
@@ -67,10 +68,10 @@
 </script>
 
 <svelte:head>
-	<title>Overview | CHU Platform</title>
+	<title>{t(m.overview_title)} | CHU Platform</title>
 	<meta
 		name="description"
-		content="Platform overview, datasets status, and active AI analytics conversations."
+		content={t(m.overview_subtitle)}
 	/>
 </svelte:head>
 
@@ -79,10 +80,10 @@
 	<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-6">
 		<div class="space-y-1.5">
 			<h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-text-primary">
-				Platform Overview
+				{t(m.overview_title)}
 			</h1>
 			<p class="text-sm sm:text-base text-text-secondary">
-				Summary of connected datasets, data volume, and AI analytics workflows.
+				{t(m.overview_subtitle)}
 			</p>
 		</div>
 		<div class="flex items-center gap-2.5 shrink-0">
@@ -90,13 +91,13 @@
 				href="/dashboard/datasets"
 				class="inline-flex items-center px-4 py-2.5 rounded-lg bg-surface-elevated border border-border/80 text-sm font-semibold text-text-primary hover:bg-surface-hover hover:border-accent transition-colors"
 			>
-				Upload Dataset
+				{t(m.overview_upload_dataset)}
 			</a>
 			<a
 				href="/dashboard/new-chat"
 				class="inline-flex items-center px-4 py-2.5 rounded-lg bg-accent text-black font-semibold text-sm hover:brightness-110 transition-all shadow-xs"
 			>
-				Start AI Analysis
+				{t(m.overview_start_analysis)}
 			</a>
 		</div>
 	</div>
@@ -118,14 +119,14 @@
 	<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 		<!-- Datasets Card -->
 		<div class="p-5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
-			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">Total Datasets</span>
+			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">{t(m.overview_total_datasets)}</span>
 			<div class="flex items-baseline justify-between pt-1">
 				<span class="text-3xl sm:text-4xl font-bold font-mono text-text-primary">
 					{isLoading ? '—' : datasets.length}
 				</span>
 				{#if !isLoading && datasets.length > 0}
 					<span class="text-xs font-mono text-muted">
-						{readyDatasets.length} ready
+						{readyDatasets.length} {t(m.overview_ready)}
 					</span>
 				{/if}
 			</div>
@@ -133,34 +134,34 @@
 
 		<!-- Processed Rows Card -->
 		<div class="p-5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
-			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">Total Data Rows</span>
+			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">{t(m.overview_total_rows)}</span>
 			<div class="flex items-baseline justify-between pt-1">
 				<span class="text-3xl sm:text-4xl font-bold font-mono text-text-primary">
 					{isLoading ? '—' : totalRows.toLocaleString()}
 				</span>
-				<span class="text-xs font-mono text-muted">rows index</span>
+				<span class="text-xs font-mono text-muted">{t(m.overview_rows_index)}</span>
 			</div>
 		</div>
 
 		<!-- Conversations Card -->
 		<div class="p-5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
-			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">AI Conversations</span>
+			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">{t(m.overview_conversations)}</span>
 			<div class="flex items-baseline justify-between pt-1">
 				<span class="text-3xl sm:text-4xl font-bold font-mono text-text-primary">
 					{isLoading ? '—' : conversations.length}
 				</span>
-				<span class="text-xs font-mono text-muted">active sessions</span>
+				<span class="text-xs font-mono text-muted">{t(m.overview_active_sessions)}</span>
 			</div>
 		</div>
 
 		<!-- Artifacts Card -->
 		<div class="p-5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
-			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">Generated Reports</span>
+			<span class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">{t(m.overview_reports)}</span>
 			<div class="flex items-baseline justify-between pt-1">
 				<span class="text-3xl sm:text-4xl font-bold font-mono text-text-primary">
 					{isLoading ? '—' : totalArtifacts}
 				</span>
-				<span class="text-xs font-mono text-muted">artifacts</span>
+				<span class="text-xs font-mono text-muted">{t(m.overview_artifacts)}</span>
 			</div>
 		</div>
 	</div>
@@ -171,13 +172,13 @@
 		<div class="lg:col-span-2 space-y-3.5">
 			<div class="flex items-center justify-between">
 				<h2 class="text-sm sm:text-base uppercase font-bold text-text-primary tracking-wider">
-					Recent Datasets
+					{t(m.overview_recent_datasets)}
 				</h2>
 				<a
 					href="/dashboard/datasets"
 					class="text-sm text-accent font-semibold hover:underline"
 				>
-					View All ({datasets.length}) &rarr;
+					{t(m.overview_view_all)} ({datasets.length}) &rarr;
 				</a>
 			</div>
 
@@ -190,14 +191,14 @@
 				{:else if datasets.length === 0}
 					<div class="p-10 text-center space-y-3.5">
 						<div class="space-y-1">
-							<p class="text-base font-semibold text-text-primary">No datasets found</p>
-							<p class="text-sm text-text-secondary">Upload a CSV or Excel file to begin data profiling and analysis.</p>
+							<p class="text-base font-semibold text-text-primary">{t(m.overview_no_datasets)}</p>
+							<p class="text-sm text-text-secondary">{t(m.overview_no_datasets_sub)}</p>
 						</div>
 						<a
 							href="/dashboard/datasets"
 							class="inline-flex items-center px-4 py-2 rounded-lg bg-accent text-black font-semibold text-sm hover:brightness-110 transition-all"
 						>
-							Upload First Dataset
+							{t(m.overview_upload_first)}
 						</a>
 					</div>
 				{:else}
@@ -205,11 +206,11 @@
 						<table class="w-full text-left text-sm font-mono border-collapse">
 							<thead>
 								<tr class="bg-surface-elevated text-xs uppercase font-bold text-text-primary border-b border-border/80">
-									<th class="px-5 py-3.5">Dataset Name</th>
-									<th class="px-5 py-3.5">Status</th>
-									<th class="px-5 py-3.5">Rows & Cols</th>
-									<th class="px-5 py-3.5">Size</th>
-									<th class="px-5 py-3.5 text-right">Actions</th>
+									<th class="px-5 py-3.5">{t(m.overview_dataset_name)}</th>
+									<th class="px-5 py-3.5">{t(m.overview_status)}</th>
+									<th class="px-5 py-3.5">{t(m.overview_rows_cols)}</th>
+									<th class="px-5 py-3.5">{t(m.overview_size)}</th>
+									<th class="px-5 py-3.5 text-right">{t(m.overview_actions)}</th>
 								</tr>
 							</thead>
 							<tbody class="text-text-secondary divide-y divide-border/40">
@@ -229,16 +230,16 @@
 										<td class="px-5 py-3.5">
 											{#if ds.status === 'ready'}
 												<span class="inline-flex items-center px-2.5 py-1 rounded bg-success/10 text-success text-xs font-semibold border border-success/20">
-													Ready
+													{t(m.overview_status_ready)}
 												</span>
 											{:else if ds.status === 'processing' || ds.status === 'uploading'}
 												<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-warning/10 text-warning text-xs font-semibold border border-warning/20">
 													<IconLoader2 size={12} class="animate-spin" />
-													Processing
+													{t(m.overview_status_processing)}
 												</span>
 											{:else}
 												<span class="inline-flex items-center px-2.5 py-1 rounded bg-danger/10 text-danger text-xs font-semibold border border-danger/20">
-													Error
+													{t(m.overview_status_error)}
 												</span>
 											{/if}
 										</td>
@@ -260,13 +261,13 @@
 													href="/dashboard/datasets/{ds.id}"
 													class="px-3 py-1.5 rounded bg-surface-elevated border border-border/80 text-xs font-sans font-semibold text-text-primary hover:border-accent hover:text-accent transition-colors"
 												>
-													Details
+													{t(m.overview_details)}
 												</a>
 												<button
 													onclick={() => startNewAnalysis(ds.id, ds.original_filename)}
 													class="px-3 py-1.5 rounded bg-accent/10 border border-accent/30 text-xs font-sans font-semibold text-accent hover:bg-accent/20 transition-colors cursor-pointer"
 												>
-													Analyze
+													{t(m.overview_analyze)}
 												</button>
 											</div>
 										</td>
@@ -283,13 +284,13 @@
 		<div class="space-y-3.5">
 			<div class="flex items-center justify-between">
 				<h2 class="text-sm sm:text-base uppercase font-bold text-text-primary tracking-wider">
-					Recent Conversations
+					{t(m.overview_recent_conversations)}
 				</h2>
 				<a
 					href="/dashboard/new-chat"
 					class="text-sm text-accent font-semibold hover:underline"
 				>
-					New Chat &rarr;
+					{t(m.nav_new_chat)} &rarr;
 				</a>
 			</div>
 
@@ -302,14 +303,14 @@
 				{:else if conversations.length === 0}
 					<div class="p-10 text-center space-y-3.5">
 						<div class="space-y-1">
-							<p class="text-sm font-semibold text-text-primary">No active conversations</p>
-							<p class="text-xs text-text-secondary">Start an AI analysis turn to query and model your dataset.</p>
+							<p class="text-sm font-semibold text-text-primary">{t(m.overview_no_conversations)}</p>
+							<p class="text-xs text-text-secondary">{t(m.overview_no_conversations_sub)}</p>
 						</div>
 						<a
 							href="/dashboard/new-chat"
 							class="inline-flex items-center px-3.5 py-2 rounded-lg bg-accent text-black font-semibold text-sm hover:brightness-110 transition-all"
 						>
-							Start New Chat
+							{t(m.overview_start_first_chat)}
 						</a>
 					</div>
 				{:else}

@@ -8,11 +8,12 @@ FROM oven/bun:1-alpine AS build
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
-# Build -> ./build (adapter-node output)
+# Compile Paraglide JS translations & SvelteKit types before building
+RUN bun run prepare
 RUN bun run build
 
 # ---- Runtime stage ----

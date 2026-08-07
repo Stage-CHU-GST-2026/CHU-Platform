@@ -7,6 +7,7 @@
 	import { listConversations, deleteConversation, createConversation } from '$lib/api/chat';
 	import type { ConversationSummary } from '$lib/api/chat';
 	import { convo } from '$lib/state/conversations.svelte';
+	import { t, m } from '$lib/i18n';
 	import {
 		IconPlus,
 		IconLayoutDashboard,
@@ -87,7 +88,7 @@
 				<IconPlus size={16} stroke={2} />
 			</div>
 			{#if !app.sidebarCollapsed}
-				New Conversation
+				{t(m.nav_new_chat)}
 			{/if}
 		</a>
 	</div>
@@ -98,8 +99,8 @@
 		role="navigation"
 		aria-label="Main navigation"
 	>
-		<SidebarItem href="/dashboard" icon={IconLayoutDashboard} label="Dashboard" {currentPath} />
-		<SidebarItem href="/dashboard/datasets" icon={IconDatabase} label="Datasets" {currentPath} />
+		<SidebarItem href="/dashboard" icon={IconLayoutDashboard} label={t(m.nav_dashboard)} {currentPath} />
+		<SidebarItem href="/dashboard/datasets" icon={IconDatabase} label={t(m.nav_datasets)} {currentPath} />
 
 		{#if !app.sidebarCollapsed}
 			<!-- Conversations section -->
@@ -160,7 +161,7 @@
 
 	<!-- Footer -->
 	<div class="p-3 flex flex-col gap-1 shrink-0 border-t border-border/60">
-		<SidebarItem href="/showcase" icon={IconSparkles} label="Design Showcase" {currentPath} />
-		<SidebarItem href="/dashboard/settings" icon={IconSettings} label="Settings" {currentPath} />
+		<SidebarItem href="/showcase" icon={IconSparkles} label={t(m.nav_showcase)} {currentPath} />
+		<SidebarItem href="/dashboard/settings" icon={IconSettings} label={t(m.nav_settings)} {currentPath} />
 	</div>
 </aside>

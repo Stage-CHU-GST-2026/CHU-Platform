@@ -18,6 +18,7 @@
 	} from '$lib/api/chat';
 	import { convo } from '$lib/state/conversations.svelte';
 	import { app } from '$lib/state/app.svelte';
+	import { getPromptLanguageInstruction } from '$lib/i18n';
 	import { IconSparkles, IconDatabase } from '@tabler/icons-svelte';
 	import { listDatasets } from '$lib/api/datasets';
 	import type { DatasetSummary } from '$lib/api/datasets';
@@ -48,6 +49,14 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let selectedDataset = $state<DatasetSummary | null>(null);
+
+	function stripLanguageInstruction(text: string): string {
+		if (!text) return '';
+		return text
+			.replace(/\n\n\(Please answer in (French \/ Veuillez répondre en français|English)\)/gi, '')
+			.replace(/\n\n\(answer in (fr\/en|fr|en|French|English)\)/gi, '')
+			.trim();
+	}
 
 	// ── Helpers ─────────────────────────────────────────────────────────
 	/** Force Svelte 5 to notice a deep mutation by touching the array.
@@ -222,8 +231,8 @@
 				convo.refresh();
 			}
 
-			// Resolve dataset path — use the uploaded filepath (stored server-side)
-			await sendMessage(conversationId, text, {
+			const backendPrompt = `${text}${getPromptLanguageInstruction()}`;
+			await sendMessage(conversationId, backendPrompt, {
 				onToken(token) {
 					if (streamIdx < messages.length) {
 						messages[streamIdx].content += token;
@@ -341,14 +350,14 @@
 	<meta name="description" content="Chat with the Data Analyst Agent to analyze your data." />
 </svelte:head>
 
-<div class="absolute inset-0 flex flex-col bg-canvas">
+<div class="relative w-full h-full flex flex-col bg-bg overflow-hidden">
 	<!-- Chat History Area -->
 	<div
 		class="flex-1 overflow-y-auto flex flex-col items-center px-4 md:px-8"
 		bind:this={scrollEl}
 		onscroll={onScroll}
 	>
-		<div class="w-full max-w-[1024px] pt-8 pb-6 conversation">
+		<div class="w-full max-w-[1024px] pt-8 pb-44 md:pb-52 conversation">
 			<!-- Loading state -->
 			{#if isLoading}
 				<ChatLoadingState />
@@ -364,7 +373,7 @@
 				{:else}
 					<ChatBubble
 						role={msg.role}
-						content={msg.content}
+						content={msg.role === 'user' ? stripLanguageInstruction(msg.content) : msg.content}
 						streaming={msg.streaming}
 						plan={msg.plan}
 						completedSteps={msg.completedSteps ?? new Set()}
@@ -388,11 +397,13 @@
 		</div>
 	</div>
 
-	<!-- Pinned Input Area -->
+	<!-- Floating Composer Overlay (ChatGPT Style) -->
 	<div
-		class="w-full px-4 pb-4 pt-2.5 flex justify-center shrink-0 border-t border-border-subtle bg-canvas"
+		class="absolute bottom-0 inset-x-0 z-20 pointer-events-none flex flex-col items-center justify-end bg-gradient-to-t from-bg via-bg/85 to-transparent pt-14 pb-4 md:pb-6 px-4"
 	>
-		<ChatComposer bind:input {isStreaming} onsubmit={submit} bind:selectedDataset />
+		<div class="w-full max-w-[1024px] pointer-events-auto">
+			<ChatComposer bind:input {isStreaming} onsubmit={submit} bind:selectedDataset />
+		</div>
 	</div>
 </div>
 
