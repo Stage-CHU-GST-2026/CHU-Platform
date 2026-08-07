@@ -350,14 +350,14 @@
 	<meta name="description" content="Chat with the Data Analyst Agent to analyze your data." />
 </svelte:head>
 
-<div class="absolute inset-0 flex flex-col bg-canvas">
+<div class="relative w-full h-full flex flex-col bg-bg overflow-hidden">
 	<!-- Chat History Area -->
 	<div
 		class="flex-1 overflow-y-auto flex flex-col items-center px-4 md:px-8"
 		bind:this={scrollEl}
 		onscroll={onScroll}
 	>
-		<div class="w-full max-w-[1024px] pt-8 pb-6 conversation">
+		<div class="w-full max-w-[1024px] pt-8 pb-44 md:pb-52 conversation">
 			<!-- Loading state -->
 			{#if isLoading}
 				<ChatLoadingState />
@@ -397,11 +397,13 @@
 		</div>
 	</div>
 
-	<!-- Pinned Input Area -->
+	<!-- Floating Composer Overlay (ChatGPT Style) -->
 	<div
-		class="w-full px-4 pb-4 pt-2.5 flex justify-center shrink-0 border-t border-border-subtle bg-canvas"
+		class="absolute bottom-0 inset-x-0 z-20 pointer-events-none flex flex-col items-center justify-end bg-gradient-to-t from-bg via-bg/85 to-transparent pt-14 pb-4 md:pb-6 px-4"
 	>
-		<ChatComposer bind:input {isStreaming} onsubmit={submit} bind:selectedDataset />
+		<div class="w-full max-w-[1024px] pointer-events-auto">
+			<ChatComposer bind:input {isStreaming} onsubmit={submit} bind:selectedDataset />
+		</div>
 	</div>
 </div>
 
