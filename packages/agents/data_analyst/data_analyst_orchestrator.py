@@ -1,39 +1,34 @@
 """Orchestrator — manages the plan → execute → synthesize workflow via LangGraph.
 
-This is the "conductor" from NEXT.md: it coordinates the Planner,
-the Agent (for tool execution), and the final synthesis LLM call.
-
-The orchestrator streams structured SSE events via custom events so the frontend can
-render a live step-progress UI.
+Coordinates the Planner, the Data Analyst Agent (for tool execution),
+and the final synthesis LLM call with built-in fault tolerance, step retries,
+and memory checkpointer integration.
 """
 
 from __future__ import annotations
-from pathlib import Path
 
 import json
 import re
 import time
 import uuid
-
+from pathlib import Path
 from typing import AsyncGenerator, Literal
 
-
 from langchain_core.callbacks import adispatch_custom_event
-from langchain_core.messages import AIMessageChunk, HumanMessage, ToolMessage, SystemMessage
+from langchain_core.messages import AIMessageChunk, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import START, END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
-from ai.agent import Agent
-from ai.models.config import AgentConfig
+from .agent import DataAnalystAgent as Agent
+from .config import DataAnalystConfig as AgentConfig
 from .data_analyst_planner import ExecutionPlan, PlanStep, generate_plan
-from ai.logger import get_logger
-from ai.state import AgentState
+from .graph import build_data_analyst_graph
+from .logger import get_logger
+from .state import DataAnalystState as AgentState
 from analysis.charts import ChartArtifact
-from tools.visualization.visualization import CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
-from tools.planning import ARTIFACT_URL_PREFIX
+from tools import ARTIFACT_URL_PREFIX, CHART_ARTIFACT_PREFIX, CHART_URL_PREFIX
 
 logger = get_logger(__name__)
-
 
 # ── Prompts ────────────────────────────────────────────────────────────
 
@@ -49,41 +44,43 @@ with open(_PROMPTS_DIR / "synthesis_prompt.md") as f:
 
 
 class Orchestrator:
-    """Coordinates the plan → execute → synthesize workflow via LangGraph.
+    """Coordinates the plan → execute → synthesize workflow via a LangGraph state machine.
 
-    Usage:
-        orch = Orchestrator(agent, config)
-        async for event in orch.stream(message, thread_id):
-            # event is (event_type, data)
-            ...
+    Includes automatic step retries, self-correction, state reducers, and
+    checkpointer memory persistence.
     """
 
     def __init__(self, agent: Agent, config: AgentConfig) -> None:
         self._agent = agent
         self._config = config
 
-        # Build the orchestrator graph
+        # Build the fault-tolerant orchestrator graph
         workflow = StateGraph(AgentState)
         workflow.add_node("planner", self._planner_node)
         workflow.add_node("executor", self._executor_node)
+        workflow.add_node("step_error_recovery", self._step_error_recovery_node)
         workflow.add_node("synthesizer", self._synthesizer_node)
 
         workflow.add_edge(START, "planner")
         workflow.add_edge("planner", "executor")
-        workflow.add_conditional_edges("executor", self._route_execution, {
-            "executor": "executor",
-            "synthesizer": "synthesizer"
-        })
+        workflow.add_edge("step_error_recovery", "executor")
+
+        workflow.add_conditional_edges(
+            "executor",
+            self._route_execution,
+            {
+                "executor": "executor",
+                "step_error_recovery": "step_error_recovery",
+                "synthesizer": "synthesizer",
+            },
+        )
         workflow.add_edge("synthesizer", END)
 
-        self._graph = workflow.compile()
+        # Compile with checkpointer for state persistence
+        self._graph = workflow.compile(checkpointer=self._agent.checkpointer)
 
-        # ── Synthesis graph: same model, NO tools, shared memory ──
-        # The synthesizer should never call tools — it only writes the report.
-        # We build a minimal graph with the same LLM config but zero tool bindings,
-        # sharing the agent's checkpointer so conversation memory is preserved.
-        from ai.graph import build_graph
-        self._synthesis_graph = build_graph(
+        # ── Synthesis graph: same model, NO tools, shared memory checkpointer ──
+        self._synthesis_graph = build_data_analyst_graph(
             config=config,
             tools=[],  # empty — no tool calling during synthesis
             prompt=SYNTHESIS_SYSTEM_PROMPT,
@@ -93,8 +90,7 @@ class Orchestrator:
     async def _emit(self, event_type: str, data: str | dict):
         """Helper to dispatch custom events to be caught by stream()."""
         await adispatch_custom_event(
-            "orchestrator_event",
-            {"type": event_type, "data": data}
+            "orchestrator_event", {"type": event_type, "data": data}
         )
 
     async def _planner_node(self, state: AgentState, config: RunnableConfig) -> dict:
@@ -105,13 +101,11 @@ class Orchestrator:
         try:
             plan = await generate_plan(original_message, self._config, dataset_path)
         except Exception as e:
-            logger.error(
-                "Plan generation failed, using fallback", error=str(e))
+            logger.error("Plan generation failed, using fallback", error=str(e))
             plan = self._fallback_plan()
 
         await self._emit("plan", json.dumps(plan.to_dict()))
 
-        # Generate a run ID for this plan execution to isolate step thread IDs
         run_id = uuid.uuid4().hex[:8]
 
         return {
@@ -120,6 +114,10 @@ class Orchestrator:
             "evidence": "",
             "generated_charts": [],
             "run_id": run_id,
+            "step_retries": 0,
+            "max_retries": 2,
+            "last_step_error": None,
+            "status": "executing",
         }
 
     async def _executor_node(self, state: AgentState, config: RunnableConfig) -> dict:
@@ -135,20 +133,31 @@ class Orchestrator:
         thread_id = config.get("configurable", {}).get("thread_id", "default")
         original_message = state.get("original_message", "")
         dataset_path = state.get("dataset_path")
+        last_error = state.get("last_step_error")
+        step_retries = state.get("step_retries", 0)
 
-        logger.info("Phase 2: Executing step",
-                    step_id=step.id, title=step.title)
+        logger.info(
+            "Phase 2: Executing step",
+            step_id=step.id,
+            title=step.title,
+            retry=step_retries,
+        )
         await self._emit("step_started", json.dumps(step.to_dict()))
 
         if step.tool_hint == "synthesis":
             await self._emit("step_update", "Compiling final report...")
             await self._emit("step_finished", json.dumps({"id": step.id}))
-            return {"current_step": current_step_idx + 1}
+            return {
+                "current_step": current_step_idx + 1,
+                "step_retries": 0,
+                "last_step_error": None,
+            }
 
         # Build step-specific instruction
         user_context = (
             f"## User's Original Request\n{original_message}\n\n"
-            if original_message.strip() else ""
+            if original_message.strip()
+            else ""
         )
         step_instruction = (
             f"{user_context}"
@@ -159,12 +168,12 @@ class Orchestrator:
             f"Use tools to gather the needed information and report your findings "
             f"concisely when done."
         )
-        # If the planner determined this step needs a visualization, append the
-        # chart lifecycle directive with the specific rationale so the step agent
-        # knows what kind of chart to generate and why.
+
         if getattr(step, "needs_visualization", False):
-            rationale = getattr(step, "visualization_rationale",
-                                "") or "A chart would clarify the findings."
+            rationale = (
+                getattr(step, "visualization_rationale", "")
+                or "A chart would clarify the findings."
+            )
             step_instruction += (
                 f"\n\n## Visualization Required\n"
                 f"{rationale}\n"
@@ -175,6 +184,15 @@ class Orchestrator:
                 f"3. Call generate_chart with that insight in the `insight` parameter.\n"
                 f"4. Reference the chart by title in your narrative."
             )
+
+        if last_error:
+            step_instruction += (
+                f"\n\n## Self-Correction Feedback (Attempt {step_retries + 1})\n"
+                f"Your previous attempt encountered an issue:\n"
+                f"```\n{last_error}\n```\n"
+                f"Please fix the error and try alternative arguments or tools."
+            )
+
         if dataset_path:
             step_instruction = f"[Dataset: {dataset_path}]\n{step_instruction}"
 
@@ -186,8 +204,11 @@ class Orchestrator:
         pending_by_id: dict[str, dict] = {}
         pending_by_index: dict[int, dict] = {}
 
-        step_config = {"configurable": {
-            "thread_id": f"{thread_id}_run_{run_id}_step_{step.id}"}}
+        step_config = {
+            "configurable": {
+                "thread_id": f"{thread_id}_run_{run_id}_step_{step.id}_try_{step_retries}"
+            }
+        }
 
         try:
             async for chunk, metadata in self._agent.graph.astream(
@@ -198,8 +219,7 @@ class Orchestrator:
                 stream_mode="messages",
                 config=step_config,
             ):
-                self._track_tool_call_chunk(
-                    chunk, pending_by_id, pending_by_index)
+                self._track_tool_call_chunk(chunk, pending_by_id, pending_by_index)
 
                 if (
                     isinstance(chunk, AIMessageChunk)
@@ -210,11 +230,13 @@ class Orchestrator:
                     await self._emit("step_token", chunk.content)
 
                 elif isinstance(chunk, ToolMessage) and chunk.content:
-                    tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(
-                        chunk, pending_by_id, pending_by_index)
+                    tool_name, parameters, tc_id, duration_ms = (
+                        self._extract_tool_evidence_params(
+                            chunk, pending_by_id, pending_by_index
+                        )
+                    )
                     raw_result = str(chunk.content)
 
-                    # Emit evidence for traceability
                     evidence_payload = {
                         "step_id": step.id,
                         "tool_name": tool_name,
@@ -229,15 +251,11 @@ class Orchestrator:
                     content = str(chunk.content)
                     for line in content.splitlines():
                         if line.startswith(CHART_ARTIFACT_PREFIX):
-                            # Parse the ChartArtifact JSON payload
-                            raw_json = line[len(CHART_ARTIFACT_PREFIX):]
+                            raw_json = line[len(CHART_ARTIFACT_PREFIX) :]
                             try:
-                                artifact = ChartArtifact.from_dict(
-                                    json.loads(raw_json))
+                                artifact = ChartArtifact.from_dict(json.loads(raw_json))
                                 buffered_artifacts.append(artifact)
-                                # Emit image immediately so the UI can display inline
                                 await self._emit("image", artifact.api_url)
-                                # Emit the full artifact for rich UI rendering
                                 await self._emit("chart_artifact", artifact.to_dict())
                             except Exception as parse_err:
                                 logger.warning(
@@ -246,17 +264,14 @@ class Orchestrator:
                                     raw=raw_json[:200],
                                 )
                         elif line.startswith(CHART_URL_PREFIX):
-                            # Legacy fallback: bare URL with no metadata
-                            url = line[len(CHART_URL_PREFIX):]
+                            url = line[len(CHART_URL_PREFIX) :]
                             await self._emit("image", url)
                         elif line.startswith(ARTIFACT_URL_PREFIX):
                             buffered_plan_artifacts.append(
-                                line[len(ARTIFACT_URL_PREFIX):])
+                                line[len(ARTIFACT_URL_PREFIX) :]
+                            )
 
-            # Build evidence string: LLM narrative + inline chart summaries
             full_evidence = "".join(evidence_tokens)
-            # Append chart evidence summaries inline so the synthesizer
-            # knows the title, columns, and insight for each chart
             for art in buffered_artifacts:
                 full_evidence += f"\n\n{art.evidence_summary()}\n"
             for artifact_data in buffered_plan_artifacts:
@@ -267,7 +282,9 @@ class Orchestrator:
                     pass
 
             if full_evidence.strip():
-                step_evidence_str = f"\n## Step {step.id}: {step.title}\n{full_evidence.strip()}"
+                step_evidence_str = (
+                    f"\n## Step {step.id}: {step.title}\n{full_evidence.strip()}"
+                )
                 await self._emit("step_update", f"{step.title} — complete.")
             else:
                 step_evidence_str = ""
@@ -276,38 +293,66 @@ class Orchestrator:
             for artifact_data in buffered_plan_artifacts:
                 await self._emit("artifact", artifact_data)
 
-            result_evidence = step_evidence_str
-            result_charts = [art.to_dict() for art in buffered_artifacts]
+            await self._emit("step_finished", json.dumps({"id": step.id}))
+
+            return {
+                "evidence": step_evidence_str,
+                "generated_charts": [art.to_dict() for art in buffered_artifacts],
+                "current_step": current_step_idx + 1,
+                "step_retries": 0,
+                "last_step_error": None,
+            }
 
         except Exception as e:
             logger.error("Step execution error", step_id=step.id, error=str(e))
-            await self._emit("step_update", f"Error in step: {str(e)}")
-            result_evidence = f"\n## Step {step.id}: {step.title}\n(Execution failed: {str(e)})"
-            result_charts = []
+            return {
+                "last_step_error": str(e),
+            }
 
-        await self._emit("step_finished", json.dumps({"id": step.id}))
+    async def _step_error_recovery_node(
+        self, state: AgentState, config: RunnableConfig
+    ) -> dict:
+        """Handles step error logging and increments retries for fault tolerance."""
+        current_retries = state.get("step_retries", 0) + 1
+        error = state.get("last_step_error", "Unknown execution failure")
+
+        logger.warning(
+            "Step failed, triggering fault tolerance recovery",
+            retry_count=current_retries,
+            error=error,
+        )
+        await self._emit(
+            "step_update", f"Retrying step (Attempt {current_retries})..."
+        )
 
         return {
-            "evidence": result_evidence,
-            "generated_charts": result_charts,
-            "current_step": current_step_idx + 1
+            "step_retries": current_retries,
+            "status": "retrying",
         }
 
-    def _route_execution(self, state: AgentState) -> Literal["executor", "synthesizer"]:
+    def _route_execution(
+        self, state: AgentState
+    ) -> Literal["executor", "step_error_recovery", "synthesizer"]:
+        last_error = state.get("last_step_error")
+        retries = state.get("step_retries", 0)
+        max_retries = state.get("max_retries", 2)
+
+        if last_error and retries < max_retries:
+            return "step_error_recovery"
+
         plan_dict = state.get("plan", {})
         plan = ExecutionPlan.from_dict(plan_dict)
         current_step_idx = state.get("current_step", 0)
 
         if current_step_idx < len(plan.steps):
             return "executor"
+
         return "synthesizer"
 
-    async def _synthesizer_node(self, state: AgentState, config: RunnableConfig) -> dict:
+    async def _synthesizer_node(
+        self, state: AgentState, config: RunnableConfig
+    ) -> dict:
         logger.info("Phase 3: Synthesizing final answer")
-        # Charts are already displayed inline by the UI as they are emitted
-        # during execution. The synthesizer does NOT pre-dump charts at the top;
-        # instead the evidence manifest contains [Chart: ...] references inline
-        # with each step so the LLM can reference them in context.
         evidence = state.get("evidence", "").strip()
         if not evidence:
             evidence = "No evidence gathered."
@@ -324,10 +369,8 @@ class Orchestrator:
 
         synthesis_prompt = SYNTHESIS_SYSTEM_PROMPT.format(evidence=evidence)
 
-        # Use a tool-less agent graph for synthesis — same model config, no tool bindings
         thread_id = config.get("configurable", {}).get("thread_id", "default")
-        synth_config = {"configurable": {
-            "thread_id": f"{thread_id}_synthesize"}}
+        synth_config = {"configurable": {"thread_id": f"{thread_id}_synthesize"}}
 
         try:
             async for chunk, metadata in self._synthesis_graph.astream(
@@ -351,7 +394,7 @@ class Orchestrator:
             logger.error("Synthesis failed", error=str(e))
             await self._emit("token", f"\n\n*Error generating final report: {str(e)}*")
 
-        return {}
+        return {"status": "completed"}
 
     async def stream(
         self,
@@ -376,31 +419,44 @@ class Orchestrator:
             "generated_charts": [],
             "current_step": 0,
             "run_id": "",
+            "step_retries": 0,
+            "max_retries": 2,
+            "last_step_error": None,
+            "status": "planning",
         }
 
         async for event in self._graph.astream_events(inputs, config, version="v2"):
-            if event["event"] == "on_custom_event" and event["name"] == "orchestrator_event":
+            if (
+                event["event"] == "on_custom_event"
+                and event["name"] == "orchestrator_event"
+            ):
                 data = event["data"]
                 yield (data["type"], data["data"])
 
         yield ("done", "")
 
-    # ── Internal methods ────────────────────────────────────────────────
+    # ── Internal helpers ────────────────────────────────────────────────
 
     def _is_simple_question(self, message: str) -> bool:
         """Detect trivial conversational messages that don't need a multi-step plan."""
         raw_msg = message
 
-        # 1. Strip language instruction suffix if present
-        raw_msg = re.sub(r'\n\n\(Please answer in [^\)]+\)', '', raw_msg, flags=re.IGNORECASE)
-        raw_msg = re.sub(r'\n\n\(answer in [^\)]+\)', '', raw_msg, flags=re.IGNORECASE)
+        raw_msg = re.sub(
+            r"\n\n\(Please answer in [^\)]+\)", "", raw_msg, flags=re.IGNORECASE
+        )
+        raw_msg = re.sub(
+            r"\n\n\(answer in [^\)]+\)", "", raw_msg, flags=re.IGNORECASE
+        )
 
-        # 2. Extract actual user message if wrapped in dataset context header
         if "[Dataset:" in raw_msg and "\n\n" in raw_msg:
             parts = [p.strip() for p in raw_msg.split("\n\n") if p.strip()]
             if parts:
                 for part in reversed(parts):
-                    if not part.startswith("[Dataset:") and not part.startswith("CRITICAL INSTRUCTION") and not part.startswith("The dataset above"):
+                    if (
+                        not part.startswith("[Dataset:")
+                        and not part.startswith("CRITICAL INSTRUCTION")
+                        and not part.startswith("The dataset above")
+                    ):
                         raw_msg = part
                         break
 
@@ -408,59 +464,172 @@ class Orchestrator:
 
         conversational = {
             # English
-            "hello", "hi", "hey", "thanks", "thank you", "ok", "okay",
-            "yes", "no", "bye", "goodbye", "cool", "great", "awesome",
-            "perfect", "got it", "understood", "help",
+            "hello",
+            "hi",
+            "hey",
+            "thanks",
+            "thank you",
+            "ok",
+            "okay",
+            "yes",
+            "no",
+            "bye",
+            "goodbye",
+            "cool",
+            "great",
+            "awesome",
+            "perfect",
+            "got it",
+            "understood",
+            "help",
             # French
-            "salut", "bonjour", "coucou", "bonsoir", "merci", "merci beaucoup",
-            "d'accord", "daccord", "oui", "non", "ca va", "ça va", "au revoir",
-            "a bientot", "à bientôt", "super", "genial", "génial", "parfait",
-            "compris", "qui es-tu", "qui es tu", "aide", "au secours"
+            "salut",
+            "bonjour",
+            "coucou",
+            "bonsoir",
+            "merci",
+            "merci beaucoup",
+            "d'accord",
+            "daccord",
+            "oui",
+            "non",
+            "ca va",
+            "ça va",
+            "au revoir",
+            "a bientot",
+            "à bientôt",
+            "super",
+            "genial",
+            "génial",
+            "parfait",
+            "compris",
+            "qui es-tu",
+            "qui es tu",
+            "aide",
+            "au secours",
         }
         if msg in conversational:
             return True
 
         simple_starts = (
-            # English
-            "what can you do", "how do you work",
-            "who are you", "help",
-            "what is my", "what's my",         # personal info
-            "do you remember",                   # memory recall
-            "who am i",                          # identity
-            "what did we", "what was",           # conversation recall
-            "tell me about myself",              # personal summary
-            "my name is", "i am", "i'm",         # self-introductions
-            "nice to meet", "pleasure",          # pleasantries
-            "good morning", "good afternoon",    # time-based greetings
-            "good evening", "how are you",       # social
-            "how's it going", "what's up",       # casual
-            "see you", "talk to you later",      # farewells
-            # French
-            "que peux-tu faire", "que peux tu faire", "que sais-tu faire", "que sais tu faire",
-            "qu'est-ce que tu peux", "qu'est ce que tu peux", "qu'est-ce que tu sais",
-            "comment tu marches", "comment tu fonctionnes", "comment ca marche", "comment ça marche",
-            "qui es-tu", "qui es tu", "aide-moi", "aide moi",
-            "mon nom est", "je suis", "je m'appelle",
-            "enchante", "enchanté", "bonjour", "bonsoir", "salut",
-            "comment vas-tu", "comment vas tu", "comment ca va", "comment ça va",
-            "tu te souviens", "te souviens-tu", "te souviens tu"
+            "what can you do",
+            "how do you work",
+            "who are you",
+            "help",
+            "what is my",
+            "what's my",
+            "do you remember",
+            "who am i",
+            "what did we",
+            "what was",
+            "tell me about myself",
+            "my name is",
+            "i am",
+            "i'm",
+            "nice to meet",
+            "pleasure",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "how are you",
+            "how's it going",
+            "what's up",
+            "see you",
+            "talk to you later",
+            "que peux-tu faire",
+            "que peux tu faire",
+            "que sais-tu faire",
+            "que sais tu faire",
+            "qu'est-ce que tu peux",
+            "qu'est ce que tu peux",
+            "qu'est-ce que tu sais",
+            "comment tu marches",
+            "comment tu fonctionnes",
+            "comment ca marche",
+            "comment ça marche",
+            "qui es-tu",
+            "qui es tu",
+            "aide-moi",
+            "aide moi",
+            "mon nom est",
+            "je suis",
+            "je m'appelle",
+            "enchante",
+            "enchanté",
+            "bonjour",
+            "bonsoir",
+            "salut",
+            "comment vas-tu",
+            "comment vas tu",
+            "comment ca va",
+            "comment ça va",
+            "tu te souviens",
+            "te souviens-tu",
+            "te souviens tu",
         )
         if msg.startswith(simple_starts):
             return True
 
-        # Short non-analytical queries (< 25 chars) without analytical keywords (EN & FR)
         analytical_keywords = (
-            # English
-            "analyze", "analysis", "plot", "chart", "graph", "stat", "stats",
-            "statistic", "describe", "correlation", "regression", "distribution",
-            "mean", "median", "summary", "column", "row", "filter", "group", "sort",
-            "clean", "missing", "null", "outlier", "predict", "model", "compare",
-            # French
-            "analyser", "analyse", "graphique", "graphe", "statistique", "décrire",
-            "decrire", "corrélation", "correlation", "régression", "regression",
-            "distribution", "moyenne", "médiane", "mediane", "résumé", "resume",
-            "colonne", "ligne", "filtrer", "filtre", "grouper", "trier", "nettoyer",
-            "manquant", "manquante", "anomalie", "prédire", "predire", "modèle", "modele", "comparer"
+            "analyze",
+            "analysis",
+            "plot",
+            "chart",
+            "graph",
+            "stat",
+            "stats",
+            "statistic",
+            "describe",
+            "correlation",
+            "regression",
+            "distribution",
+            "mean",
+            "median",
+            "summary",
+            "column",
+            "row",
+            "filter",
+            "group",
+            "sort",
+            "clean",
+            "missing",
+            "null",
+            "outlier",
+            "predict",
+            "model",
+            "compare",
+            "analyser",
+            "analyse",
+            "graphique",
+            "graphe",
+            "statistique",
+            "décrire",
+            "decrire",
+            "corrélation",
+            "correlation",
+            "régression",
+            "regression",
+            "distribution",
+            "moyenne",
+            "médiane",
+            "mediane",
+            "résumé",
+            "resume",
+            "colonne",
+            "ligne",
+            "filtrer",
+            "filtre",
+            "grouper",
+            "trier",
+            "nettoyer",
+            "manquant",
+            "manquante",
+            "anomalie",
+            "prédire",
+            "predire",
+            "modèle",
+            "modele",
+            "comparer",
         )
         if len(msg) < 25 and not any(kw in msg for kw in analytical_keywords):
             return True
@@ -469,15 +638,12 @@ class Orchestrator:
 
     def _fallback_plan(self) -> ExecutionPlan:
         """Return a minimal fallback plan when planning fails."""
-        from .data_analyst_planner import PlanStep
         return ExecutionPlan(
             title="Analysis",
             steps=[
-                PlanStep(1, "Inspect dataset",
-                         "Examine data structure.", "inspection"),
+                PlanStep(1, "Inspect dataset", "Examine data structure.", "inspection"),
                 PlanStep(2, "Analyze data", "Perform analysis.", "statistics"),
-                PlanStep(3, "Synthesize findings",
-                         "Compile report.", "synthesis"),
+                PlanStep(3, "Synthesize findings", "Compile report.", "synthesis"),
             ],
         )
 
@@ -487,7 +653,7 @@ class Orchestrator:
         thread_id: str,
         dataset_path: str | None,
     ) -> AsyncGenerator[tuple[str, str | dict], None]:
-        """Handle simple questions directly without a plan."""
+        """Handle simple questions directly without a multi-step plan."""
         config = {"configurable": {"thread_id": thread_id}}
         prompt = message
         if dataset_path and dataset_path not in message:
@@ -510,8 +676,11 @@ class Orchestrator:
             ):
                 yield ("token", chunk.content)
             elif isinstance(chunk, ToolMessage) and chunk.content:
-                tool_name, parameters, tc_id, duration_ms = self._extract_tool_evidence_params(
-                    chunk, pending_by_id, pending_by_index)
+                tool_name, parameters, tc_id, duration_ms = (
+                    self._extract_tool_evidence_params(
+                        chunk, pending_by_id, pending_by_index
+                    )
+                )
                 raw_result = str(chunk.content)
 
                 evidence_payload = {
@@ -528,34 +697,44 @@ class Orchestrator:
                 content = str(chunk.content)
                 for line in content.splitlines():
                     if line.startswith(CHART_ARTIFACT_PREFIX):
-                        raw_json = line[len(CHART_ARTIFACT_PREFIX):]
-
+                        raw_json = line[len(CHART_ARTIFACT_PREFIX) :]
                         try:
-                            artifact = ChartArtifact.from_dict(
-                                json.loads(raw_json))
+                            artifact = ChartArtifact.from_dict(json.loads(raw_json))
                             yield ("image", artifact.api_url)
                             yield ("chart_artifact", artifact.to_dict())
                         except Exception:
                             pass
                     elif line.startswith(CHART_URL_PREFIX):
-                        yield ("image", line[len(CHART_URL_PREFIX):])
+                        yield ("image", line[len(CHART_URL_PREFIX) :])
                     elif line.startswith(ARTIFACT_URL_PREFIX):
-                        yield ("artifact", line[len(ARTIFACT_URL_PREFIX):])
+                        yield ("artifact", line[len(ARTIFACT_URL_PREFIX) :])
 
         yield ("done", "")
 
-    def _track_tool_call_chunk(self, chunk, pending_by_id: dict[str, dict], pending_by_index: dict[int, dict]) -> None:
-        """Accumulate tool calls and parameter fragments from streaming message chunks."""
-        # 1. Handle complete tool_calls attribute (if available)
+    def _track_tool_call_chunk(
+        self,
+        chunk,
+        pending_by_id: dict[str, dict],
+        pending_by_index: dict[int, dict],
+    ) -> None:
         tool_calls = getattr(chunk, "tool_calls", None)
         if tool_calls:
             for tc in tool_calls:
-                tc_id = tc.get("id") if isinstance(
-                    tc, dict) else getattr(tc, "id", None)
-                tc_name = tc.get("name") if isinstance(
-                    tc, dict) else getattr(tc, "name", None)
-                tc_args = tc.get("args") if isinstance(
-                    tc, dict) else getattr(tc, "args", None)
+                tc_id = (
+                    tc.get("id")
+                    if isinstance(tc, dict)
+                    else getattr(tc, "id", None)
+                )
+                tc_name = (
+                    tc.get("name")
+                    if isinstance(tc, dict)
+                    else getattr(tc, "name", None)
+                )
+                tc_args = (
+                    tc.get("args")
+                    if isinstance(tc, dict)
+                    else getattr(tc, "args", None)
+                )
                 if tc_id:
                     parsed_args = tc_args if isinstance(tc_args, dict) else {}
                     pending_by_id[tc_id] = {
@@ -566,7 +745,6 @@ class Orchestrator:
                         "start_time": time.time(),
                     }
 
-        # 2. Handle streaming tool_call_chunks attribute
         tool_call_chunks = getattr(chunk, "tool_call_chunks", None)
         if tool_call_chunks:
             for tc in tool_call_chunks:
@@ -581,9 +759,13 @@ class Orchestrator:
                     name = getattr(tc, "name", None)
                     args_fragment = getattr(tc, "args", None)
 
-                # Reset index entry if a new tool call ID is starting at this index
                 existing = pending_by_index.get(idx)
-                if existing and tc_id and existing.get("id") and existing["id"] != tc_id:
+                if (
+                    existing
+                    and tc_id
+                    and existing.get("id")
+                    and existing["id"] != tc_id
+                ):
                     existing = None
 
                 if not existing:
@@ -609,18 +791,17 @@ class Orchestrator:
         pending_by_id: dict[str, dict],
         pending_by_index: dict[int, dict],
     ) -> tuple[str, dict, str | None, int | None]:
-        """Extract tool evidence parameters and execution timing for a completed ToolMessage."""
         tc_id = getattr(chunk, "tool_call_id", None)
         call_info = pending_by_id.pop(tc_id, {}) if tc_id else {}
 
-        # Remove completed tool call from pending_by_index map
         for idx, entry in list(pending_by_index.items()):
             if entry.get("id") == tc_id or entry == call_info:
                 pending_by_index.pop(idx, None)
 
         start_time = call_info.get("start_time")
-        duration_ms = int((time.time() - start_time) *
-                          1000) if start_time else None
+        duration_ms = (
+            int((time.time() - start_time) * 1000) if start_time else None
+        )
         tool_name = call_info.get("name") or getattr(chunk, "name", "tool")
 
         parameters = call_info.get("args")
@@ -630,9 +811,8 @@ class Orchestrator:
                 try:
                     parameters = json.loads(args_raw)
                 except Exception:
-                    # If args_raw contains concatenated JSONs (e.g. {"a":1}{"b":2}), parse the last complete valid JSON object!
                     parsed = None
-                    matches = re.findall(r'\{[^{}]*\}', args_raw)
+                    matches = re.findall(r"\{[^{}]*\}", args_raw)
                     if matches:
                         for candidate in reversed(matches):
                             try:

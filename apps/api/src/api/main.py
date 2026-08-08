@@ -43,7 +43,7 @@ async def lifespan(_app: FastAPI):
     os.makedirs(abs_datasets_dir, exist_ok=True)
 
     # Override the tool's hardcoded /tmp path so charts persist
-    import tools.visualization.visualization as viz_mod
+    import tools.visualization as viz_mod
     viz_mod.CHARTS_DIR = abs_charts_dir
 
     # Startup: create tables
@@ -51,7 +51,7 @@ async def lifespan(_app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # ── Agent memory: Postgres checkpointer ──────────────────────
-    from ai.memory import PostgresConfig
+    from agents.data_analyst.memory import PostgresConfig
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
     from psycopg import AsyncConnection
 

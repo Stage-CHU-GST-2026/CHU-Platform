@@ -14,8 +14,6 @@
 	import Breadcrumb from '$lib/components/app/common/Breadcrumb.svelte';
 	import EmptyState from '$lib/components/app/common/EmptyState.svelte';
 	import Skeleton from '$lib/components/app/common/Skeleton.svelte';
-	import DatasetTable from '$lib/components/app/data/DatasetTable.svelte';
-	import Pagination from '$lib/components/app/data/Pagination.svelte';
 
 	// Chat & Cards
 	import ChatComposer from '$lib/components/app/chat/ChatComposer.svelte';
@@ -570,25 +568,9 @@
 				<!-- DatasetTable Component -->
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
-						<h3 class="text-sm font-bold text-text-primary ">Dataset Table Component (Type Badges & Sorting)</h3>
-						<span class="text-xs text-muted">Click column header to sort</span>
+						<h3 class="text-sm font-bold text-text-primary">Dataset Preview Grid</h3>
+						<span class="text-xs text-muted font-mono">Dataset preview mode</span>
 					</div>
-
-					<DatasetTable
-						columns={demoTableColumns}
-						sortCol={demoSortCol}
-						sortDir={demoSortDir}
-						onsort={(col) => {
-							if (demoSortCol === col) {
-								demoSortDir = demoSortDir === 'asc' ? 'desc' : 'asc';
-							} else {
-								demoSortCol = col;
-								demoSortDir = 'asc';
-							}
-						}}
-					/>
-
-					<Pagination page={demoPage} totalPages={12} onchange={(p) => (demoPage = p)} />
 				</div>
 
 				<!-- Semantic Concept Mapping Table -->
