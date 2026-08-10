@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Frontend as SvelteKit UI (apps/web)
+    participant API as FastAPI Backend (apps/api)
+    participant Service as Dataset/Conversation Service
+    participant DB as PostgreSQL DB
+    participant FS as Local File System
+    participant Agent as LangGraph Data Analyst Agent
+    participant DuckDB as DuckDB Engine
+    participant LLM as OpenAI API
+
+    User->>Frontend: Upload CSV/Parquet dataset
+    Frontend->>API: POST /api/datasets/upload
+    API->>FS: Save raw file to files/datasets/
+    API->>DuckDB: Profile columns & infer schema
+    API->>DB: Store metadata in PostgreSQL (datasets table)
+    API-->>Frontend: Return Dataset response JSON
+
+    User->>Frontend: Send Chat Prompt / Data Query
+    Frontend->>API: POST /api/chat/stream (SSE)
+    API->>Service: Create Message record in DB
+    API->>Agent: Invoke DataAnalystOrchestrator.run_stream()
+    
+    loop Tool Call Loop
+        Agent->>LLM: Send prompt & schema context
+        LLM-->>Agent: Request tool execution (e.g. execute_sql / generate_chart)
+        Agent->>DuckDB: Run SQL against dataset file
+        DuckDB-->>Agent: Return query result dataframe / summary
+        Agent->>Frontend: Stream SSE step/tool events
+    end
+
+    Agent->>LLM: Synthesize final answer & chart specs
+    LLM-->>Agent: Final narrative response
+    Agent->>DB: Store assistant message & artifacts
+    Agent-->>API: Stream final tokens
+    API-->>Frontend: Complete SSE stream

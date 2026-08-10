@@ -1,0 +1,33 @@
+flowchart TD
+    subgraph Host["Production Host / Cloud VM"]
+        DockerCompose["Docker Compose Stack"]
+        
+        subgraph WebContainer["Web Container (chu-web)"]
+            NodeServer["Node.js / Bun Production Server"]
+            FrontendApp["apps/web SvelteKit App (Port 3000)"]
+        end
+
+        subgraph APIContainer["API Container (chu-api)"]
+            Uvicorn["Uvicorn ASGI Server"]
+            FastAPIApp["FastAPI Backend App (Port 8000)"]
+        end
+
+        subgraph DBContainer["Database Container (chu-db)"]
+            PostgresEngine["PostgreSQL 16 Engine (Port 5432)"]
+            DBVolume[("chu_postgres_data Persistent Volume")]
+        end
+
+        subgraph NginxContainer["Nginx Container (chu-nginx)"]
+            NginxServer["Nginx Proxy (Port 80/443)"]
+        end
+
+        subgraph StorageVolume["Shared Storage Volume"]
+            DataDir["/app/files (Datasets & Export Files)"]
+        end
+    end
+
+    NginxServer -->|Proxy /| FrontendApp
+    NginxServer -->|Proxy /api| FastAPIApp
+    FastAPIApp -->|Async SQL| PostgresEngine
+    PostgresEngine --- DBVolume
+    FastAPIApp --- DataDir
