@@ -1,0 +1,22 @@
+flowchart TD
+    Client[Client Request] --> NginxProxy[Nginx Reverse Proxy / Load Balancer]
+    NginxProxy --> CORSMiddleware[FastAPI CORSMiddleware]
+    CORSMiddleware --> ExceptionHandler[Global Error Handling Middleware]
+    ExceptionHandler --> RouterMatch{Match Route Endpoint}
+    
+    RouterMatch -->|/api/datasets| DatasetsRouter[src/api/routers/datasets.py]
+    RouterMatch -->|/api/conversations| ConversationsRouter[src/api/routers/conversations.py]
+    RouterMatch -->|/api/chat| ChatRouter[src/api/routers/chat.py]
+    RouterMatch -->|/api/artifacts| ArtifactsRouter[src/api/routers/artifacts.py]
+    RouterMatch -->|/api/semantic-categories| CategoriesRouter[src/api/routers/semantic_categories.py]
+
+    DatasetsRouter --> Validation[Pydantic Schema Validation]
+    ConversationsRouter --> Validation
+    ChatRouter --> Validation
+
+    Validation --> ServiceCall[Service Method Execution]
+    ServiceCall --> AsyncSession[SQLAlchemy AsyncSession]
+    AsyncSession --> Database[(PostgreSQL)]
+    
+    ChatRouter --> SSEResponse[StreamingResponse text/event-stream]
+    SSEResponse --> Client

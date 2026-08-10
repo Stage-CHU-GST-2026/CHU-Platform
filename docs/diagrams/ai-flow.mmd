@@ -1,0 +1,29 @@
+flowchart TD
+    Start([User Input Prompt]) --> Memory[Load Conversation Memory & Context]
+    Memory --> StateInit[Initialize Agent State]
+    StateInit --> PlannerNode[Data Analyst Planner Node]
+    PlannerNode --> PlanCheck{Plan Required?}
+    
+    PlanCheck -->|Yes| PromptBuilder[Construct Analysis Plan & Tool Calls]
+    PlanCheck -->|No| DirectResponse[Generate Direct Answer]
+
+    PromptBuilder --> LLMCall[Call LLM Provider]
+    LLMCall --> ToolCheck{Tool Call Issued?}
+
+    ToolCheck -->|DuckDB SQL| ToolDuckDB[packages/tools/duckdb_tools.py]
+    ToolCheck -->|Chart Generation| ToolChart[packages/analysis/charts.py]
+    ToolCheck -->|Data Profiling| ToolProfile[packages/tools/inspection.py]
+    ToolCheck -->|Data Cleaning| ToolClean[packages/tools/cleaning.py]
+
+    ToolDuckDB --> ExecutionResult[Process Dataset Result]
+    ToolChart --> ExecutionResult
+    ToolProfile --> ExecutionResult
+    ToolClean --> ExecutionResult
+
+    ExecutionResult --> StateUpdate[Update Agent State & Scratchpad]
+    StateUpdate --> LLMCall
+
+    ToolCheck -->|No / Completed| Synthesizer[Synthesize Final Response & Artifacts]
+    Synthesizer --> SSEStream[Stream SSE Tokens to Client]
+    DirectResponse --> SSEStream
+    SSEStream --> End([End Conversation Turn])

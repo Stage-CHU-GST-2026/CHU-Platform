@@ -1,0 +1,47 @@
+flowchart TD
+    subgraph Clients["Frontend Clients"]
+        Svelte["apps/web (SvelteKit 5 + TailwindCSS)"]
+        Web2["web-2 (Legacy Svelte App)"]
+        UI["apps/ui (UI Component Library / Storybook)"]
+    end
+
+    subgraph ReverseProxy["Nginx Reverse Proxy"]
+        Nginx["nginx/default.conf"]
+    end
+
+    subgraph BackendAPI["FastAPI Backend (apps/api)"]
+        FastAPI["FastAPI Application (src/api/main.py)"]
+        RouterChat["Routers: /chat, /conversations, /datasets, /artifacts, /semantic-categories"]
+        ServiceLayer["Services: dataset_service, conversation_service, chat_service"]
+    end
+
+    subgraph AIPackages["AI & Data Processing Engines"]
+        AgentOrchestrator["packages/agents/data_analyst/data_analyst_orchestrator.py"]
+        Planner["packages/agents/data_analyst/data_analyst_planner.py"]
+        ToolsRegistry["packages/tools (DuckDB, Pandas, Analytics, Charts)"]
+        AnalysisEngine["packages/analysis (Engine, Charts, Profiler, Statistics)"]
+    end
+
+    subgraph DataStorage["Data & Storage Layers"]
+        PostgreSQL[("PostgreSQL Database (SQLAlchemy + Alembic)")]
+        DuckDB[("DuckDB In-Memory / File Analytics Engine")]
+        FileSystem["Local Storage (files/datasets, files/exports, static/)"]
+    end
+
+    subgraph ExternalLLM["External AI Providers"]
+        OpenAI["OpenAI API / LLM Provider"]
+    end
+
+    Svelte -->|HTTP / SSE| Nginx
+    Web2 -->|HTTP / SSE| Nginx
+    Nginx -->|Port 8000| FastAPI
+    FastAPI --> RouterChat
+    RouterChat --> ServiceLayer
+    ServiceLayer --> PostgreSQL
+    ServiceLayer --> FileSystem
+    ServiceLayer --> AgentOrchestrator
+    AgentOrchestrator --> Planner
+    AgentOrchestrator --> ToolsRegistry
+    ToolsRegistry --> DuckDB
+    ToolsRegistry --> AnalysisEngine
+    AgentOrchestrator --> OpenAI
