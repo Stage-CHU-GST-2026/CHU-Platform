@@ -7,13 +7,10 @@
 	import { Input } from "$lib/components/ui/input";
 	import * as Table from "$lib/components/ui/table";
 	import * as Dialog from "$lib/components/ui/dialog";
-	import * as Tabs from "$lib/components/ui/tabs";
-	import * as Field from "$lib/components/ui/field";
 	import * as Tooltip from "$lib/components/ui/tooltip";
 	import { Skeleton } from "$lib/components/ui/skeleton";
 	import Database from "@lucide/svelte/icons/database";
 	import Upload from "@lucide/svelte/icons/upload";
-	import FileText from "@lucide/svelte/icons/file-text";
 	import RefreshCw from "@lucide/svelte/icons/refresh-cw";
 	import Search from "@lucide/svelte/icons/search";
 	import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -22,7 +19,6 @@
 	import CheckCircle2 from "@lucide/svelte/icons/check-circle-2";
 	import AlertCircle from "@lucide/svelte/icons/alert-circle";
 	import HardDrive from "@lucide/svelte/icons/hard-drive";
-	import Layers from "@lucide/svelte/icons/layers";
 	import Loader2 from "@lucide/svelte/icons/loader-2";
 	import FileSpreadsheet from "@lucide/svelte/icons/file-spreadsheet";
 	import X from "@lucide/svelte/icons/x";
@@ -187,8 +183,8 @@
 		}
 	}
 
-	function formatBytes(bytes: number | null): string {
-		if (bytes === null || bytes === 0) return "0 B";
+	function formatBytes(bytes: number | null | undefined): string {
+		if (bytes === null || bytes === undefined || bytes === 0 || isNaN(bytes)) return "0 B";
 		const k = 1024;
 		const sizes = ["B", "KB", "MB", "GB"];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -196,21 +192,30 @@
 		return val + " " + sizes[i];
 	}
 
-	function formatRelativeTime(dateStr: string): string {
+	function formatRelativeTime(dateStr: string | null | undefined): string {
 		if (!dateStr) return "—";
-		const diff = Date.now() - new Date(dateStr).getTime();
-		const mins = Math.floor(diff / 60000);
-		if (mins < 1) return "just now";
-		if (mins < 60) return `${mins}m ago`;
-		const hrs = Math.floor(mins / 60);
-		if (hrs < 24) return `${hrs}h ago`;
-		const days = Math.floor(hrs / 24);
-		if (days < 7) return `${days}d ago`;
-		return new Date(dateStr).toLocaleDateString();
+		try {
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return "—";
+			const diff = Date.now() - d.getTime();
+			const mins = Math.floor(diff / 60000);
+			if (mins < 1) return "just now";
+			if (mins < 60) return `${mins}m ago`;
+			const hrs = Math.floor(mins / 60);
+			if (hrs < 24) return `${hrs}h ago`;
+			const days = Math.floor(hrs / 24);
+			if (days < 7) return `${days}d ago`;
+			return d.toLocaleDateString();
+		} catch {
+			return "—";
+		}
 	}
 
-	function getFileExt(filename: string): string {
-		return filename.split(".").pop()?.toUpperCase() || "FILE";
+	function getFileExt(filename: string | null | undefined): string {
+		if (!filename) return "FILE";
+		const parts = filename.split(".");
+		if (parts.length < 2) return "FILE";
+		return parts.pop()?.toUpperCase() || "FILE";
 	}
 </script>
 
@@ -219,7 +224,7 @@
 	<meta name="description" content="Manage, profile, and analyze tabular datasets." />
 </svelte:head>
 
-<div class="w-full h-full overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto flex flex-col gap-6">
+<div class="w-full h-full overflow-y-auto p-6 md:p-8 flex flex-col gap-6">
 	<!-- Page Header -->
 	<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
 		<div class="flex flex-col gap-1">
@@ -306,21 +311,42 @@
 
 	<!-- Main Datasets Table & Filtering Card -->
 	<Card.Root class="border-border/60 shadow-sm flex flex-col">
-		<Card.Header class="pb-4 border-b border-border/40">
+		<Card.Header class="pb-3 border-b border-border/40">
 			<div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-				<!-- Filter Tabs -->
-				<Tabs.Root value={statusFilter} onValueChange={handleFilterChange} class="w-full md:w-auto">
-					<Tabs.List class="grid grid-cols-5 w-full md:w-auto text-xs">
-						<Tabs.Trigger value="all">All ({datasets.length})</Tabs.Trigger>
-						<Tabs.Trigger value="ready">Ready</Tabs.Trigger>
-						<Tabs.Trigger value="processing">Processing</Tabs.Trigger>
-						<Tabs.Trigger value="pending">Pending</Tabs.Trigger>
-						<Tabs.Trigger value="failed">Failed</Tabs.Trigger>
-					</Tabs.List>
-				</Tabs.Root>
+				<!-- Clean Border-Bottom Tab Bar -->
+				<div class="flex items-center gap-1 border-b border-border/60 overflow-x-auto w-full md:w-auto pb-0.5">
+					{#each [
+						{ id: "all", label: "All Datasets", count: datasets.length },
+						{ id: "ready", label: "Ready", count: datasets.filter(d => d.status === "ready").length },
+						{ id: "processing", label: "Processing", count: datasets.filter(d => d.status === "processing").length },
+						{ id: "pending", label: "Pending", count: datasets.filter(d => d.status === "pending").length },
+						{ id: "failed", label: "Failed", count: datasets.filter(d => d.status === "failed").length }
+					] as tab}
+						<button
+							type="button"
+							class={cn(
+								"px-3.5 py-2 text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+								statusFilter === tab.id
+									? "border-primary text-foreground font-bold"
+									: "border-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
+							)}
+							onclick={() => handleFilterChange(tab.id)}
+						>
+							<span>{tab.label}</span>
+							{#if tab.count > 0}
+								<span class={cn(
+									"px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+									statusFilter === tab.id ? "bg-primary/10 text-primary font-bold" : "bg-muted text-muted-foreground"
+								)}>
+									{tab.count}
+								</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
 
 				<!-- Search Input & Refresh Button -->
-				<div class="flex items-center gap-2 w-full md:w-72">
+				<div class="flex items-center gap-2 w-full md:w-72 shrink-0">
 					<div class="relative w-full">
 						<Input
 							type="text"

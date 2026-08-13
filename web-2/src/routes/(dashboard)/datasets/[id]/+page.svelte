@@ -8,10 +8,8 @@
 	import { Textarea } from "$lib/components/ui/textarea";
 	import * as Table from "$lib/components/ui/table";
 	import * as Dialog from "$lib/components/ui/dialog";
-	import * as Tabs from "$lib/components/ui/tabs";
 	import * as Select from "$lib/components/ui/select";
 	import * as Tooltip from "$lib/components/ui/tooltip";
-	import { Skeleton } from "$lib/components/ui/skeleton";
 
 	import ArrowLeft from "@lucide/svelte/icons/arrow-left";
 	import RefreshCw from "@lucide/svelte/icons/refresh-cw";
@@ -42,6 +40,7 @@
 		updateDatasetContext,
 		type DatasetDetail,
 		type DatasetPreview,
+		type PreviewRow,
 		type ColumnInfo,
 		type DatasetStatistics,
 		type SemanticMappingItem
@@ -119,12 +118,33 @@
 		}
 	}
 
+	function getCellValue(row: PreviewRow, col: string): any {
+		if (!row) return null;
+		if (row.values && typeof row.values === "object" && col in row.values) {
+			return row.values[col];
+		}
+		if (col in row) {
+			return row[col];
+		}
+		return null;
+	}
+
+	function getRowIndex(row: PreviewRow, fallbackIdx: number): number {
+		if (row && typeof row.row_number === "number") {
+			return row.row_number + 1;
+		}
+		return fallbackIdx + 1;
+	}
+
 	let filteredPreviewRows = $derived.by(() => {
-		if (!previewData) return [];
+		if (!previewData || !previewData.rows) return [];
 		if (!previewSearch.trim()) return previewData.rows;
 		const query = previewSearch.toLowerCase();
 		return previewData.rows.filter((row) =>
-			Object.values(row).some((val) => val !== null && String(val).toLowerCase().includes(query))
+			previewData!.columns.some((col) => {
+				const val = getCellValue(row, col);
+				return val !== null && val !== undefined && String(val).toLowerCase().includes(query);
+			})
 		);
 	});
 
@@ -133,13 +153,37 @@
 	let filteredColumns = $derived.by(() => {
 		if (!schemaSearch.trim()) return columnsData;
 		const query = schemaSearch.toLowerCase();
-		return columnsData.filter(
-			(col) => col.name.toLowerCase().includes(query) || (col.data_type && col.data_type.toLowerCase().includes(query))
-		);
+		return columnsData.filter((col) => {
+			const dType = col.data_type || col.dtype || "";
+			return col.name.toLowerCase().includes(query) || dType.toLowerCase().includes(query);
+		});
 	});
 
-	// Stats Sub-Tab
+	// Stats Sub-Tab & Derived Helpers
 	let statsSubTab = $state<"numeric" | "missing" | "categorical">("numeric");
+
+	let numericSummaryMap = $derived.by(() => {
+		if (!statsData) return {};
+		return statsData.numeric_summary || statsData.numeric_columns || {};
+	});
+
+	let missingValuesMap = $derived.by(() => {
+		if (!statsData) return {};
+		return statsData.missing_values || {};
+	});
+
+	let categoricalMap = $derived.by(() => {
+		if (!statsData) return {};
+		if (statsData.categorical_columns) return statsData.categorical_columns;
+		if (statsData.column_types) {
+			const res: Record<string, { unique?: number }> = {};
+			for (const [col, t] of Object.entries(statsData.column_types)) {
+				res[col] = { unique: 0 };
+			}
+			return res;
+		}
+		return {};
+	});
 
 	// Semantic Mapping State
 	let semanticSearch = $state("");
@@ -153,16 +197,22 @@
 	let filteredSemanticItems = $derived.by(() => {
 		let items = semanticMappings;
 		if (semanticCategoryFilter !== "all") {
-			items = items.filter((i) => (i.category_code || i.category_name) === semanticCategoryFilter);
+			items = items.filter((i) => {
+				const code = i.category_code || i.category || i.category_name;
+				return code === semanticCategoryFilter;
+			});
 		}
 		if (semanticSearch.trim()) {
 			const q = semanticSearch.toLowerCase();
-			items = items.filter(
-				(i) =>
+			items = items.filter((i) => {
+				const desc = i.description || i.mapped_concept || "";
+				const cat = i.category_name || i.category || "";
+				return (
 					i.column_name.toLowerCase().includes(q) ||
-					(i.description && i.description.toLowerCase().includes(q)) ||
-					(i.category_name && i.category_name.toLowerCase().includes(q))
-			);
+					desc.toLowerCase().includes(q) ||
+					cat.toLowerCase().includes(q)
+				);
+			});
 		}
 		return items;
 	});
@@ -178,8 +228,8 @@
 		try {
 			const payload = semanticMappings.map((i) => ({
 				column_name: i.column_name,
-				category_code: i.category_code,
-				description: i.description
+				category_code: i.category_code || i.category || null,
+				description: i.description || i.mapped_concept || null
 			}));
 
 			const res = await updateSemanticMappings(datasetId, payload);
@@ -297,10 +347,11 @@
 	async function startAnalysis() {
 		if (!dataset) return;
 		try {
-			const res = await createConversation(`Dataset: ${dataset.original_filename}`, dataset.id);
+			const res = await createConversation(`Dataset: ${dataset.original_filename || "Dataset"}`, dataset.id);
 			if (res.ok) {
 				const convId = res.data.id;
-				const initialPrompt = `I want to analyze the dataset "${dataset.original_filename}" (${dataset.rows?.toLocaleString() ?? 0} rows, ${dataset.columns ?? 0} columns). Could you summarize its structure and key trends?`;
+				const name = dataset.original_filename || "dataset";
+				const initialPrompt = `I want to analyze the dataset "${name}" (${dataset.rows?.toLocaleString() ?? 0} rows, ${dataset.columns ?? 0} columns). Could you summarize its structure and key trends?`;
 				await goto(`/conversations/${convId}?q=${encodeURIComponent(initialPrompt)}`);
 			}
 		} catch (err) {
@@ -308,8 +359,8 @@
 		}
 	}
 
-	function formatBytes(bytes: number | null): string {
-		if (bytes === null || bytes === 0) return "0 B";
+	function formatBytes(bytes: number | null | undefined): string {
+		if (bytes === null || bytes === undefined || bytes === 0 || isNaN(bytes)) return "0 B";
 		const k = 1024;
 		const sizes = ["B", "KB", "MB", "GB"];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -317,8 +368,22 @@
 		return val + " " + sizes[i];
 	}
 
-	function getFileExt(filename: string): string {
-		return filename.split(".").pop()?.toUpperCase() || "FILE";
+	function getFileExt(filename: string | null | undefined): string {
+		if (!filename) return "FILE";
+		const parts = filename.split(".");
+		if (parts.length < 2) return "FILE";
+		return parts.pop()?.toUpperCase() || "FILE";
+	}
+
+	function formatDate(dateStr: string | null | undefined): string {
+		if (!dateStr) return "—";
+		try {
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return "—";
+			return d.toLocaleDateString();
+		} catch {
+			return "—";
+		}
 	}
 
 	function formatNum(val: number | undefined | null): string {
@@ -329,11 +394,11 @@
 </script>
 
 <svelte:head>
-	<title>{dataset ? dataset.original_filename : "Dataset Detail"} | CHU Platform</title>
+	<title>{dataset && dataset.original_filename ? dataset.original_filename : "Dataset Detail"} | CHU Platform</title>
 	<meta name="description" content="Detailed profiling and schema preview for dataset." />
 </svelte:head>
 
-<div class="w-full h-full overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto flex flex-col gap-6">
+<div class="w-full h-full overflow-y-auto p-6 md:p-8 flex flex-col gap-6">
 	<!-- Top Navigation Bar -->
 	<div class="flex items-center justify-between border-b border-border/60 pb-3">
 		<Button variant="ghost" size="sm" href="/datasets" class="gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground">
@@ -383,109 +448,112 @@
 		</Card.Root>
 	{:else}
 		<!-- Header Metadata Banner -->
-		<Card.Root class="border-border/60 shadow-sm">
-			<Card.Content class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-				<div class="flex flex-col gap-3 min-w-0 flex-1">
-					<div class="flex flex-wrap items-center gap-3">
-						<Badge variant="outline" class="font-mono text-xs font-bold text-primary bg-primary/10 border-primary/30">
-							{getFileExt(dataset.original_filename)}
+		<div class="bg-card text-card-foreground border border-border/70 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs">
+			<div class="flex flex-col gap-3 min-w-0 flex-1">
+				<div class="flex flex-wrap items-center gap-3">
+					<Badge variant="outline" class="font-mono text-xs font-bold text-primary bg-primary/10 border-primary/30">
+						{getFileExt(dataset.original_filename)}
+					</Badge>
+
+					<h1 class="text-2xl font-bold tracking-tight truncate">
+						{dataset.original_filename || "Dataset"}
+					</h1>
+
+					{#if dataset.status === "ready"}
+						<Badge variant="secondary" class="gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
+							<span class="size-1.5 rounded-full bg-emerald-500"></span>
+							Ready
 						</Badge>
-
-						<h1 class="text-2xl font-bold tracking-tight truncate">{dataset.original_filename}</h1>
-
-						{#if dataset.status === "ready"}
-							<Badge variant="secondary" class="gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
-								<span class="size-1.5 rounded-full bg-emerald-500"></span>
-								Ready
-							</Badge>
-						{:else}
-							<Badge variant="secondary" class="gap-1.5 text-xs text-amber-600 bg-amber-500/10 border-amber-500/20">
-								<span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-								{dataset.status}
-							</Badge>
-						{/if}
-					</div>
-
-					<!-- Quick Metadata Chips -->
-					<div class="flex flex-wrap items-center gap-4 text-xs font-mono text-muted-foreground">
-						<div>
-							<span class="text-foreground font-semibold">Rows:</span>
-							<span class="ml-1">{dataset.rows?.toLocaleString() ?? "—"}</span>
-						</div>
-						<span>•</span>
-						<div>
-							<span class="text-foreground font-semibold">Columns:</span>
-							<span class="ml-1">{dataset.columns ?? "—"}</span>
-						</div>
-						<span>•</span>
-						<div>
-							<span class="text-foreground font-semibold">Size:</span>
-							<span class="ml-1">{formatBytes(dataset.file_size)}</span>
-						</div>
-						<span>•</span>
-						<div>
-							<span class="text-foreground font-semibold">Uploaded:</span>
-							<span class="ml-1">{new Date(dataset.created_at).toLocaleDateString()}</span>
-						</div>
-					</div>
-
-					{#if dataset.error_message}
-						<div class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
-							<strong>Error processing file:</strong> {dataset.error_message}
-						</div>
+					{:else}
+						<Badge variant="secondary" class="gap-1.5 text-xs text-amber-600 bg-amber-500/10 border-amber-500/20">
+							<span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+							{dataset.status || "processing"}
+						</Badge>
 					{/if}
 				</div>
 
-				<!-- Primary Action Button -->
-				<div class="flex items-center gap-3 shrink-0">
-					<Button
-						variant="default"
-						size="lg"
-						class="gap-2"
-						onclick={startAnalysis}
-						disabled={dataset.status !== "ready"}
-					>
-						<MessageSquare data-icon="inline-start" class="size-4" />
-						Start AI Analysis
-					</Button>
+				<!-- Quick Metadata Chips -->
+				<div class="flex flex-wrap items-center gap-4 text-xs font-mono text-muted-foreground">
+					<div>
+						<span class="text-foreground font-semibold">Rows:</span>
+						<span class="ml-1">{dataset.rows !== null && dataset.rows !== undefined ? dataset.rows.toLocaleString() : "—"}</span>
+					</div>
+					<span>•</span>
+					<div>
+						<span class="text-foreground font-semibold">Columns:</span>
+						<span class="ml-1">{dataset.columns !== null && dataset.columns !== undefined ? dataset.columns : "—"}</span>
+					</div>
+					<span>•</span>
+					<div>
+						<span class="text-foreground font-semibold">Size:</span>
+						<span class="ml-1">{formatBytes(dataset.file_size)}</span>
+					</div>
+					<span>•</span>
+					<div>
+						<span class="text-foreground font-semibold">Uploaded:</span>
+						<span class="ml-1">{formatDate(dataset.created_at)}</span>
+					</div>
 				</div>
-			</Card.Content>
-		</Card.Root>
+
+				{#if dataset.error_message}
+					<div class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
+						<strong>Error processing file:</strong> {dataset.error_message}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Primary Action Button -->
+			<div class="flex items-center gap-3 shrink-0">
+				<Button
+					variant="default"
+					size="lg"
+					class="gap-2"
+					onclick={startAnalysis}
+					disabled={dataset.status !== "ready"}
+				>
+					<MessageSquare data-icon="inline-start" class="size-4" />
+					Start AI Analysis
+				</Button>
+			</div>
+		</div>
 
 		<!-- Main Tabs Navigation -->
-		<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="w-full flex flex-col gap-4">
-			<Tabs.List class="grid grid-cols-2 md:grid-cols-5 w-full bg-muted/40 p-1 rounded-xl">
-				<Tabs.Trigger value="context" class="gap-2 text-xs">
-					<Info class="size-3.5" />
-					Context
-				</Tabs.Trigger>
-
-				<Tabs.Trigger value="preview" class="gap-2 text-xs">
-					<TableProperties class="size-3.5" />
-					Data Preview
-				</Tabs.Trigger>
-
-				<Tabs.Trigger value="schema" class="gap-2 text-xs">
-					<FileAnalytics class="size-3.5" />
-					Schema & Profiling
-					{#if columnsData.length > 0}
-						<Badge variant="secondary" class="ml-1 px-1.5 py-0 text-[10px]">{columnsData.length}</Badge>
-					{/if}
-				</Tabs.Trigger>
-
-				<Tabs.Trigger value="stats" class="gap-2 text-xs">
-					<BarChart3 class="size-3.5" />
-					Statistical Summary
-				</Tabs.Trigger>
-
-				<Tabs.Trigger value="semantics" class="gap-2 text-xs">
-					<Tag class="size-3.5" />
-					Semantic Mapping
-				</Tabs.Trigger>
-			</Tabs.List>
+		<div class="w-full flex flex-col gap-4">
+			<!-- Clean Border-Bottom Tab Navigation Bar -->
+			<div class="flex items-center gap-1 border-b border-border/60 overflow-x-auto w-full pb-0.5">
+				{#each [
+					{ id: 'context', label: 'Context', icon: Info },
+					{ id: 'preview', label: 'Data Preview', icon: TableProperties },
+					{ id: 'schema', label: 'Schema & Profiling', icon: FileAnalytics, badge: columnsData.length },
+					{ id: 'stats', label: 'Statistical Summary', icon: BarChart3 },
+					{ id: 'semantics', label: 'Semantic Mapping', icon: Tag }
+				] as tab}
+					<button
+						type="button"
+						class={cn(
+							"px-4 py-2.5 text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2",
+							activeTab === tab.id
+								? "border-primary text-foreground font-bold"
+								: "border-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
+						)}
+						onclick={() => (activeTab = tab.id)}
+					>
+						<tab.icon class="size-3.5" />
+						<span>{tab.label}</span>
+						{#if tab.badge}
+							<span class={cn(
+								"px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+								activeTab === tab.id ? "bg-primary/10 text-primary font-bold" : "bg-muted text-muted-foreground"
+							)}>
+								{tab.badge}
+							</span>
+						{/if}
+					</button>
+				{/each}
+			</div>
 
 			<!-- 1. Context & AI Instructions Tab -->
-			<Tabs.Content value="context" class="flex flex-col gap-4">
+			{#if activeTab === "context"}
 				<Card.Root class="border-border/60">
 					<Card.Header>
 						<Card.Title class="text-base flex items-center gap-2">
@@ -537,10 +605,10 @@
 						</div>
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
+			{/if}
 
 			<!-- 2. Data Preview Tab -->
-			<Tabs.Content value="preview" class="flex flex-col gap-4">
+			{#if activeTab === "preview"}
 				<Card.Root class="border-border/60">
 					<Card.Header class="pb-3 border-b border-border/40">
 						<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -594,10 +662,10 @@
 										{#each filteredPreviewRows as row, rIdx}
 											<Table.Row class="hover:bg-muted/30 transition-colors font-mono text-xs">
 												<Table.Cell class="text-center text-muted-foreground text-[11px] select-none bg-muted/20">
-													{rIdx + 1}
+													{getRowIndex(row, rIdx)}
 												</Table.Cell>
 												{#each previewData.columns as col}
-													{@const val = row[col]}
+													{@const val = getCellValue(row, col)}
 													{@const cellId = `${rIdx}-${col}`}
 													<Table.Cell class="whitespace-nowrap group relative">
 														{#if val === null || val === undefined}
@@ -641,10 +709,10 @@
 						{/if}
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
+			{/if}
 
 			<!-- 3. Schema & Profiling Tab -->
-			<Tabs.Content value="schema" class="flex flex-col gap-4">
+			{#if activeTab === "schema"}
 				<Card.Root class="border-border/60">
 					<Card.Header class="pb-3 border-b border-border/40">
 						<div class="flex items-center justify-between gap-4">
@@ -672,23 +740,38 @@
 										<Table.Head class="w-12">#</Table.Head>
 										<Table.Head>Column Name</Table.Head>
 										<Table.Head>Data Type</Table.Head>
+										<Table.Head>Null Count</Table.Head>
+										<Table.Head>Null %</Table.Head>
 										<Table.Head>Unique Count</Table.Head>
-										<Table.Head>Sample Values</Table.Head>
+										<Table.Head>Sample Value</Table.Head>
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
 									{#each filteredColumns as col, idx}
+										{@const totalRows = dataset.rows || 1}
+										{@const nullCount = col.null_count ?? 0}
+										{@const nullPct = Math.round((nullCount / totalRows) * 100)}
+										{@const sampleVal = col.sample || (col.sample_values && col.sample_values.length > 0 ? col.sample_values.join(", ") : "—")}
 										<Table.Row class="hover:bg-muted/30 transition-colors text-xs font-mono">
 											<Table.Cell class="text-muted-foreground text-[11px]">{idx + 1}</Table.Cell>
 											<Table.Cell class="font-bold text-foreground font-sans text-sm">{col.name}</Table.Cell>
 											<Table.Cell>
 												<Badge variant="outline" class="font-mono text-[10px] text-primary">
-													{col.data_type}
+													{col.data_type || col.dtype || "string"}
 												</Badge>
+											</Table.Cell>
+											<Table.Cell>{nullCount.toLocaleString()}</Table.Cell>
+											<Table.Cell>
+												<div class="flex items-center gap-2">
+													<span>{nullPct}%</span>
+													<div class="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+														<div class="h-full bg-amber-500" style="width: {nullPct}%"></div>
+													</div>
+												</div>
 											</Table.Cell>
 											<Table.Cell>{col.unique_count !== null && col.unique_count !== undefined ? col.unique_count.toLocaleString() : "—"}</Table.Cell>
 											<Table.Cell class="text-muted-foreground truncate max-w-md">
-												{col.sample_values && col.sample_values.length > 0 ? col.sample_values.join(", ") : "—"}
+												{sampleVal}
 											</Table.Cell>
 										</Table.Row>
 									{/each}
@@ -701,44 +784,57 @@
 						{/if}
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
+			{/if}
 
 			<!-- 4. Statistical Summary Tab -->
-			<Tabs.Content value="stats" class="flex flex-col gap-4">
+			{#if activeTab === "stats"}
 				<Card.Root class="border-border/60">
 					<Card.Header class="pb-3">
 						<div class="flex items-center justify-between">
 							<Card.Title class="text-base">Statistical Profiles & Distribution</Card.Title>
-							<Tabs.Root value={statsSubTab} onValueChange={(val) => (statsSubTab = val as any)}>
-								<Tabs.List class="text-xs">
-									<Tabs.Trigger value="numeric">Numeric Matrix</Tabs.Trigger>
-									<Tabs.Trigger value="missing">Missing Values</Tabs.Trigger>
-									<Tabs.Trigger value="categorical">Column Types</Tabs.Trigger>
-								</Tabs.List>
-							</Tabs.Root>
+							<div class="flex items-center gap-1 border-b border-border/60 pb-0.5">
+								{#each [
+									{ id: "numeric", label: "Numeric Matrix" },
+									{ id: "missing", label: "Missing Values" },
+									{ id: "categorical", label: "Column Types" }
+								] as subTab}
+									<button
+										type="button"
+										class={cn(
+											"px-3 py-1.5 text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap",
+											statsSubTab === subTab.id
+												? "border-primary text-foreground font-bold"
+												: "border-transparent text-muted-foreground hover:text-foreground"
+										)}
+										onclick={() => (statsSubTab = subTab.id as any)}
+									>
+										{subTab.label}
+									</button>
+								{/each}
+							</div>
 						</div>
 					</Card.Header>
 
 					<Card.Content>
 						{#if statsData}
 							{#if statsSubTab === "numeric"}
-								{#if statsData.numeric_columns && Object.keys(statsData.numeric_columns).length > 0}
+								{#if Object.keys(numericSummaryMap).length > 0}
 									<div class="overflow-x-auto">
 										<Table.Root>
 											<Table.Header>
 												<Table.Row class="bg-muted/40 text-xs uppercase font-bold">
 													<Table.Head>Metric / Column</Table.Head>
-													{#each Object.keys(statsData.numeric_columns) as col}
+													{#each Object.keys(numericSummaryMap) as col}
 														<Table.Head class="text-primary font-mono whitespace-nowrap">{col}</Table.Head>
 													{/each}
 												</Table.Row>
 											</Table.Header>
 											<Table.Body>
-												{#each ["count", "mean", "std", "min", "median", "max"] as metric}
+												{#each ["count", "mean", "std", "min", "25%", "50%", "75%", "max"] as metric}
 													<Table.Row class="hover:bg-muted/30 font-mono text-xs">
 														<Table.Cell class="font-bold font-sans capitalize bg-muted/20">{metric}</Table.Cell>
-														{#each Object.keys(statsData.numeric_columns) as col}
-															{@const val = (statsData.numeric_columns[col] as any)?.[metric]}
+														{#each Object.keys(numericSummaryMap) as col}
+															{@const val = (numericSummaryMap[col] as any)?.[metric]}
 															<Table.Cell class="whitespace-nowrap">{formatNum(val)}</Table.Cell>
 														{/each}
 													</Table.Row>
@@ -752,9 +848,9 @@
 									</div>
 								{/if}
 							{:else if statsSubTab === "missing"}
-								{#if statsData.missing_values && Object.keys(statsData.missing_values).length > 0}
+								{#if Object.keys(missingValuesMap).length > 0}
 									<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-										{#each Object.entries(statsData.missing_values) as [col, missingCount]}
+										{#each Object.entries(missingValuesMap) as [col, missingCount]}
 											{@const totalRows = dataset.rows || 1}
 											{@const pct = Math.round((missingCount / totalRows) * 100)}
 											<div class="p-3.5 rounded-lg border border-border/60 bg-muted/20 flex flex-col gap-2 font-mono text-xs">
@@ -780,13 +876,13 @@
 									</div>
 								{/if}
 							{:else if statsSubTab === "categorical"}
-								{#if statsData.categorical_columns && Object.keys(statsData.categorical_columns).length > 0}
+								{#if Object.keys(categoricalMap).length > 0}
 									<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-										{#each Object.entries(statsData.categorical_columns) as [col, info]}
+										{#each Object.entries(categoricalMap) as [col, info]}
 											<div class="p-3.5 rounded-lg border border-border/60 bg-muted/20 flex items-center justify-between text-xs">
 												<span class="font-semibold truncate max-w-[140px]">{col}</span>
 												<Badge variant="outline" class="font-mono text-[10px]">
-													{info.unique} unique values
+													{info?.unique ?? 0} unique values
 												</Badge>
 											</div>
 										{/each}
@@ -804,10 +900,10 @@
 						{/if}
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
+			{/if}
 
 			<!-- 5. Semantic Concept Mapping Tab -->
-			<Tabs.Content value="semantics" class="flex flex-col gap-4">
+			{#if activeTab === "semantics"}
 				<Card.Root class="border-border/60">
 					<Card.Header class="pb-3 border-b border-border/40">
 						<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -890,6 +986,8 @@
 								</Table.Header>
 								<Table.Body>
 									{#each filteredSemanticItems as item}
+										{@const conceptVal = item.description || item.mapped_concept || ""}
+										{@const catCode = item.category_code || item.category || "uncategorized"}
 										<Table.Row class="hover:bg-muted/30 transition-colors">
 											<Table.Cell class="font-bold text-sm font-sans">{item.column_name}</Table.Cell>
 											<Table.Cell>
@@ -903,18 +1001,18 @@
 											<Table.Cell>
 												<Select.Root
 													type="single"
-													value={item.category_code || "uncategorized"}
+													value={catCode}
 													onValueChange={(val) => (item.category_code = val === "uncategorized" ? null : val)}
 												>
 													<Select.Trigger class="w-48 h-8 text-xs">
 														<span class="truncate">
-															{categories.find((c) => c.code === item.category_code)?.name || item.category_code || "Uncategorized"}
+															{categories.find((c) => (c.code || c.name) === catCode)?.name || catCode}
 														</span>
 													</Select.Trigger>
 													<Select.Content>
 														<Select.Item value="uncategorized" label="Uncategorized">Uncategorized</Select.Item>
 														{#each categories as cat}
-															<Select.Item value={cat.code} label={cat.name}>{cat.name}</Select.Item>
+															<Select.Item value={cat.code || cat.name} label={cat.name}>{cat.name}</Select.Item>
 														{/each}
 													</Select.Content>
 												</Select.Root>
@@ -930,8 +1028,8 @@
 						{/if}
 					</Card.Content>
 				</Card.Root>
-			</Tabs.Content>
-		</Tabs.Root>
+			{/if}
+		</div>
 	{/if}
 </div>
 
