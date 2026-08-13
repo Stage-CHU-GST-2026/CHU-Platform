@@ -2,9 +2,12 @@ import { apiFetch, type ApiResult } from "./client";
 
 export interface ColumnInfo {
 	name: string;
-	data_type: string;
-	nullable: boolean;
+	dtype?: string;
+	data_type?: string;
+	nullable?: boolean;
+	null_count?: number;
 	unique_count?: number | null;
+	sample?: string | null;
 	sample_values?: any[];
 	semantic_category?: string | null;
 	description?: string | null;
@@ -13,11 +16,12 @@ export interface ColumnInfo {
 export interface DatasetSummary {
 	id: string;
 	original_filename: string;
-	filepath: string;
-	file_size: number;
+	filepath?: string;
+	file_size: number | null;
 	rows: number | null;
 	columns: number | null;
-	status: "pending" | "processing" | "ready" | "failed";
+	status: "pending" | "processing" | "ready" | "failed" | "uploading" | "error";
+	error_message?: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -25,16 +29,25 @@ export interface DatasetSummary {
 export interface DatasetDetail extends DatasetSummary {
 	error_message?: string | null;
 	description?: string | null;
+	notes?: string | null;
+	tags?: string[];
 	column_info?: ColumnInfo[] | null;
+	columns_info?: ColumnInfo[] | null;
 }
 
 export interface DatasetUploadResponse {
 	id: string;
 	original_filename: string;
-	filepath: string;
-	file_size: number;
+	filepath?: string;
+	file_size?: number;
 	status: string;
 	message: string;
+}
+
+export interface PreviewRow {
+	row_number?: number;
+	values?: Record<string, any>;
+	[key: string]: any;
 }
 
 export interface DatasetPreview {
@@ -42,51 +55,59 @@ export interface DatasetPreview {
 	total_rows: number;
 	total_columns: number;
 	columns: string[];
-	rows: Record<string, any>[];
+	rows: PreviewRow[];
 }
 
 export interface DatasetStatistics {
 	dataset_id: string;
-	total_rows: number;
-	total_columns: number;
-	numeric_columns: Record<string, {
-		count: number;
-		mean?: number;
-		std?: number;
-		min?: number;
-		max?: number;
-		median?: number;
-	}>;
-	categorical_columns: Record<string, {
-		count: number;
-		unique: number;
+	total_rows?: number;
+	total_columns?: number;
+	numeric_summary?: Record<string, Record<string, number>> | null;
+	numeric_columns?: Record<string, Record<string, number>> | null;
+	categorical_columns?: Record<string, {
+		count?: number;
+		unique?: number;
 		top?: any;
 		freq?: number;
-	}>;
-	missing_values: Record<string, number>;
+	}> | null;
+	column_types?: Record<string, string> | null;
+	missing_values?: Record<string, number> | null;
 }
 
 export interface SemanticMappingItem {
 	column_name: string;
 	category_code?: string | null;
 	category_name?: string | null;
+	category?: string | null;
+	mapped_concept?: string | null;
 	description?: string | null;
+	confidence?: number;
+	unit?: string | null;
+	is_custom?: boolean;
 }
 
 export interface SemanticMappingUpdate {
 	column_name: string;
 	category_code?: string | null;
+	category?: string | null;
+	mapped_concept?: string | null;
 	description?: string | null;
 }
 
 export interface DatasetContextResponse {
 	dataset_id: string;
 	original_filename: string;
-	context_string: string;
+	context_string?: string;
+	description?: string | null;
+	notes?: string | null;
+	tags?: string[];
 	custom_instructions?: string | null;
 }
 
 export interface DatasetContextUpdate {
+	description?: string | null;
+	notes?: string | null;
+	tags?: string[] | null;
 	custom_instructions?: string;
 }
 
