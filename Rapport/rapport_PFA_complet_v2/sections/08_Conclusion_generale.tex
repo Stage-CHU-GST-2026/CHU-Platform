@@ -1,0 +1,81 @@
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+Ce projet de fin d'année s'est inscrit dans la stratégie de transformation numérique du
+\textbf{Groupement Sanitaire Territorial Tanger--Tétouan--Al Hoceïma (GST-TTA)}, dont l'objectif
+est de valoriser un patrimoine de données hospitalières de plus en plus riche. Face à la
+complexité des outils d'analyse traditionnels, aux contraintes strictes de confidentialité
+des données de santé et à la fragmentation des processus d'exploitation, le projet visait à
+concevoir une plateforme intelligente permettant aux professionnels de santé et aux décideurs
+d'interroger leurs données en langage naturel, tout en garantissant la fiabilité, la
+transparence et la souveraineté des traitements.
+
+La démarche adoptée a combiné une analyse rigoureuse des besoins et de l'existant, une
+conception architecturale fondée sur une séparation claire entre le pilotage par l'IA et le
+calcul déterministe, puis une réalisation itérative en sprints jusqu'à la validation de la
+solution. La plateforme résultante intègre une interface conversationnelle internationalisée,
+un backend asynchrone et sécurisé, un orchestrateur agentique (LangGraph), un moteur d'analyse
+déterministe et une infrastructure de modèles de langage locaux garantissant qu'aucune donnée
+ne quitte l'infrastructure du groupement.
+
+L'\textbf{apport principal} du projet réside dans la dissociation entre l'orchestration pilotée
+par le modèle de langage et l'exécution déterministe des traitements : le modèle comprend,
+planifie et interprète, tandis que le moteur d'analyse réalise les calculs de manière
+vérifiable. Le mécanisme d'\textit{evidence} assure que chaque conclusion repose sur des
+résultats réellement calculés, répondant ainsi aux exigences de fiabilité, de transparence
+et de reproductibilité. L'infrastructure de modèles locaux concrétise quant à elle
+l'exigence de souveraineté, les API externes n'étant mobilisées qu'en phase de test.
+
+La validation de la plateforme a confirmé son bon fonctionnement et sa conformité aux besoins
+identifiés, tout en mettant en évidence des axes d'amélioration : mise en place de
+l'authentification et du contrôle d'accès, industrialisation des tests, politique de nettoyage
+des fichiers et extension des capacités analytiques.
+
+La réalisation de ce projet a également été confrontée à plusieurs difficultés techniques.
+L'une des principales a concerné l'intégration des modèles de langage dans un processus
+d'analyse fiable et reproductible, notamment en raison de la variabilité des réponses générées
+et de la nécessité de contrôler les différentes étapes d'exécution. La mise en place d'une
+séparation stricte entre l'orchestration pilotée par l'IA et les traitements déterministes a
+ainsi nécessité plusieurs ajustements architecturaux. L'utilisation de modèles de langage
+locaux a également soulevé des contraintes liées aux ressources matérielles disponibles,
+aux performances et au choix des modèles adaptés aux besoins d'analyse. Par ailleurs, la
+conception de l'orchestration agentique et la mise en place du mécanisme d'\textit{evidence},
+permettant de relier les conclusions aux résultats effectivement calculés, ont constitué
+des défis importants. Ces difficultés ont néanmoins permis d'affiner les choix techniques
+et de mieux prendre en compte les contraintes liées à l'utilisation de l'intelligence
+artificielle générative dans un contexte d'analyse de données de santé.
+
+Les perspectives sont néanmoins prometteuses, notamment la généralisation des modèles locaux,
+l'évaluation systématique de la qualité des réponses et l'intégration de nouvelles sources
+de données hospitalières.
+
+Au-delà du GST-TTA, cette réalisation démontre la faisabilité d'une
+\textbf{analyse conversationnelle de données de santé souveraine}, accessible et fondée sur
+des preuves. Elle ouvre la voie à une adoption plus large de l'intelligence des données au
+service du pilotage des établissements de santé et de la qualité des soins.
+
+\begin{resultbox}{Bilan du projet}
+
+Le projet a permis d'aboutir à une plateforme fonctionnelle d'analyse conversationnelle de données, conçue pour répondre aux contraintes spécifiques du contexte hospitalier. Au-delà de la mise en œuvre des différentes fonctionnalités, plusieurs contributions structurantes peuvent être retenues.
+
+\begin{itemize}
+    \item \textbf{Une interface conversationnelle} permettant aux utilisateurs d'interroger leurs données en langage naturel, sans nécessiter la maîtrise préalable de langages d'analyse ou de requêtes complexes ;
+
+    \item \textbf{Une architecture modulaire} séparant clairement les différentes responsabilités du système, notamment l'interface utilisateur, les services applicatifs, l'orchestration agentique, le moteur d'analyse et la gestion des modèles de langage ;
+
+    \item \textbf{Une séparation entre intelligence et calcul}, dans laquelle le modèle de langage assure principalement la compréhension, la planification et l'interprétation, tandis que les opérations analytiques sont exécutées par des composants déterministes et vérifiables ;
+
+    \item \textbf{Un mécanisme d'evidence} permettant d'associer les conclusions produites aux résultats effectivement calculés par le moteur d'analyse, renforçant ainsi la traçabilité, la transparence et la reproductibilité des analyses ;
+
+    \item \textbf{Une architecture agentique} reposant sur un orchestrateur permettant de décomposer les demandes complexes en différentes étapes et de coordonner les outils nécessaires à leur exécution ;
+
+    \item \textbf{Une infrastructure de modèles locaux} permettant de répondre aux exigences de souveraineté des données, les données sensibles pouvant rester au sein de l'infrastructure du GST-TTA ;
+
+    \item \textbf{Une conception extensible}, permettant d'envisager l'intégration progressive de nouveaux outils analytiques, de nouveaux modèles de langage et de nouvelles sources de données hospitalières.
+\end{itemize}
+
+Ainsi, la contribution du projet ne se limite pas à la réalisation d'une interface conversationnelle. Elle réside également dans la conception d'une architecture permettant de combiner les capacités d'interprétation des modèles de langage avec la fiabilité des traitements déterministes. Cette approche constitue un compromis entre facilité d'utilisation, contrôle des traitements, traçabilité des résultats et maîtrise des données.
+
+Les travaux réalisés constituent également une base pour des évolutions futures, notamment l'intégration de mécanismes d'authentification et de contrôle d'accès, l'enrichissement des capacités analytiques, l'évaluation systématique des réponses générées et la généralisation de l'utilisation des modèles locaux.
+
+\end{resultbox}

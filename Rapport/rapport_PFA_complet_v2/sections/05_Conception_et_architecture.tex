@@ -1,0 +1,830 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Conception et architecture de la solution}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+Ce chapitre a pour objectif de présenter la conception technique et l'architecture de la plateforme d'analyse conversationnelle de données. Il constitue le passage des besoins identifiés au chapitre précédent vers une solution technique concrète, en explicitant les choix d'ingénierie qui ont guidé la mise en œuvre.
+
+Le chapitre s'organise en six parties complémentaires. La conception générale de la solution est d'abord présentée, en incluant les choix technologiques, l'architecture globale et les principes de conception retenus. La modélisation du système est ensuite détaillée à travers une modélisation fonctionnelle et les principaux diagrammes UML. L'architecture logicielle est décrite par couches, en précisant les responsabilités de chaque composant et leurs relations. Une attention particulière est ensuite accordée au cœur du système : l'architecture agentique et le moteur d'analyse. Enfin, les mécanismes de communication et de gestion des données sont présentés avant de conclure sur les choix effectués.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conception générale de la solution}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cette section présente les choix de conception de haut niveau qui traduisent les besoins fonctionnels et non fonctionnels identifiés au chapitre précédent en décisions techniques. Elle s'articule autour des choix technologiques, de l'architecture globale et des principes de conception.
+
+\subsection{Choix technologiques}
+
+Le choix des technologies constitue une étape décisive de la conception.
+Il doit permettre de satisfaire simultanément les exigences fonctionnelles
+de la plateforme (interaction en langage naturel, analyse statistique,
+visualisation et streaming) et ses contraintes non fonctionnelles
+(sécurité, souveraineté des données, modularité, extensibilité et
+performance).
+
+Les principales technologies retenues sont présentées ci-dessous selon
+leur domaine d'utilisation. Cette organisation permet de mettre en
+évidence à la fois leur rôle individuel et leur complémentarité au sein
+de la plateforme.
+
+% ============================================================
+% 01 — Interface utilisateur
+% ============================================================
+
+\vspace{0.4cm}
+
+\techsection{01}{Interface utilisateur}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{svelte}{SvelteKit 5 / Svelte 5}
+\hspace{0.8cm}
+\tech{tailwindcss}{TailwindCSS}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+Interface réactive et fluide, adaptée à l'affichage en temps réel
+du streaming. L'approche par composants permet de conserver une
+architecture modulaire et réutilisable.
+\end{tabularx}
+
+\techseparator
+
+% ============================================================
+% 02 — API et communication
+% ============================================================
+
+\techsection{02}{API et communication}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{fastapi}{FastAPI}
+\hspace{0.8cm}
+{\bfseries\color{DarkSlate}REST}
+\hspace{0.8cm}
+{\bfseries\color{DarkSlate}SSE}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+FastAPI fournit une API asynchrone avec validation des données
+via Pydantic et génération automatique de la documentation OpenAPI.
+REST assure les échanges classiques avec le frontend, tandis que
+SSE permet la diffusion des étapes de traitement, des tokens et
+des artefacts en temps réel.
+\end{tabularx}
+
+\techseparator
+% ============================================================
+% 03 — Intelligence artificielle
+% ============================================================
+
+\techsection{03}{Intelligence artificielle}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{langgraph}{LangGraph / LangChain}
+\hspace{0.8cm}
+{\bfseries\color{DarkSlate}LLM compatible API OpenAI}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+LangGraph permet de modéliser le processus d'analyse sous forme de
+graphe d'états, facilitant l'organisation des différentes étapes,
+la persistance de l'état, la gestion des erreurs et la traçabilité
+du traitement. L'architecture reste indépendante du fournisseur de
+modèles afin de privilégier l'utilisation de modèles locaux, en
+cohérence avec les exigences de confidentialité et de souveraineté
+des données. La mise en service des modèles locaux s'appuie sur une
+passerelle d'inférence auto-hébergée (projet \texttt{llms-gateway}) qui
+sert des modèles GGUF via \texttt{llama.cpp} et expose une interface
+compatible OpenAI. Des modèles accessibles via une API compatible OpenAI
+ont été utilisés ponctuellement durant les phases de développement
+et de test afin d'accélérer les expérimentations.
+\end{tabularx}
+
+\techseparator
+
+% ============================================================
+% 04 — Analyse des données
+% ============================================================
+
+\techsection{04}{Analyse des données}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{pandas}{pandas}
+\hspace{0.8cm}
+\tech{numpy}{NumPy}
+\hspace{0.8cm}
+\tech{duckdb}{DuckDB}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+Ces bibliothèques assurent les opérations de manipulation, de
+calcul statistique et d'interrogation des données. DuckDB permet
+notamment l'exécution de requêtes SQL directement sur les fichiers,
+favorisant la reproductibilité et la vérifiabilité des résultats.
+\end{tabularx}
+
+\techseparator
+
+% ============================================================
+% 05 — Persistance des données
+% ============================================================
+
+\techsection{05}{Persistance des données}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{postgresql}{PostgreSQL}
+\hspace{0.8cm}
+\tech{sqlalchemy}{SQLAlchemy 2.0}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+PostgreSQL assure le stockage fiable des conversations, messages
+et artefacts. SQLAlchemy 2.0 fournit une couche d'accès aux données
+modulaire et compatible avec le fonctionnement asynchrone du backend.
+\end{tabularx}
+
+\techseparator
+
+% ============================================================
+% 06 — Visualisation
+% ============================================================
+
+\techsection{06}{Visualisation}
+
+\vspace{0.15cm}
+
+\noindent
+\tech{plotly}{Plotly}
+\hspace{0.8cm}
+\tech{matplotlib}{Matplotlib}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+Plotly permet de produire des graphiques interactifs sous forme
+de spécifications JSON, tandis que Matplotlib répond aux besoins
+de visualisation statique et de génération de figures contrôlées.
+\end{tabularx}
+
+\techseparator
+
+% ============================================================
+% 07 — Déploiement et infrastructure
+% ============================================================
+
+\techsection{07}{Déploiement et infrastructure}
+\vspace{0.15cm}
+
+\noindent
+\tech{docker}{Docker}
+\hspace{0.8cm}
+\tech{nginx}{Nginx}
+\hspace{0.8cm}
+{\bfseries\color{DarkSlate}uv}
+
+\vspace{0.15cm}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X@{}}
+\textcolor{MidGray}{\textbf{Justification}} &
+Docker assure la conteneurisation des services, Nginx joue le rôle
+de reverse proxy et uv permet une gestion rapide et reproductible
+des dépendances Python.
+\end{tabularx}
+
+\vspace{0.5cm}
+
+% ============================================================
+% Conclusion
+% ============================================================
+
+Les choix technologiques présentent ainsi plusieurs cohérences notables.
+L'utilisation de Python pour le backend, l'orchestration et le moteur
+d'analyse évite les ruptures de contexte entre les différentes couches
+computationnelles, tandis que TypeScript, utilisé par SvelteKit, garantit
+une interface typée et maintenable.
+
+Par ailleurs, les principales briques logicielles retenues sont open
+source et peuvent être déployées sur une infrastructure locale. Cette
+caractéristique répond directement aux exigences de souveraineté des
+données identifiées précédemment, tout en conservant une architecture
+modulaire et extensible.
+\subsection{Architecture globale}
+
+L'architecture globale de la plateforme s'organise autour d'un flux unique qui relie l'utilisateur aux données et aux résultats. Une requête formulée en langage naturel traverse successivement l'interface conversationnelle, l'API backend et l'orchestration pilotée par l'IA, avant d'être exécutée par le moteur d'analyse déterministe. Les résultats produits sont ensuite interprétés par le modèle de langage et restitués à l'utilisateur en temps réel.
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.95\textwidth]{AI Data Analysis Pipeline Architecture.png}
+\caption{Architecture globale : de la requête en langage naturel à la restitution des résultats}
+\label{fig:arch-globale}
+\end{figure}
+Comme l'illustre la figure~\ref{fig:arch-globale}, l'architecture du
+système repose sur une séparation claire entre les responsabilités
+liées à l'intelligence artificielle et celles liées au traitement
+déterministe des données.
+
+\begin{itemize}
+  \item \textbf{Zone IA et orchestration} : elle regroupe l'interface
+  conversationnelle, l'API backend et l'orchestration assurée par
+  LangGraph. Cette zone prend en charge la compréhension de la requête,
+  la planification des étapes d'analyse, l'appel aux outils appropriés
+  ainsi que l'interprétation et la restitution des résultats ;
+
+  \item \textbf{Zone de traitement déterministe} : elle regroupe les
+  outils d'analyse tels que pandas, DuckDB et les différents modules
+  statistiques et de visualisation. Cette zone réalise les calculs
+  effectifs sur les données selon des opérations déterministes,
+  indépendamment du modèle de langage ;
+
+  \item \textbf{Zone données et stockage} : elle assure l'accès aux
+  fichiers de données, aux métadonnées ainsi qu'aux différents espaces
+  de stockage nécessaires au fonctionnement de la plateforme. Elle
+  constitue la source sur laquelle s'appuient les traitements
+  analytiques et le stockage des informations produites.
+\end{itemize}
+
+Cette séparation constitue l'un des choix architecturaux les plus
+structurants du projet. Le modèle de langage n'effectue pas directement
+les calculs statistiques ou les opérations analytiques critiques :
+il intervient principalement pour comprendre la demande, planifier
+le traitement et interpréter les résultats produits par les outils
+déterministes. Les calculs sont ainsi réalisés par des composants
+spécialisés, ce qui permet de garantir leur reproductibilité et leur
+vérifiabilité.
+
+\subsection{Principes de conception}
+
+La conception de la plateforme repose sur un ensemble de principes qui ont guidé l'ensemble des choix d'ingénierie. Ces principes, présentés dans le tableau~\ref{tab:principes}, découlent directement des besoins non fonctionnels identifiés au chapitre précédent.
+
+\begin{table}[H]
+\centering
+\caption{Principes de conception et mise en œuvre}
+\label{tab:principes}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.6cm}Y}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Principe & \color{white}Mise en œuvre \\
+\midrule
+Modularité & Décomposition du système en paquets indépendants (interface, API, agents, moteur d'analyse, outils) dont chacun expose une responsabilité unique. \\
+\midrule
+Séparation des responsabilités & Organisation en couches distinctes où chaque composant assure une fonction précise, sans chevauchement des responsabilités. \\
+\midrule
+Séparation IA / calcul déterministe & L'IA assure la compréhension, la planification et l'interprétation ; le moteur exécute les calculs de manière déterministe et traçable. \\
+\midrule
+Extensibilité & Registre d'outils permettant d'ajouter de nouvelles capacités d'analyse sans modifier l'orchestration ; intégration facilitée de nouveaux modèles de langage. \\
+\midrule
+Sécurité et souveraineté & Déploiement local, données hébergées exclusivement sur l'infrastructure du GST-TTA, aucune transmission vers des services externes. \\
+\midrule
+Traçabilité et reproductibilité & Journalisation des étapes, des outils appelés et des résultats ; persistance des artefacts pour l'audit et la reproductibilité. \\
+\midrule
+Temps réel & Diffusion progressive des résultats (plan, étapes, tokens, artefacts) via le streaming pour une expérience interactive. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{infobox}{Synthèse de la conception générale}
+La conception générale de la plateforme repose sur une architecture modulaire et sécurisée, articulée autour de la séparation entre le pilotage par l'IA et le calcul déterministe. Les choix technologiques, présentés dans la section consacrée aux choix technologiques, répondent aux besoins fonctionnels et non fonctionnels identifiés au chapitre précédent tout en garantissant la souveraineté des données de santé.
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Modélisation du système}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+La modélisation du système permet de traduire les besoins identifiés au chapitre précédent en une représentation structurée des fonctionnalités, des interactions et des données de la plateforme. Elle s'articule autour d'une modélisation fonctionnelle et d'une modélisation UML.
+
+\subsection{Modélisation fonctionnelle}
+
+La modélisation fonctionnelle consiste à établir la correspondance entre les besoins fonctionnels exprimés au chapitre précédent et les fonctionnalités concrètes du système. Le tableau~\ref{tab:besoins-fonctions} présente cette traduction en associant chaque besoin à la fonctionnalité qui le satisfait et au composant responsable.
+
+\begin{table}[H]
+\centering
+\caption{Traduction des besoins fonctionnels en fonctionnalités du système}
+\label{tab:besoins-fonctions}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4.2cm}Y>{\raggedright\arraybackslash}p{4.4cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Besoin (chapitre précédent) & \color{white}Fonctionnalité & \color{white}Composant responsable \\
+\midrule
+Importation multi-formats & Upload, profilage et détection automatique des types & API datasets + moteur d'analyse \\
+\midrule
+Interaction en langage naturel & Interface conversationnelle avec streaming & Frontend + API chat \\
+\midrule
+Planification automatique & Décomposition d'une requête en étapes ordonnées & Planificateur (LLM) \\
+\midrule
+Analyse statistique & Calculs descriptifs, corrélations, agrégations & Moteur d'analyse (outils) \\
+\midrule
+Visualisation automatique & Génération de graphiques adaptés aux résultats & Outils de visualisation \\
+\midrule
+Génération de rapports & Synthèse des résultats et des interprétations & Synthétiseur (LLM) \\
+\midrule
+Streaming temps réel & Diffusion des étapes et des résultats & API chat + Frontend \\
+\midrule
+Persistance & Sauvegarde des conversations et des artefacts & Base de données PostgreSQL \\
+\midrule
+Traçabilité & Journalisation des étapes, outils et résultats & État d'exécution + événements \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+D'un point de vue fonctionnel, la plateforme se décompose en quatre grands ensembles : un \textbf{front-office} assurant l'interaction avec l'utilisateur (upload des données, interface conversationnelle, affichage des résultats), une \textbf{orchestration} pilotant le déroulement des analyses (planification, exécution, synthèse), un \textbf{moteur d'analyse} réalisant les traitements computationnels et un \textbf{service de persistance} garantissant la conservation des conversations et des artefacts produits.
+
+\subsection{Modélisation UML}
+
+La modélisation UML permet de représenter de manière normalisée les différents aspects du système. Le diagramme des cas d'utilisation présenté au chapitre précédent (figure~\ref{fig:cas_utilisation}) définit les interactions entre l'utilisateur et la plateforme. Afin de compléter cette vision, trois diagrammes complémentaires sont présentés : le diagramme de séquence, qui décrit le déroulement d'une requête, le diagramme d'activité, qui modélise le processus d'analyse, et le diagramme de classes, qui représente le modèle de données.
+
+\subsubsection{Diagramme de séquence}
+
+Le diagramme de séquence de la figure~\ref{fig:seq-conversation} illustre le déroulement temporel d'une requête conversationnelle, depuis la formulation de la question jusqu'à l'affichage de la réponse. Il traduit directement les besoins d'interaction en langage naturel et de streaming temps réel.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    actor/.style={rectangle, draw, thick, rounded corners=2pt, fill=PrimaryRed!10, align=center, minimum height=0.7cm, font=\scriptsize},
+    lif/.style={dashed, color=MidGray},
+    msg/.style={->, thick, color=DarkSlate, -{Stealth[length=2mm]}},
+    ret/.style={->, dashed, thick, color=MidGray, -{Stealth[length=2mm]}},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt},
+]
+\node[actor] (u) {Utilisateur};
+\node[actor, right=0.6cm of u] (ui) {Frontend};
+\node[actor, right=0.6cm of ui] (api) {API};
+\node[actor, right=0.6cm of api] (or) {Orchestrateur};
+\node[actor, right=0.6cm of or] (llm) {LLM};
+\node[actor, right=0.6cm of llm] (mot) {Moteur d'analyse};
+\node[actor, right=0.6cm of mot] (db) {Données};
+
+% lifelines
+\foreach \n in {u,ui,api,or,llm,mot,db}{
+  \draw[lif] (\n.south) -- ++(0,-7.6);
+}
+
+% messages
+\draw[msg] ([yshift=-0.55cm]u.south) -- node[above, lbl] {1. Question en langage naturel} ([yshift=-0.55cm]ui.south);
+\draw[msg] ([yshift=-1.15cm]ui.south) -- node[above, lbl] {2. POST /api/chat/stream} ([yshift=-1.15cm]api.south);
+\draw[msg] ([yshift=-1.75cm]api.south) -- node[above, lbl] {3. Exécution de la requête} ([yshift=-1.75cm]or.south);
+\draw[msg] ([yshift=-2.35cm]or.south) -- node[above, lbl] {4. Planification (schéma)} ([yshift=-2.35cm]llm.south);
+\draw[msg] ([yshift=-2.95cm]or.south) -- node[above, lbl] {5. Appel d'outil (SQL, stats)} ([yshift=-2.95cm]mot.south);
+\draw[msg] ([yshift=-3.55cm]mot.south) -- node[above, lbl] {6. Requête sur les données} ([yshift=-3.55cm]db.south);
+\draw[ret] ([yshift=-4.15cm]db.south) -- node[above, lbl] {7. Résultat} ([yshift=-4.15cm]mot.south);
+\draw[ret] ([yshift=-4.75cm]mot.south) -- node[above, lbl] {8. Résultat de l'outil} ([yshift=-4.75cm]or.south);
+\draw[msg] ([yshift=-5.35cm]or.south) -- node[above, lbl] {9. Interprétation (résultats)} ([yshift=-5.35cm]llm.south);
+\draw[msg] ([yshift=-5.95cm]or.south) -- node[above, lbl] {10. Événements SSE} ([yshift=-5.95cm]api.south);
+\draw[msg] ([yshift=-6.55cm]api.south) -- node[above, lbl] {11. Streaming (tokens, artefacts)} ([yshift=-6.55cm]ui.south);
+\draw[msg] ([yshift=-7.15cm]ui.south) -- node[above, lbl] {12. Affichage de la réponse} ([yshift=-7.15cm]u.south);
+\end{tikzpicture}
+\caption{Diagramme de séquence du traitement d'une requête conversationnelle}
+\label{fig:seq-conversation}
+\end{figure}
+
+Le déroulement met en évidence le rôle central de l'orchestrateur, qui coordonne les appels au modèle de langage pour la planification et l'interprétation, ainsi que les appels au moteur d'analyse pour l'exécution déterministe. Les étapes 5 à 8 sont répétées pour chaque étape du plan d'exécution. Chaque appel d'outil produit un résultat transmis à l'orchestrateur, puis interprété. L'ensemble des événements (étapes, appels d'outils, artefacts, tokens) est diffusé en temps réel au frontend via le streaming, conformément au besoin de réactivité identifié au chapitre précédent.
+
+\subsubsection{Diagramme d'activité}
+
+Le diagramme d'activité de la figure~\ref{fig:activite-analyse} modélise le processus d'analyse complet, depuis la réception de la requête jusqu'à la génération de la réponse. Il traduit les besoins de planification automatique, d'exécution rigoureuse et de gestion des erreurs.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.55cm,
+    startstop/.style={rectangle, rounded corners=3pt, draw, thick, fill=LightGray, minimum width=3.2cm, minimum height=0.6cm, align=center, font=\small},
+    proc/.style={rectangle, draw, thick, fill=PrimaryRed!12, minimum width=5.4cm, minimum height=0.75cm, align=center, font=\small},
+    decis/.style={diamond, draw, thick, fill=SoftRed!40, align=center, font=\small, aspect=1.6},
+    arr/.style={->, thick, color=PrimaryRed, -{Stealth[length=2.5mm]}},
+    lbl/.style={font=\scriptsize\itshape, color=MidGray},
+]
+\node[startstop] (start) {Début};
+\node[proc, below=of start] (req) {Réception de la requête en langage naturel};
+\node[decis, below=of req] (dec) {Analyse\\nécessaire ?};
+\node[proc, below=of dec] (comp) {Compréhension de l'intention et du schéma};
+\node[proc, below=of comp] (plan) {Planification : décomposition en étapes};
+\node[proc, below=of plan] (exec) {Exécution déterministe via les outils};
+\node[decis, below=of exec] (err) {Étape\\réussie ?};
+\node[proc, below=of err] (coll) {Collecte des résultats et des artefacts};
+\node[proc, below=of coll] (interp) {Interprétation et synthèse (LLM)};
+\node[proc, below=of interp] (resp) {Génération de la réponse (texte + graphiques)};
+\node[startstop, below=of resp] (end) {Fin};
+
+\draw[arr] (start) -- (req);
+\draw[arr] (req) -- (dec);
+\draw[arr] (dec) -- node[right, lbl] {oui} (comp);
+\draw[arr] (comp) -- (plan);
+\draw[arr] (plan) -- (exec);
+\draw[arr] (exec) -- (err);
+\draw[arr] (err) -- node[right, lbl] {oui} (coll);
+\draw[arr] (coll) -- (interp);
+\draw[arr] (interp) -- (resp);
+\draw[arr] (resp) -- (end);
+
+% branche réponse directe
+\node[proc, right=2.2cm of dec, minimum width=3.2cm] (dr) {Réponse directe};
+\node[startstop, below=of dr] (end2) {Fin};
+\draw[arr] (dec) -- node[above, lbl] {non} (dr);
+\draw[arr] (dr) -- (end2);
+
+% boucle de reprise en cas d'échec
+\draw[arr] (err.west) -- ++(-1.8,0) coordinate (p2) |- (exec.west);
+\node[lbl, left=0.05cm of p2, align=right] {reprise et\\correction};
+\node[lbl] at ([xshift=-0.4cm, yshift=-0.3cm]err.west) {non};
+\end{tikzpicture}
+\caption{Diagramme d'activité du processus d'analyse}
+\label{fig:activite-analyse}
+\end{figure}
+
+Le processus distingue le cas où la requête appelle une analyse (chemin principal) de celui où une réponse directe suffit. Pour les requêtes analytiques, le système procède à la compréhension de l'intention, à la planification en étapes ordonnées, puis à l'exécution de chaque étape par les outils d'analyse. En cas d'échec d'une étape, un mécanisme de reprise et de correction est déclenché, conformément au besoin de robustesse et de traçabilité. Les résultats collectés sont ensuite interprétés et synthétisés par le modèle de langage, puis restitués à l'utilisateur.
+
+\subsubsection{Diagramme de classes}
+
+Le diagramme de classes de la figure~\ref{fig:classes-domaine} représente le modèle de données de la plateforme, qui traduit les besoins de persistance des conversations et des artefacts.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    class/.style={rectangle, draw, thick, rounded corners=2pt, align=center, font=\scriptsize, inner sep=4pt, fill=PrimaryRed!6, text width=3.2cm},
+    rel/.style={thick, color=DarkSlate},
+    m/.style={font=\tiny, fill=white, inner sep=1pt},
+]
+\node[class] (cat) {%
+  \textbf{\color{DarkSlate}SemanticCategory}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- nom : str\\
+  -- description : str\\
+  -- parent\_id : UUID?};
+
+\node[class, right=1.1cm of cat] (ds) {%
+  \textbf{\color{DarkSlate}Dataset}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- nom : str\\
+  -- fichier : path\\
+  -- nb\_lignes : int\\
+  -- nb\_colonnes : int};
+
+\node[class, right=1.1cm of ds] (col) {%
+  \textbf{\color{DarkSlate}DatasetColumn}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- nom : str\\
+  -- type : str\\
+  -- valeurs\_manquantes : int};
+
+\node[class, below=1.3cm of ds] (conv) {%
+  \textbf{\color{DarkSlate}Conversation}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- titre : str\\
+  -- date\_creation : datetime};
+
+\node[class, below left=1.3cm and 2.0cm of conv] (msg) {%
+  \textbf{\color{DarkSlate}Message}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- role : str\\
+  -- contenu : text\\
+  -- appels\_outils : json};
+
+\node[class, below right=1.3cm and 2.0cm of conv] (art) {%
+  \textbf{\color{DarkSlate}Artifact}\\[3pt]
+  \textcolor{MidGray!60}{\rule{2.8cm}{0.4pt}}\\[3pt]
+  -- id : UUID\\
+  -- titre : str\\
+  -- type : str\\
+  -- chemin : path};
+
+% relations
+\draw[rel] (cat.east) -- node[m, above, pos=0.25] {0..*} node[m, above, pos=0.75] {0..1} (ds.west);
+\draw[rel] (ds.east) -- node[m, above, pos=0.25] {1} node[m, above, pos=0.75] {0..*} (col.west);
+\draw[rel] (ds.south) -- node[m, left, pos=0.3] {1} node[m, left, pos=0.7] {0..*} (conv.north);
+\draw[rel] (conv.south) -- node[m, left, pos=0.3] {1} node[m, left, pos=0.7] {0..*} (msg.north);
+\draw[rel] (conv.south) -- node[m, right, pos=0.3] {1} node[m, right, pos=0.7] {0..*} (art.north);
+\draw[rel] (msg.east) -- node[m, above, pos=0.3] {1} node[m, above, pos=0.7] {0..*} (art.west);
+\end{tikzpicture}
+\caption{Diagramme de classes simplifié du modèle de données}
+\label{fig:classes-domaine}
+\end{figure}
+
+Le modèle distingue les entités relatives au catalogue des données (\texttt{SemanticCategory}, \texttt{Dataset}, \texttt{DatasetColumn}) de celles relatives aux échanges conversationnels (\texttt{Conversation}, \texttt{Message}, \texttt{Artifact}). Un jeu de données est associé à une catégorie sémantique et décrit par ses colonnes profilées. Une conversation est rattachée à un jeu de données et regroupe les messages échangés ; les artefacts produits (graphiques, exports, rapports) sont rattachés à la conversation et au message qui les a générés.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Architecture logicielle}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+L'architecture logicielle de la plateforme est organisée en couches, chacune assurant une responsabilité précise. Cette organisation permet de maintenir une séparation claire des préoccupations et de faire évoluer chaque composant indépendamment.
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.95\textwidth]{Architecture logicielle en couches et relations entre composants.png}
+\caption{Architecture logicielle en couches et relations entre composants}
+\label{fig:arch-couches}
+\end{figure}
+
+La figure~\ref{fig:arch-couches} présente l'architecture en couches et les relations entre les principaux composants. Chaque couche est décrite ci-dessous.
+
+\subsection{Couche présentation}
+
+La couche présentation correspond à l'interface utilisateur développée avec SvelteKit. Elle est responsable de l'affichage des données, de la gestion de l'interaction conversationnelle et de la restitution temps réel des événements diffusés par le backend. Elle intègre également le rendu interactif des graphiques produits par le moteur d'analyse, à partir des spécifications Plotly reçues au cours du streaming.
+
+\subsection{Couche API et services}
+
+La couche API, développée avec FastAPI, constitue le point d'entrée unique du backend. Elle expose des interfaces REST pour la gestion des jeux de données, des conversations, des artefacts et des catégories sémantiques, ainsi qu'un point de terminaison de streaming pour le traitement des requêtes conversationnelles. La logique métier est isolée dans une couche de services, ce qui permet de maintenir des routeurs légers et dédiés aux préoccupations HTTP.
+
+\subsection{Couche orchestration}
+
+La couche d'orchestration, basée sur LangGraph, constitue le cerveau du système. Elle coordonne le déroulement des analyses en pilotant les appels au modèle de langage et aux outils. Cette couche est décrite en détail dans la section consacrée à l'architecture agentique.
+
+\subsection{Couche moteur d'analyse}
+
+La couche moteur d'analyse regroupe les opérations computationnelles déterministes : chargement et profilage des données, calculs statistiques, agrégations, requêtes SQL et génération de visualisations. Elle est volontairement indépendante du modèle de langage, ce qui garantit la fiabilité et la reproductibilité des traitements.
+
+\subsection{Couche persistance}
+
+La couche persistance assure le stockage des données relationnelles (catalogue des jeux de données, conversations, messages, artefacts) dans PostgreSQL, ainsi que des fichiers bruts et des artefacts produits sur le système de fichiers. Le moteur DuckDB est utilisé pour exécuter des requêtes analytiques directement sur les fichiers, sans recourir à la base relationnelle pour les charges de calcul lourdes.
+
+\subsection{Couche modèles IA}
+
+Enfin, la couche des modèles de langage fournit les capacités de compréhension, de planification et de synthèse. Elle est consommée exclusivement par la couche d'orchestration, qui l'invoque via une interface de programmation standardisée. Cette isolation permet de remplacer ou de déployer localement le modèle sans impact sur le reste du système.
+
+\begin{resultbox}{Architecture en couches}
+L'architecture logicielle repose sur une séparation stricte entre les couches de présentation, d'API, d'orchestration, de moteur d'analyse, de persistance et de modèles IA. Cette organisation garantit la modularité, la maintenabilité et l'évolutivité de la plateforme, tout en respectant le principe fondamental de séparation entre le pilotage par l'IA et le calcul déterministe.
+\end{resultbox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Architecture agentique et moteur d'analyse}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cette section présente le cœur du système : l'architecture agentique qui orchestre le processus d'analyse, le cadre d'exécution (\textit{harness}) qui encadre les appels au modèle de langage ainsi que le moteur d'analyse qui réalise les traitements. Elle montre comment une instruction formulée en langage naturel aboutit à une analyse réelle et vérifiable, en s'appuyant sur une séparation claire entre les responsabilités de l'IA et celles du calcul déterministe.
+
+\subsection{Architecture des agents}
+
+L'architecture agentique repose sur un agent spécialisé, l'\textbf{agent analyste de données} (\textit{DataAnalystAgent}), construit avec LangGraph. Cet agent n'effectue pas lui-même les calculs : il constitue le \textbf{pilote} du processus, chargé de comprendre la requête, de décider des opérations à réaliser et d'interpréter les résultats. L'exécution effective des traitements est déléguée à un ensemble d'outils spécialisés.
+
+L'architecture des agents s'articule autour de trois familles de composants :
+
+\begin{itemize}
+  \item \textbf{L'orchestrateur} : composant central qui organise le déroulement d'une requête en coordonnant les appels au modèle de langage et aux outils. Il garantit l'enchaînement des phases et la cohérence de l'ensemble du traitement ;
+  \item \textbf{Les nœuds spécialisés} : le planificateur, l'exécuteur, le synthétiseur et le module de récupération d'erreur, qui incarnent chacune des étapes du processus d'analyse ;
+  \item \textbf{Le registre d'outils} : catalogue centralisé des capacités analytiques accessibles à l'agent (inspection et profilage, statistiques et agrégation, nettoyage, requêtes SQL, visualisation). Chaque outil expose une interface normalisée et exécute un traitement déterministe sur les données.
+\end{itemize}
+
+L'\textbf{état de l'agent} (\textit{working memory}) constitue la mémoire de travail de l'exécution en cours. Il conserve l'ensemble des informations nécessaires au traitement : la requête originale, le jeu de données associé, le plan d'exécution, l'étape courante, les résultats intermédiaires, les artefacts générés et les éventuelles erreurs. Cet état est propagé d'un nœud à l'autre par le graphe d'orchestration et persisté via un mécanisme de \textit{checkpointer}, ce qui permet de maintenir la continuité entre les tours de la conversation et de reprendre une exécution en cas de besoin.
+
+Le registre d'outils répond au besoin d'\textbf{extensibilité} identifié au chapitre précédent : l'ajout d'une nouvelle capacité d'analyse se limite à l'enregistrement d'un nouvel outil, sans modifier la logique de l'orchestration. Cette organisation permet également de maîtriser précisément les opérations que l'agent est autorisé à déclencher, renforçant ainsi la sécurité et la traçabilité de la plateforme.
+
+\subsection{Orchestration avec LangGraph}
+
+L'orchestration du processus d'analyse est modélisée sous la forme d'un \textbf{graphe d'états} construit avec LangGraph. Ce choix permet de représenter explicitement le flux de contrôle, de persister l'état entre les étapes et de gérer les cycles et les conditions de manière robuste. Le graphe d'orchestration, illustré par la figure~\ref{fig:graphe-langgraph}, organise le traitement d'une requête selon trois phases principales décrites ci-dessous.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.7cm,
+    proc/.style={rectangle, draw, thick, rounded corners=2pt, align=center, font=\small, minimum width=3.2cm, minimum height=0.75cm},
+    arr/.style={->, thick, color=PrimaryRed, -{Stealth[length=2.5mm]}},
+    lbl/.style={font=\scriptsize\itshape, color=MidGray},
+]
+\node[circle, draw, thick, fill=LightGray, inner sep=2pt] (start) {Début};
+\node[proc, fill=PrimaryRed!12, below=of start] (p) {Planificateur};
+\node[proc, fill=PrimaryRed!18, below=of p] (e) {Exécuteur};
+\node[proc, fill=AccentBlue!12, left=2.2cm of e, minimum width=3cm] (r) {Récupération\\d'erreur};
+\node[proc, fill=PrimaryRed!25, right=2.2cm of e] (s) {Synthétiseur};
+\node[circle, draw, thick, fill=LightGray, right=2.2cm of s, inner sep=2pt] (end) {Fin};
+
+\draw[arr] (start) -- (p);
+\draw[arr] (p) -- node[right, lbl] {plan d'étapes} (e);
+\draw[arr] (e) -- node[above, lbl] {plan terminé} (s);
+\draw[arr] (s) -- (end);
+\draw[arr] (e.west) -- node[above, lbl] {erreur} (r.east);
+\draw[arr] ([yshift=-0.35cm]r.east) -- node[below, lbl] {reprise} ([yshift=-0.35cm]e.west);
+\draw[arr] (e.south) .. controls ([yshift=-0.9cm]e.south) .. (e.south) node[midway, below, lbl] {étape suivante};
+\end{tikzpicture}
+\caption{Graphe d'états de l'orchestrateur (planification, exécution, synthèse)}
+\label{fig:graphe-langgraph}
+\end{figure}
+
+\subsubsection{Phase de planification}
+
+La phase de planification a pour objectif de transformer la requête de l'utilisateur en un plan d'exécution structuré. Le modèle de langage analyse l'intention de l'utilisateur, le schéma du jeu de données concerné, et décompose la requête en une séquence d'étapes ordonnées. Chaque étape spécifie l'outil à utiliser et les paramètres de l'appel. Cette phase traduit le besoin de planification automatique identifié au chapitre précédent.
+
+\subsubsection{Phase d'exécution}
+
+La phase d'exécution traite chaque étape du plan en invoquant l'outil approprié au travers du registre d'outils. Le moteur d'analyse exécute alors le traitement de manière déterministe — requête SQL sur les données, calcul statistique, génération d'un graphique — et retourne le résultat à l'orchestrateur. Un mécanisme de tolérance aux pannes permet de retenter une étape en cas d'erreur, avec une correction automatique guidée par le modèle de langage, avant de poursuivre ou d'abandonner la séquence. Cette phase traduit les besoins d'analyse rigoureuse, de robustesse et de traçabilité.
+
+\subsubsection{Phase de synthèse}
+
+La phase de synthèse a pour objectif de transformer les résultats obtenus en une réponse compréhensible pour l'utilisateur. Le modèle de langage interprète les résultats, produit une synthèse rédigée en langage naturel et, le cas échéant, ordonne la génération de visualisations. Les étapes, les résultats intermédiaires et les artefacts produits sont conservés dans l'état de l'exécution, ce qui permet de retracer l'intégralité du raisonnement et de garantir la reproductibilité.
+
+\subsection{Gestion du contexte et harness LLM}
+
+L'utilisation d'un modèle de langage dans une application de production ne se limite pas à l'invocation d'un modèle : elle requiert un \textbf{cadre d'exécution} (\textit{harness}) qui encadre chaque appel, construit le contexte et organise la mémoire. Ce cadre, illustré par la figure~\ref{fig:harness}, s'inspire des pratiques des plateformes d'agents modernes et a été adapté aux spécificités de la plateforme d'analyse conversationnelle.
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.95\textwidth]{harness archi.png}
+\caption{Cadre d'exécution (\textit{harness}) de l'agent et supervision du cycle de vie (LLM Ops)}
+\label{fig:harness}
+\end{figure}
+\subsubsection{Pourquoi un harness : la gestion du contexte des LLM}
+
+Le recours à un cadre d'exécution dédié ne relève pas d'un choix cosmétique : il répond à une limitation fondamentale des grands modèles de langage. Un LLM est intrinsèquement \textbf{sans état} (\textit{stateless}) : chaque appel est indépendant du précédent et le modèle ne conserve aucune mémoire interne des échanges antérieurs. En l'absence de dispositif externe, il perd donc le fil de la conversation dès qu'un nouveau tour commence. Par ailleurs, la fenêtre de contexte d'un modèle est \textbf{finie} : elle ne peut contenir qu'un nombre limité de tokens, ce qui borne la quantité d'historique, de données et de résultats qu'il est possible de lui transmettre.
+
+Une intégration naïve du modèle, sans harness, conduirait ainsi à plusieurs échecs :
+
+\begin{itemize}
+  \item \textbf{Perte de la continuité conversationnelle} : l'utilisateur serait contraint de reformuler son contexte à chaque tour, le modèle ne gardant aucune trace de la discussion précédente ;
+  \item \textbf{Absence d'accès aux données} : le modèle ne peut pas exécuter de requête SQL ni de calcul statistique ; il se contenterait de simuler une analyse sans garantie de véracité ;
+  \item \textbf{Risque d'hallucination} : sans ancrage dans le schéma réel du jeu de données, le modèle peut inventer des colonnes, des formats ou des résultats ;
+  \item \textbf{Absence de traçabilité} : rien ne permettrait de savoir quelles opérations ont réellement été effectuées, ni de reproduire un résultat.
+\end{itemize}
+
+Plusieurs approches alternatives pourraient être envisagées pour répondre à ces limites. Le tableau~\ref{tab:approches-contexte} les compare et justifie le choix d'un harness.
+
+\begin{table}[H]
+\centering
+\caption{Approches de gestion du contexte d'un LLM et limites}
+\label{tab:approches-contexte}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.4cm}Y>{\raggedright\arraybackslash}p{4.2cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Approche & \color{white}Principe & \color{white}Limites \\
+\midrule
+Appel sans mémoire & Chaque requête est traitée isolément, sans historique & Aucune continuité ; reformulation complète à chaque tour ; aucun accès aux données. \\
+\midrule
+Historique complet & Envoi de l'intégralité de la conversation à chaque tour & Dépassement de la fenêtre de contexte ; coût et latence croissants ; résultats dilués. \\
+\midrule
+Fine-tuning du modèle & Adaptation des poids du modèle à un domaine & Coûteux et complexe ; ne résout ni l'accès aux outils ni la mémoire par conversation. \\
+\midrule
+RAG seul & Enrichissement du prompt par des documents pertinents & Améliore l'ancrage, mais pas la continuité de la conversation ni le calcul déterministe. \\
+\midrule
+\textbf{Harness proposé} & Reconstruction du contexte, mémoire structurée, outils & Assure continuité, ancrage, traçabilité et maîtrise des coûts. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Le harness proposé surmonte ces difficultés en combinant trois mécanismes complémentaires. La \textbf{reconstruction systématique du contexte} rend l'exécution reproductible malgré le caractère sans état du modèle ; la \textbf{mémoire structurée} (procédurale, sémantique, épisodique) préserve la continuité de la conversation et les connaissances durables ; l'\textbf{ancrage dans les données} via le RAG et les outils déterministes garantit que le modèle raisonne sur des faits réels et non sur des inférences approximatives. Ce choix répond directement aux besoins de fiabilité, de transparence et de reproductibilité identifiés au chapitre précédent, tout en maîtrisant les coûts grâce à la consolidation du contexte.
+
+\subsubsection{\hl{Principe du harness}}
+
+Le harness repose sur un principe structurant : \textbf{chaque exécution de l'agent est éphémère}. Les informations manipulées au cours d'un tour — prompt, contexte, mémoire de travail, résultats d'outils — sont reconstruites à chaque invocation à partir de sources durables situées à l'extérieur de la boîte d'exécution. Cette conception garantit que l'agent ne dépend d'aucun état résiduel implicite et que chaque exécution peut être reproduite et tracée.
+
+\subsubsection{Construction du contexte}
+
+À chaque exécution, le harness construit le \textbf{contexte} transmis au modèle de langage à partir de plusieurs sources complémentaires :
+
+\begin{itemize}
+  \item la \textbf{requête de l'utilisateur} formulée en langage naturel ;
+  \item le \textbf{jeu de données courant}, représenté par son schéma et son profilage (l'équivalent du fichier courant dans un environnement de développement) ;
+  \item le \textbf{prompt système}, qui définit le rôle de l'agent, ses règles de comportement et les contraintes à respecter ;
+  \item la \textbf{mémoire de travail} (état de l'agent) et le résumé consolidé de la conversation.
+\end{itemize}
+
+Afin de guider le modèle sans dépendre de sa seule connaissance générale, la plateforme exploite une forme de \textbf{RAG} (\textit{Retrieval-Augmented Generation}) sur les métadonnées des données : le schéma des colonnes, les types détectés et les catégories sémantiques sont récupérés et injectés dans le prompt. Le modèle peut ainsi formuler des requêtes valides et adaptées au jeu de données considéré.
+
+\subsubsection{Gestion de la mémoire}
+
+La gestion de la mémoire distingue trois types de mémoire complémentaires, conformément au modèle du harness :
+
+\begin{itemize}
+  \item la \textbf{mémoire procédurale} : fichiers et textes qui définissent \textit{comment} l'agent doit agir (prompt système, instructions, configuration de l'agent) ;
+  \item la \textbf{mémoire sémantique} : faits durables relatifs aux données et aux utilisateurs (catalogue des jeux de données, catégories, profils), conservés dans la base de données ;
+  \item la \textbf{mémoire épisodique} : historique des conversations passées, persisté dans PostgreSQL et exploité par le \textit{checkpointer} de LangGraph (en mémoire ou sur PostgreSQL) pour assurer la continuité des échanges.
+\end{itemize}
+
+Chaque tour est \textbf{sauvegardé} en base de données (messages, appels d'outils, artefacts), ce qui constitue la source de vérité de la mémoire épisodique. Afin de maîtriser la taille du contexte, un \textbf{agent de résumé} consolide périodiquement l'historique : après un certain nombre de tours, les échanges antérieurs sont condensés en un résumé courant, injecté dans le contexte des tours suivants. Cette consolidation est réalisée par un appel dédié au modèle de langage, ce qui permet de conserver l'essentiel de la conversation tout en limitant la consommation de contexte.
+
+\subsubsection{Supervision du cycle de vie (LLM Ops)}
+
+La mise en production d'un agent requiert enfin une supervision continue de son comportement. La plateforme intègre les principes du \textit{LLM Ops}, qui structurent le cycle de vie d'un agent :
+
+\begin{itemize}
+  \item \textbf{Tracer} : chaque exécution produit une trace complète (configuration, étapes, appels d'outils), permettant de reconstituer le déroulement d'une requête ;
+  \item \textbf{Observer} : les réponses sont évaluées afin de mesurer leur qualité, notamment par des critères objectifs (\textit{LLM-as-a-judge}) ;
+  \item \textbf{Diagnostiquer} : les traces et les métriques (tokens, latence, erreurs) permettent d'identifier l'origine d'un échec ;
+  \item \textbf{Valider} : toute évolution (prompt, modèle, configuration) n'est déployée qu'après validation ;
+  \item \textbf{Livrer} : les améliorations sont mises en production de manière progressive et réversible.
+\end{itemize}
+
+Ces mécanismes, combinés à la traçabilité des étapes et des outils décrite précédemment, garantissent que le comportement de l'agent reste maîtrisé et évolutif dans un contexte hospitalier exigeant.
+
+\subsection{Moteur d'analyse déterministe}
+
+Le moteur d'analyse constitue la partie déterministe du système. Il est chargé de réaliser l'ensemble des traitements computationnels sur les données réelles, à l'opposé du modèle de langage qui se limite à la compréhension, la planification et l'interprétation. Cette séparation garantit qu'un résultat présenté à l'utilisateur a bien été calculé par un algorithme vérifiable, et non généré de manière approximative par le modèle.
+
+Le moteur d'analyse prend en charge :
+
+\begin{itemize}
+  \item le \textbf{chargement} des jeux de données aux formats CSV, XLSX, Parquet ou JSON, avec détection automatique de l'encodage et du séparateur ;
+  \item le \textbf{profilage} des colonnes : types, valeurs manquantes, statistiques descriptives (min, max, moyenne, écart-type, quantiles) ;
+  \item les \textbf{calculs statistiques} : statistiques descriptives, corrélations, agrégations et opérations de transformation ;
+  \item les \textbf{requêtes SQL} exécutées directement sur les fichiers via DuckDB, avec des limites de sécurité sur le volume des résultats ;
+  \item la \textbf{génération de visualisations} : histogrammes, diagrammes de dispersion, matrices de corrélation et autres graphiques, produits sous forme de spécifications Plotly interactives ou de rendus statiques.
+\end{itemize}
+
+Le déroulement d'une requête met en évidence le rôle complémentaire des deux composants. À partir d'une instruction en langage naturel, le modèle de langage produit une \textbf{compréhension} de l'intention, puis une \textbf{planification} en étapes. Le moteur d'analyse assure l'\textbf{exécution} réelle de chaque étape sur les données. Les \textbf{résultats} obtenus sont ensuite transmis au modèle de langage pour leur \textbf{interprétation}, puis restitués à l'utilisateur. Ainsi, le modèle de langage oriente le travail mais ne calcule jamais directement : il reçoit des résultats vérifiables qu'il se contente d'expliquer.
+
+Cette architecture garantit plusieurs propriétés essentielles. La \textbf{fiabilité} des traitements, puisque les calculs sont réalisés par des algorithmes éprouvés ; la \textbf{transparence}, puisque chaque étape est tracée et chaque résultat associé à l'outil qui l'a produit ; la \textbf{reproductibilité}, puisque le même plan d'exécution appliqué aux mêmes données produit les mêmes résultats.
+
+\begin{infobox}{Séparation IA et calcul}
+Le point le plus structurant de l'architecture réside dans la séparation entre l'orchestration pilotée par l'IA et l'exécution déterministe du moteur d'analyse. Le LLM oriente et orchestre le travail, tandis que le moteur effectue les traitements réels de manière contrôlée et vérifiable. Cette distinction permet de concilier la flexibilité du langage naturel avec la rigueur et la fiabilité des méthodes statistiques.
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Communication et gestion des données}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cette section présente les mécanismes de communication entre les différents composants de la plateforme ainsi que la gestion des données, de leur ingestion à la production des artefacts.
+
+\subsection{Échanges entre composants}
+
+Les échanges entre le frontend et le backend s'effectuent selon deux modes complémentaires. Le premier repose sur des \textbf{interfaces REST} pour les opérations de gestion : importation et profilage des jeux de données, gestion des conversations, récupération des artefacts et gestion des catégories sémantiques. Le second repose sur le \textbf{streaming} (\textit{Server-Sent Events}) pour le traitement des requêtes conversationnelles : le frontend ouvre un flux continu sur lequel le backend diffuse progressivement les événements du traitement.
+
+Le backend constitue l'intermédiaire entre le frontend et l'orchestration agentique. Il reçoit la requête de l'utilisateur, initialise l'exécution, collecte les événements produits par l'orchestrateur et les convertit en messages de streaming. L'orchestrateur, quant à lui, communique avec le modèle de langage et avec le moteur d'analyse au travers du registre d'outils.
+
+\subsection{Streaming et événements}
+
+Le streaming constitue un élément clé de l'expérience utilisateur. Il permet de diffuser en temps réel l'ensemble des événements du traitement :
+
+\begin{itemize}
+  \item \texttt{step\_start} : annonce le début d'une étape du plan ;
+  \item \texttt{tool\_call} : indique l'invocation d'un outil d'analyse ;
+  \item \texttt{token} : diffusion progressive du texte généré par le modèle ;
+  \item \texttt{artifact} : notification de la production d'un artefact (graphique, export) ;
+  \item \texttt{error} : signalement d'une erreur éventuelle ;
+  \item \texttt{done} : fin du traitement.
+\end{itemize}
+
+Ce mécanisme répond au besoin de réactivité et de transparence identifié au chapitre précédent : l'utilisateur observe en direct le déroulement de l'analyse, les étapes franchies et la construction progressive de la réponse.
+
+\subsection{Persistance et gestion des artefacts}
+
+La gestion des données s'articule autour d'une architecture duale. La \textbf{base de données relationnelle} (PostgreSQL) conserve les métadonnées du catalogue : jeux de données, colonnes profilées, catégories sémantiques, conversations, messages et artefacts. Les \textbf{fichiers bruts} des jeux de données et les \textbf{artefacts produits} (spécifications de graphiques, exports, rapports) sont stockés sur le système de fichiers, leurs références étant conservées en base de données.
+
+Pour les opérations analytiques, le moteur \textbf{DuckDB} exécute les requêtes directement sur les fichiers, sans transiter par la base relationnelle. Cette approche permet de traiter efficacement de grands volumes de données en mémoire tout en préservant la base de données pour la gestion des métadonnées.
+
+Les artefacts produits au cours des analyses — graphiques interactifs, tableaux exportés, rapports — sont enregistrés avec leurs métadonnées (titre, type, chemin) et associés à la conversation et au message qui les ont générés. Le frontend les récupère via des interfaces dédiées et les affiche directement dans l'interface conversationnelle. Cette organisation garantit la conservation des résultats et leur réutilisation ultérieure, conformément aux besoins de persistance et de traçabilité.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ce chapitre a présenté la conception et l'architecture de la plateforme
+d'analyse conversationnelle de données, en explicitant les choix
+d'ingénierie qui traduisent les besoins identifiés au chapitre précédent
+en une solution technique cohérente.
+
+La conception générale a justifié les choix technologiques et défini
+une architecture globale articulée autour de trois zones : l'orchestration
+par l'IA, le traitement déterministe des données et la persistance.
+La modélisation UML et l'architecture logicielle en couches ont précisé
+les fonctionnalités et les responsabilités de chaque composant.
+
+L'architecture agentique et le moteur d'analyse constituent le cœur
+du système. L'agent, construit avec LangGraph, orchestre le processus
+en trois phases — planification, exécution et synthèse — tandis que
+le moteur déterministe réalise les traitements computationnels,
+garantissant fiabilité et reproductibilité.
+
+Le fil conducteur du chapitre repose sur une distinction structurante :
+\textbf{l'IA pilote et orchestre l'analyse, tandis que les calculs
+critiques sont exécutés par un moteur déterministe}. Cette séparation,
+motivée par les besoins de fiabilité et de transparence, concilie la
+flexibilité du langage naturel avec la rigueur des méthodes statistiques.
+
+Ces choix fondent la réalisation pratique de la plateforme, dont la
+mise en œuvre est détaillée dans le chapitre suivant.

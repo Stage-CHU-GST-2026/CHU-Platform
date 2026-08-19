@@ -1,0 +1,204 @@
+\chapter{Annexes}
+
+\section{Captures d'écran de la plateforme}
+
+Cette annexe présente les interfaces de la plateforme réalisée. Pour chaque capture, une brève description indique à quoi sert l'écran et son rôle dans le parcours utilisateur. Les captures sont organisées selon les espaces fonctionnels de l'application : tableau de bord, gestion des jeux de données, espace conversationnel et artefacts.
+
+\subsection{Tableau de bord}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/01-dashboard.png}
+\caption{Tableau de bord : vue d'ensemble de la plateforme. Cette page sert de point d'entrée et présente les jeux de données disponibles, les conversations récentes et les indicateurs clés de l'activité.}
+\label{fig:annexe-dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/20-dashboard-white-mode.jpeg}
+\caption{Tableau de bord (thème clair) : indicateurs clés de la plateforme — jeux de données connectés, volume de lignes, conversations actives et rapports générés.}
+\label{fig:annexe-dashboard-white}
+\end{figure}
+
+\subsection{Gestion des jeux de données}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/02-datasets_management_page.png}
+\caption{Page de gestion des jeux de données : liste des jeux de données importés dans la plateforme, avec les actions disponibles (ouvrir, créer une conversation, supprimer).}
+\label{fig:annexe-datasets-list}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/03-dataset_dettails.png}
+\caption{Page de détail d'un jeu de données : informations générales (nom, taille, format, source) et accès aux différentes vues d'analyse (schéma, aperçu, statistiques).}
+\label{fig:annexe-dataset-detail}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/04-dataset_column_mapping.png}
+\caption{Mappage des colonnes : lors de l'import, la plateforme associe les colonnes du fichier aux types de données attendus, garantissant une interprétation correcte du contenu.}
+\label{fig:annexe-column-mapping}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/05-Dataset_preview.png}
+\caption{Aperçu des données : les premières lignes du jeu de données sont affichées pour vérifier le contenu importé avant analyse.}
+\label{fig:annexe-dataset-preview}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/06-Dataset_schema.png}
+\caption{Schéma du jeu de données : liste des colonnes avec leurs types et leurs caractéristiques, offrant une vision structurée des données.}
+\label{fig:annexe-dataset-schema}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/07-dataset_statistics.png}
+\caption{Statistiques du jeu de données : indicateurs descriptifs calculés par le profilage (moyenne, médiane, écart-type, valeurs manquantes, valeurs uniques).}
+\label{fig:annexe-dataset-stats}
+\end{figure}
+
+\subsection{Espace conversationnel}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/08-New_conversation.png}
+\caption{Nouvelle conversation : espace de discussion vide, point de départ d'une analyse en langage naturel.}
+\label{fig:annexe-new-conversation}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/09-New_conversation_with_dataset.png}
+\caption{Nouvelle conversation associée à un jeu de données : l'utilisateur sélectionne le contexte de l'analyse avant de poser sa question.}
+\label{fig:annexe-conversation-dataset}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/10-Simple-Prompt.png}
+\caption{Requête en langage naturel : exemple de question posée par l'utilisateur, qui sera décomposée par l'agent en étapes d'analyse.}
+\label{fig:annexe-simple-prompt}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/11-Agent-planning.png}
+\caption{Planification : l'agent décompose la requête en un plan d'étapes ordonné, conformément à l'orchestration LangGraph.}
+\label{fig:annexe-agent-planning}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/12-tools-execution-for-tracability.png}
+\caption{Exécution des outils : déroulement des étapes du plan avec l'affichage des appels d'outils, garantissant la traçabilité du traitement.}
+\label{fig:annexe-tools-execution}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/13-agent-reasoning.png}
+\caption{Raisonnement de l'agent : présentation du cheminement de l'agent au cours de l'analyse, renforçant la transparence du processus.}
+\label{fig:annexe-agent-reasoning}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/14-agent-generate-graph-insights.png}
+\caption{Génération de graphiques : l'agent produit des visualisations en appui de son analyse, accompagnées de leur interprétation.}
+\label{fig:annexe-generate-graph}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/21-agent-generate-graph-insights-white-mode.jpeg}
+\caption{Génération de graphiques (thème clair) : l'agent présente une visualisation (répartition des cas par pays) accompagnée de son interprétation directement dans la conversation.}
+\label{fig:annexe-generate-graph-white}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/15-resultat-de-agent.png}
+\caption{Résultat de l'agent : réponse finale présentée à l'utilisateur, fondée sur l'evidence accumulée au cours de l'analyse.}
+\label{fig:annexe-agent-result}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/16-explication-et-interpretation-des-resultat.png}
+\caption{Explication et interprétation : détail des conclusions de l'agent et de leur signification pour l'utilisateur.}
+\label{fig:annexe-interpretation}
+\end{figure}
+
+\subsection{Artefacts}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/17-artifact-list.png}
+\caption{Liste des artefacts : panneau présentant l'ensemble des artefacts produits par l'analyse (graphiques, exports, rapports).}
+\label{fig:annexe-artifact-list}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/18-artifact-preview.png}
+\caption{Aperçu d'un artefact : consultation d'un graphique ou d'un rapport produit par l'agent, avec possibilité de le télécharger.}
+\label{fig:annexe-artifact-preview}
+\end{figure}
+
+\subsection{Paramètres et internationalisation}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/22-settings.jpeg}
+\caption{Paramètres : gestion des préférences de l'espace de travail (langue et thème). Cette page permet de basculer l'interface entre le français et l'anglais.}
+\label{fig:annexe-settings}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/23-annexe-i18n.jpeg}
+\caption{Internationalisation : les mêmes paramètres affichés en français avec le thème sombre, illustrant la bascule de langue et d'apparence de l'interface.}
+\label{fig:annexe-i18n}
+\end{figure}
+
+\subsection{Passerelle de modèles locaux}
+
+\begin{figure}[H]
+\centering
+\includegraphicsorplaceholder[width=0.88\textwidth]{app-screenshots/19-llm-gateway.jpeg}
+\caption{Passerelle de modèles locaux (ModelCtl) : tableau de bord de gestion de l'infrastructure d'inférence — modèles GGUF installés, espace de stockage consommé et état de l'API.}
+\label{fig:annexe-gateway}
+\end{figure}
+
+\section{Structure du projet}
+
+\begin{lstlisting}[caption={Organisation du monorepo}]
+CHU-Platform/
+|-- apps/
+|   |-- api/          # API FastAPI (routers, services, modèles)
+|   |-- ui/           # Mockup / maquette de l'interface utilisateur
+|   |-- web/          # Application SvelteKit (interface)
+|-- packages/
+|   |-- agents/       # Orchestration agentique (LangGraph)
+|   |-- analysis/     # Moteur d'analyse (statistiques, profilage)
+|   |-- tools/        # Outils accessibles aux agents
+|-- nginx/            # Reverse proxy
+`-- docs/             # Documentation du projet
+\end{lstlisting}
+
+\section{Projets liés}
+
+La plateforme s'appuie, pour le service des modèles de langage locaux, sur une passerelle d'inférence auto-hébergée. Le code source de ce projet est disponible publiquement :
+
+\begin{center}
+\url{https://github.com/regisx001/llms-gateway}
+\end{center}
+
+Cette passerelle permet de rechercher, télécharger et servir des modèles GGUF via \texttt{llama.cpp}, en exposant une API compatible OpenAI utilisée par la plateforme en production.

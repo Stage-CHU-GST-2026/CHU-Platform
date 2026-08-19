@@ -1,0 +1,506 @@
+% !TEX program = lualatex % (can also use "lualatex")
+\documentclass[12pt,a4paper,twoside]{report}
+
+
+%==========================================================
+% MAIN.TEX — preamble + squelette
+%==========================================================
+
+
+% ==========================================================
+% Languages and fonts
+% ==========================================================
+% Compile with XeLaTeX or LuaLaTeX
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+\setmainlanguage{french}
+\setotherlanguage{arabic}
+
+% Main Latin font
+\setmainfont{TeX Gyre Pagella}
+
+% Arabic font
+\newfontfamily\arabicfont[
+    Script=Arabic,
+    Scale=1.05
+]{Amiri}
+
+
+% ==========================================================
+% General packages
+% ==========================================================
+
+\usepackage{csquotes}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{iftex}
+\usepackage{amssymb}
+\usepackage{textcomp}
+\usepackage{soul}
+\usepackage{multirow}
+\usepackage{ragged2e}
+\usepackage{pifont}
+\usepackage[nottoc]{tocbibind}
+\tcbuselibrary{skins}
+
+\usetikzlibrary{
+    positioning,
+    arrows.meta,
+    shapes.geometric
+}
+
+
+% ==========================================================
+% Bibliography
+% ==========================================================
+
+\usepackage[
+    backend=biber,
+    style=numeric,
+    sorting=none
+]{biblatex}
+
+\addbibresource{references.bib}
+
+
+% ==========================================================
+% Images
+% ==========================================================
+
+\graphicspath{{images/}}
+
+
+% ==========================================================
+% Custom column types
+% ==========================================================
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{Z}{>{\centering\arraybackslash}X}
+
+
+% ==========================================================
+% Image placeholder
+% ==========================================================
+
+\newcommand{\includegraphicsorplaceholder}[2][]{%
+  \IfFileExists{images/#2}{%
+    \includegraphics[#1]{#2}%
+  }{%
+    \fbox{\parbox[c][5cm][c]{0.78\textwidth}{%
+      \centering\color{MidGray}
+      Illustration à ajouter\par\smallskip
+      \texttt{\detokenize{#2}}%
+    }}%
+  }%
+}
+
+
+% ==========================================================
+% Page geometry
+% ==========================================================
+
+\geometry{%
+  a4paper,
+  top=2.5cm,
+  bottom=2.7cm,
+  inner=3cm,
+  outer=2.2cm,
+  headheight=25pt,
+  includehead
+}
+
+
+% ==========================================================
+% Palette
+% ==========================================================
+
+\definecolor{PrimaryRed}{RGB}{72,61,139}
+\definecolor{DarkSlate}{RGB}{38,42,52}
+\definecolor{MidGray}{RGB}{96,102,112}
+\definecolor{LightGray}{RGB}{246,247,250}
+\definecolor{SoftRed}{RGB}{255,247,246}
+\definecolor{AccentBlue}{RGB}{48,104,178}
+\definecolor{TableHeader}{RGB}{48,52,64}
+
+\colorlet{primary}{PrimaryRed}
+
+
+% ==========================================================
+% Hyperref
+% ==========================================================
+
+\hypersetup{%
+  colorlinks=true,
+  linkcolor=PrimaryRed,
+  urlcolor=AccentBlue,
+  citecolor=PrimaryRed,
+  pdftitle={TITRE DU RAPPORT},
+  pdfauthor={AUTEUR(S)}
+}
+
+
+% ==========================================================
+% Paragraphs
+% ==========================================================
+
+\setlength{\parindent}{15pt}
+\setlength{\parskip}{0pt}
+\linespread{1.08}
+\raggedbottom
+
+
+% ==========================================================
+% Header / Footer
+% ==========================================================
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[LE]{\small\color{MidGray}\leftmark}
+\fancyhead[RO]{\small\color{MidGray}\rightmark}
+
+\fancyfoot[C]{\small\color{MidGray}\thepage}
+
+\renewcommand{\headrulewidth}{0.4pt}
+
+\renewcommand{\headrule}{%
+  \hbox to\headwidth{%
+    \color{PrimaryRed}%
+    \leaders\hrule height \headrulewidth\hfill
+  }%
+}
+
+
+% ==========================================================
+% Chapter style
+% ==========================================================
+
+\titleformat{\chapter}[display]
+  {\normalfont\color{DarkSlate}}
+  {%
+    \begin{tikzpicture}[baseline]
+      \node[
+        fill=PrimaryRed,
+        text=white,
+        rounded corners=2pt,
+        inner xsep=12pt,
+        minimum height=0.72cm,
+        font=\Large\bfseries
+      ]
+      {\chaptertitlename~\thechapter};
+    \end{tikzpicture}%
+  }
+  {14pt}
+  {\Huge\bfseries}
+  [\vspace{6pt}{\color{PrimaryRed}\rule{\textwidth}{1.2pt}}]
+
+
+\titlespacing*{\chapter}{0pt}{-12pt}{30pt}
+
+
+% ==========================================================
+% Section style
+% ==========================================================
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{DarkSlate}}
+  {\color{PrimaryRed}\thesection}
+  {0.8em}
+  {}
+  [\vspace{-3pt}{\color{MidGray!35}\rule{\textwidth}{0.5pt}}]
+
+
+% ==========================================================
+% Subsection style
+% ==========================================================
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{DarkSlate}}
+  {\color{PrimaryRed}\thesubsection}
+  {0.7em}
+  {}
+
+
+% ==========================================================
+% Table of contents
+% ==========================================================
+
+\titlecontents{chapter}[0pt]
+  {\vspace{7pt}\bfseries\color{DarkSlate}}
+  {\contentslabel{2em}}
+  {}
+  {\hfill\color{PrimaryRed}\contentspage}
+
+
+\titlecontents{section}[2em]
+  {\vspace{2pt}\color{MidGray}}
+  {\contentslabel{2.3em}}
+  {}
+  {\titlerule*[0.5pc]{.}\contentspage}
+
+
+% ==========================================================
+% Lists
+% ==========================================================
+
+\setlist[itemize]{
+  leftmargin=1.4em,
+  itemsep=2pt,
+  topsep=3pt
+}
+
+\setlist[enumerate]{
+  leftmargin=1.4em,
+  itemsep=2pt,
+  topsep=3pt
+}
+
+
+% ==========================================================
+% Captions
+% ==========================================================
+
+\captionsetup{%
+  labelfont={bf,color=PrimaryRed},
+  textfont={small,color=DarkSlate},
+  justification=centering
+}
+
+
+% ==========================================================
+% TColorBox
+% ==========================================================
+
+\tcbset{
+  enhanced,
+  boxrule=0.6pt,
+  arc=3pt,
+  left=8pt,
+  right=8pt,
+  top=7pt,
+  bottom=7pt
+}
+
+
+\newtcolorbox{infobox}[1]{%
+  colback=SoftRed,
+  colframe=PrimaryRed,
+  title={#1},
+  fonttitle=\bfseries,
+  coltitle=white,
+  colbacktitle=PrimaryRed
+}
+
+
+\newtcolorbox{resultbox}[1]{%
+  colback=LightGray,
+  colframe=DarkSlate!35,
+  title={#1},
+  fonttitle=\bfseries,
+  coltitle=DarkSlate,
+  colbacktitle=white
+}
+
+
+% ==========================================================
+% Code listings
+% ==========================================================
+
+\lstset{%
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\color{AccentBlue}\bfseries,
+  commentstyle=\color{MidGray}\itshape,
+  stringstyle=\color{PrimaryRed},
+  backgroundcolor=\color{LightGray},
+  frame=single,
+  rulecolor=\color{MidGray!45},
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+
+% ==========================================================
+% Technology stack
+% ==========================================================
+
+% Logo command
+% Files are located in images/logos/
+%
+% Example:
+% \tech{svelte}{SvelteKit 5 / Svelte 5}
+%
+% Automatically loads:
+% images/logos/svelte.png
+
+
+\newcommand{\tech}[2]{%
+  \raisebox{-0.18\height}{%
+    \includegraphics[height=0.95cm]{logos/#1.png}%
+  }%
+  \hspace{0.15cm}%
+  {\bfseries\color{DarkSlate}#2}%
+}
+
+
+% Separator between technology categories
+
+\newcommand{\techseparator}{%
+  \vspace{0.35cm}
+  {\color{PrimaryRed!18}\rule{\textwidth}{0.6pt}}
+  \vspace{0.2cm}
+}
+
+
+\newcommand{\techsection}[2]{%
+    \begin{center}
+        {\large\color{PrimaryRed}\textbf{#1 \quad #2}}
+    \end{center}
+}
+
+
+% ==========================================================
+% Project name
+% ==========================================================
+
+\newcommand{\projectname}{%
+Conception et développement d'une plateforme intelligente
+d'analyse conversationnelle de données de santé%
+}
+
+% ==========================================================
+% DOCUMENT
+% ==========================================================
+
+\begin{document}
+
+
+% ==========================================================
+% Title page
+% ==========================================================
+
+\hypersetup{pageanchor=false}
+
+\input{sections/00_titlepage}
+
+
+% ==========================================================
+% Preliminary pages
+% ==========================================================
+
+\newpage
+
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\hypersetup{pageanchor=true}
+
+% Foreword
+
+\newpage
+\input{sections/00_avant_propos}
+
+% Dedication
+
+\newpage
+\input{sections/00_dedicace}
+
+
+% Acknowledgements
+
+\newpage
+\input{sections/00_remerciements}
+
+
+% ==========================================================
+% Resume / Abstract / Arabic summary
+% ==========================================================
+
+\newpage
+
+\input{sections/01_resume}
+
+% ==========================================================
+% Table of contents
+% ==========================================================
+
+\tableofcontents
+
+% ==========================================================
+% List of abbreviations
+% ==========================================================
+
+\newpage
+\input{sections/00_abreviations}
+
+% List of figures
+\newpage
+\listoffigures
+% List of tables
+\newpage
+\listoftables
+
+% ==========================================================
+% Main report
+% ==========================================================
+
+\newpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+
+\input{sections/02_introduction}
+
+\input{sections/03_Contexte-general}
+
+\input{sections/04_Analyse_des_besoins}
+
+\input{sections/05_Conception_et_architecture}
+
+\input{sections/06_Realisation_de_la_plateforme}
+
+\input{sections/07_Tests_et_validation}
+
+\input{sections/08_Conclusion_generale}
+
+
+% ==========================================================
+% Appendices
+% ==========================================================
+
+\appendix
+
+\input{sections/10_annexes}
+
+
+% ==========================================================
+% Bibliography
+% ==========================================================
+
+\nocite{*}
+
+\printbibliography
+
+
+\end{document}

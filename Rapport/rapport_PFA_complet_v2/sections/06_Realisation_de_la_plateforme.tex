@@ -1,0 +1,432 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Réalisation de la plateforme}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+Ce chapitre présente la réalisation effective de la plateforme, c'est-à-dire la manière dont la solution conçue au chapitre précédent a été implémentée, intégrée et préparée pour le déploiement. Il répond à la question centrale : \textbf{comment avons-nous effectivement développé la solution ?}
+
+Le chapitre s'organise comme suit. La notion d'\textbf{intelligence des données} appliquée au projet est d'abord introduite, afin de situer la plateforme dans la stratégie d'exploitation des données du GST-TTA. L'environnement de réalisation et l'organisation du travail sont ensuite présentés. Les principales réalisations sont ensuite détaillées : le backend et le streaming temps réel, l'orchestration agentique et le mécanisme d'\textbf{evidence}, le moteur d'analyse, puis l'interface et son \textbf{internationalisation} (i18n). Enfin, l'intégration de la solution et les aspects de déploiement sont abordés avant la conclusion.
+
+Conformément aux exigences d'un rapport académique, seuls les extraits de code indispensables sont présentés, afin d'illustrer les mécanismes les plus structurants — streaming, evidence et internationalisation — sans transformer le chapitre en documentation technique. Les choix d'architecture ayant déjà été justifiés au chapitre précédent, ce chapitre se concentre sur la mise en œuvre concrète et ses résultats.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{L'intelligence des données appliquée au projet}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+L'\textbf{intelligence des données} (\textit{data intelligence}) désigne la capacité d'une organisation à transformer ses données brutes en connaissances exploitables, en combinant la collecte et la préparation des données, l'analyse statistique, la visualisation et l'intelligence artificielle. Dans le secteur de la santé, elle constitue un levier essentiel pour le pilotage des établissements, l'amélioration de la qualité des soins et l'aide à la décision.
+
+Dans le cadre de ce projet, la plateforme opérationnalise cette démarche pour le compte du GST-TTA. Elle ne se limite pas à l'exécution de requêtes : elle accompagne l'utilisateur sur l'ensemble du cycle d'exploitation des données. Le tableau~\ref{tab:intelligence-donnees} met en correspondance les dimensions de l'intelligence des données avec les composants développés de la plateforme.
+
+\begin{table}[H]
+\centering
+\caption{L'intelligence des données et sa mise en œuvre dans la plateforme}
+\label{tab:intelligence-donnees}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.9cm}Y>{\raggedright\arraybackslash}p{4.3cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Dimension & \color{white}Apport & \color{white}Composants \\
+\midrule
+Compréhension des données & Profilage automatique : types, valeurs manquantes, statistiques descriptives & Moteur d'analyse (profilage), interface jeux de données \\
+\midrule
+Organisation sémantique & Catégorisation hiérarchique des jeux de données pour la recherche et le contexte & Catégories sémantiques \\
+\midrule
+Exploitation statistique & Statistiques descriptives, corrélations, agrégations, détection d'anomalies & Moteur d'analyse et outils (pandas, DuckDB) \\
+\midrule
+Accès conversationnel & Interrogation en langage naturel, sans compétences techniques & Orchestration agentique, interface de chat \\
+\midrule
+Génération d'insights & Synthèses fondées sur des résultats calculés et vérifiables & Synthétiseur et mécanisme d'\textit{evidence} \\
+\midrule
+Diffusion des résultats & Graphiques interactifs, rapports, streaming temps réel & Frontend et artefacts (Plotly, exports) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ce positionnement répond directement aux besoins identifiés au chapitre consacré à l'analyse des besoins : réduire la barrière technique, garantir la confidentialité et fournir des analyses fiables et reproductibles. L'intelligence des données constitue ainsi le fil conducteur de la réalisation : chaque composant développé contribue à l'une de ses dimensions, depuis la compréhension des données jusqu'à la diffusion des résultats.
+
+\begin{infobox}{Positionnement du projet}
+La plateforme constitue un outil d'intelligence des données pour le GST-TTA : elle transforme des données hospitalières brutes en connaissances exploitables, accessibles en langage naturel et fondées sur des résultats calculés de manière vérifiable.
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Environnement et organisation de la réalisation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Environnement technique}
+
+La réalisation s'appuie sur un monorepo Python géré par \texttt{uv}, organisé en applications et paquets partagés. Cette organisation permet de développer, tester et déployer les différents composants de manière cohérente tout en conservant une séparation claire des responsabilités, conformément au principe de modularité défini au chapitre précédent.
+
+\begin{lstlisting}[caption={Organisation du monorepo}]
+CHU-Platform/
+|-- apps/
+|   |-- api/          # API FastAPI (routers, services, modèles)
+|   |-- ui/           # Mockup / maquette de l'interface utilisateur
+|   |-- web/          # Application SvelteKit (interface)
+|-- packages/
+|   |-- agents/       # Orchestration agentique (LangGraph)
+|   |-- analysis/     # Moteur d'analyse (statistiques, profilage)
+|   |-- tools/        # Outils accessibles aux agents
+|-- nginx/            # Reverse proxy
+`-- docs/             # Documentation du projet
+\end{lstlisting}
+
+\subsection{Environnement et dépendances}
+
+Les dépendances du projet sont gérées de manière reproductible : le workspace Python est décrit dans un fichier \texttt{pyproject.toml} à la racine, et les versions exactes des paquets sont épinglées dans un fichier de verrouillage (\texttt{uv.lock}) résolu par \texttt{uv}. Côté frontend, les dépendances Node sont gérées par \texttt{bun} ou \texttt{npm}. Cette organisation garantit que l'ensemble de l'équipe et les environnements de déploiement utilisent les mêmes versions de dépendances, ce qui contribue à la reproductibilité de la réalisation.
+
+\subsection{Organisation du travail}
+
+Le développement a été mené selon la démarche Agile présentée au chapitre consacré au contexte général : des sprints itératifs ont permis de faire évoluer la plateforme depuis les fondations techniques jusqu'à la spécialisation santé, chaque itération livrant un incrément fonctionnel validé. Les outils de versionnement (Git), de gestion des dépendances (\texttt{uv}) et de conteneurisation (Docker) ont été utilisés tout au long du processus, garantissant la traçabilité des évolutions et la reproductibilité de l'environnement.
+
+\subsection{Gestion de la configuration}
+
+La configuration de l'application est centralisée et externalisée : les paramètres sont définis par variables d'environnement (fichier \texttt{.env}) et chargés au démarrage via Pydantic Settings. Cette approche permet de configurer le modèle de langage (\texttt{OPENAI\_MODEL}), la chaîne de connexion à la base de données (\texttt{DATABASE\_URL}), les répertoires de stockage des fichiers (\texttt{FILES\_DIR}, \texttt{DATASETS\_DIR}, \texttt{EXPORTS\_DIR}) ou encore le niveau de journalisation (\texttt{LOG\_LEVEL}), sans modification du code. L'accès au modèle de langage est également configurable : l'adresse de l'endpoint (\texttt{OPENAI\_BASE\_URL}) et le modèle (\texttt{AGENT\_MODEL}) peuvent pointer vers l'infrastructure locale de modèles ou, en phase de test, vers un fournisseur externe. Elle facilite également le déploiement de la plateforme sur différentes infrastructures, conformément au besoin de portabilité identifié au chapitre consacré à l'analyse des besoins.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Réalisation du backend et du streaming}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{L'API FastAPI}
+
+Le backend expose une API REST structurée autour de routeurs dédiés, dont les principaux points de terminaison sont synthétisés dans le tableau~\ref{tab:endpoints-api}. La logique métier est isolée dans des services, les échanges sont validés par des schémas Pydantic, et l'accès aux données s'appuie sur SQLAlchemy 2.0 en mode asynchrone avec PostgreSQL. Les évolutions du schéma de la base sont gérées par des migrations Alembic. Enfin, l'API est auto-documentée : la documentation OpenAPI (interface Swagger) est générée automatiquement et accessible à l'adresse \texttt{/docs}, ce qui facilite l'exploration et l'intégration de la plateforme.
+
+\begin{table}[H]
+\centering
+\caption{Principaux points de terminaison de l'API REST}
+\label{tab:endpoints-api}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.1cm}Y>{\raggedright\arraybackslash}p{4.7cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Ressource & \color{white}Points de terminaison & \color{white}Rôle \\
+\midrule
+Jeux de données & \texttt{POST /api/datasets/upload}, \texttt{GET /api/datasets/}, \texttt{GET /api/datasets/\{id\}}, \texttt{GET .../preview}, \texttt{PATCH}, \texttt{DELETE} & Importer, lister, consulter, prévisualiser et supprimer les jeux de données. \\
+\midrule
+Conversations & \texttt{POST/GET /api/conversations/}, \texttt{GET/DELETE /api/conversations/\{id\}} & Gérer les fils de discussion et leur historique. \\
+\midrule
+Chat (streaming) & \texttt{POST /api/chat/stream} & Exécuter une requête conversationnelle et diffuser les événements en temps réel (SSE). \\
+\midrule
+Artefacts & \texttt{GET /api/artifacts/\{id\}}, \texttt{GET /api/artifacts/conversation/\{id\}} & Récupérer les artefacts produits (graphiques, exports). \\
+\midrule
+Catégories sémantiques & \texttt{GET/POST /api/semantic-categories/}, \texttt{PATCH/DELETE .../\{id\}} & Gérer la catégorisation des jeux de données. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Les services applicatifs}
+
+La logique métier du backend est organisée en services, séparés des routeurs qui ne gèrent que les préoccupations HTTP. Trois services principaux structurent cette couche : le service des jeux de données, responsable de la validation des fichiers, de leur enregistrement et de leur profilage ; le service des conversations, qui gère le cycle de vie des fils de discussion et leur historique ; et le service de chat, qui assure l'intermédiaire entre la requête HTTP et l'orchestrateur et convertit les événements produits par l'agent en messages de streaming.
+
+\subsection{La gestion des conversations}
+
+Une conversation constitue un fil de discussion associé à un jeu de données précis. Son cycle de vie est géré par le service dédié : création d'un nouveau fil, liste des conversations existantes, récupération d'une conversation avec ses messages et suppression. Chaque échange — message de l'utilisateur et réponse de l'assistant — est persisté en base de données avec les traces des appels d'outils, ce qui alimente la mémoire épisodique décrite précédemment et permet de reprendre une discussion à tout moment.
+
+\subsection{La chaîne d'ingestion et de profilage des données}
+
+L'importation d'un jeu de données constitue la première étape de l'exploitation des données. Lors de l'upload d'un fichier, le service dédié enregistre le fichier brut dans un répertoire de stockage (\texttt{files/datasets/}) sous un identifiant unique, puis lance en arrière-plan une tâche de traitement : chargement de la table avec détection automatique du format (CSV, TSV, XLSX, XLS, Parquet, JSON, Feather) et des encodages, puis \textbf{profilage} des colonnes. Le profilage produit, pour chaque colonne, son type, le nombre de valeurs manquantes, le nombre de valeurs uniques et un exemple de valeur, ainsi que la forme globale de la table (nombre de lignes et de colonnes, volume mémoire). Ces métadonnées sont ensuite persistées en base de données et mises à disposition de l'interface (schéma et statistiques) ainsi que du moteur d'analyse.
+
+Le stockage des fichiers suit une organisation simple et centralisée : les jeux de données bruts sont conservés dans \texttt{files/datasets/}, tandis que les artefacts produits au cours des analyses — spécifications de graphiques Plotly, exports CSV, rendus PNG — sont enregistrés dans \texttt{files/exports/}. Chaque artefact est référencé en base de données (identifiant, type, chemin, conversation associée), ce qui permet de le retrouver et de le diffuser via les interfaces dédiées. Cette organisation, dont le principe a été justifié au chapitre précédent, est ici mise en œuvre par les services de persistance et les routeurs d'artefacts.
+
+\subsection{Le streaming temps réel}
+
+Le streaming constitue un élément central de l'expérience utilisateur. Il repose sur le protocole \textit{Server-Sent Events} (SSE) : le backend diffuse progressivement les événements du traitement — plan, étapes, appels d'outils, tokens, artefacts, erreurs et fin. L'orchestrateur émet ces événements via un mécanisme unifié, comme l'illustre l'extrait suivant.
+
+\begin{lstlisting}[language=Python, caption={Émission d'un événement de streaming}]
+async def _emit(self, event_type: str, data: str | dict):
+    """Émet un événement consommé par le flux SSE."""
+    await adispatch_custom_event(
+        "orchestrator_event", {"type": event_type, "data": data}
+    )
+\end{lstlisting}
+
+Ce mécanisme garantit que l'utilisateur observe en direct le déroulement de l'analyse — étapes franchies, outils invoqués, construction progressive de la réponse — conformément au besoin de réactivité et de transparence identifié au chapitre consacré à l'analyse des besoins.
+
+\subsection{Sécurité et gestion des erreurs}
+
+La réalisation intègre plusieurs mesures de sécurité et un traitement rigoureux des erreurs, indispensables dans un contexte hospitalier. L'exécution des requêtes générées par le modèle de langage est \textbf{encadrée} : le moteur DuckDB fonctionne en mode lecture seule, ce qui interdit toute opération destructive sur les fichiers, et le volume des résultats est limité afin d'éviter une consommation excessive de mémoire. Les formats des fichiers importés sont contrôlés et les échanges validés par des schémas.
+
+La gestion des erreurs distingue trois niveaux complémentaires. Au niveau de l'API, les erreurs sont retournées sous un format JSON homogène avec des codes HTTP explicites (400, 404, 422, 500). Au niveau du chat, une erreur survenant au cours du streaming est transmise au frontend sous la forme d'un événement \texttt{error}, sans interrompre la connexion : l'utilisateur est informé et peut reformuler sa demande. Enfin, au niveau de l'agent, l'échec d'un appel d'outil (par exemple une requête SQL invalide) est renvoyé dans la mémoire de travail de l'exécution : le planificateur analyse l'erreur et corrige la requête lors de l'itération suivante, conformément au mécanisme de reprise présenté au chapitre précédent.
+
+\begin{infobox}{Sécurité par conception}
+Les calculs exécutés sur les données sont strictement contrôlés : le moteur interdit les opérations destructives, borne les volumes traités et valide les entrées, tandis que la traçabilité des étapes et l'evidence garantissent la fiabilité des résultats.
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Réalisation de l'orchestration agentique et de l'evidence}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{L'orchestration avec LangGraph}
+
+L'orchestration a été implémentée sous la forme d'un graphe d'états LangGraph (figure~\ref{fig:graphe-langgraph}), comprenant le planificateur, l'exécuteur, le module de récupération d'erreur et le synthétiseur. Le graphe est compilé avec un \textit{checkpointer} qui assure la persistance de l'état entre les étapes et la continuité entre les tours de conversation. Selon l'environnement, la mémoire est conservée en mémoire ou sur PostgreSQL.
+
+\subsection{Le workflow d'analyse}
+
+Le déroulement d'une requête suit le workflow planification-exécution-synthèse présenté au chapitre précédent (figure~\ref{fig:activite-analyse}). Concrètement, l'orchestrateur commence par demander au modèle de générer un plan d'étapes ordonné ; chaque étape est ensuite exécutée par l'outil adapté, dont le résultat alimente l'evidence ; en cas d'échec, une reprise est tentée avec correction ; enfin, la synthèse produit la réponse finale à partir de l'ensemble des preuves accumulées. Ce workflow garantit qu'une question en langage naturel se traduit systématiquement en une séquence d'opérations tracées et vérifiables.
+
+
+\subsection{L'ingénierie des prompts de l'agent}
+
+Le comportement de l'agent est défini par un ensemble de prompts système qui constituent sa \textbf{mémoire procédurale} : ils encodent les règles de bonnes pratiques — ne jamais inventer de statistique, fonder chaque conclusion sur des résultats calculés, suivre un cycle de vie de visualisation — et sont versionnés avec le code source de l'agent.
+
+Le prompt système général de l'analyste fixe le workflow complet de l'analyse et les règles d'intégrité statistique, dont les principes fondamentaux sont reproduits ci-dessous.
+
+\begin{lstlisting}[caption={Prompt système de l'analyste (extrait)}]
+## Core Principles
+- Never guess.
+- Never fabricate statistics, values, trends, or conclusions.
+- Every conclusion must be supported by tool output.
+- If the available data is insufficient, explicitly say so.
+
+## Analysis Workflow
+1. Inspect the dataset.
+2. Assess data quality.
+3. Clean or prepare the data if necessary.
+4. Select appropriate statistical methods.
+5. Perform the requested analysis.
+6. Generate visualizations when useful.
+7. Verify important conclusions.
+8. Present findings.
+\end{lstlisting}
+
+En complément, trois prompts spécialisés correspondent aux trois phases du workflow : la planification, l'exécution et la synthèse.
+
+Le prompt de planification (\texttt{planner\_prompt}) demande au modèle de décomposer la requête utilisateur en une liste ordonnée d'étapes actionnables, en tirant parti du profilage pré-calculé lorsqu'il est fourni, et de retourner un plan au format JSON (extrait ci-dessous).
+
+\begin{lstlisting}[caption={Prompt de planification (extrait)}]
+You are an execution planner for a data analysis agent.
+Your job is to break down a user's request into a clear,
+ordered list of execution steps.
+
+## Rules
+1. Produce exactly the steps needed - no more, no less.
+2. Each step must be actionable.
+3. Include a final "Synthesize findings" step.
+4. Visualization is evidence, NOT a standalone step. Set
+   needs_visualization: true only if a chart adds insight.
+
+## Output Format
+Return ONLY a JSON object:
+{
+  "plan_title": "Short title",
+  "steps": [
+    {"id": 1, "title": "...", "description": "...",
+     "tool_hint": "...", "needs_visualization": false,
+     "visualization_rationale": ""}
+  ]
+}
+\end{lstlisting}
+
+Le prompt d'exécution (\texttt{step\_prompt}) oriente le modèle sur une étape précise du plan : il limite le périmètre de la tâche, impose l'usage séquentiel des outils et rappelle le cycle de vie des visualisations — calculer avant de générer, fournir une interprétation, référencer le graphique.
+
+\begin{lstlisting}[caption={Prompt d'exécution (extrait)}]
+You are an expert data analyst executing a specific step in
+an analysis plan.
+
+## Current Task
+{step_title}: {step_description}
+
+## Rules
+- Use the available tools to gather evidence for this step.
+- VERY IMPORTANT: Call tools sequentially.
+- Be thorough but focused.
+- Do NOT make a plan or list next steps - just execute this step.
+
+## Chart Lifecycle (when visualization is required)
+1. COMPUTE FIRST - run the relevant statistics tool.
+2. DECIDE - would a chart add insight the numbers cannot convey?
+3. INSIGHT FIRST - form a 1-2 sentence interpretation.
+4. GENERATE - call generate_chart with the insight.
+5. REFERENCE - mention the chart by title in your narrative.
+\end{lstlisting}
+
+Enfin, le prompt de synthèse (\texttt{synthesis\_prompt}) reçoit le \textbf{manifeste d'evidence} accumulé pendant l'exécution et impose au modèle de rédiger la réponse finale en s'appuyant exclusivement sur ces preuves, sans appeler de nouveaux outils et en intégrant les graphiques au fil du texte, comme des figures dans un article scientifique.
+
+\begin{lstlisting}[caption={Prompt de synthèse (extrait)}]
+You are an expert data analyst writing a final analytical report.
+
+## Evidence Manifest
+All analysis steps have been completed. The evidence below contains
+statistics, findings, and chart references gathered step by step.
+
+## Report Structure
+Write a professional, research-paper-style report. For each section:
+1. Open with a paragraph describing the findings (cite numbers).
+2. Embed the chart's Markdown exactly where it is most relevant.
+3. Provide the interpretation and business impact.
+
+## Hard Rules
+- Every conclusion MUST be traceable to evidence above.
+- Never fabricate statistics or trends not present in the evidence.
+- Do NOT call any more tools - just write the final report.
+\end{lstlisting}
+
+\subsection{Les outils de l'agent analyste de données}
+
+L'exécution des étapes du plan repose sur un ensemble d'outils spécialisés, implémentés de manière autonome dans le paquet \texttt{tools}, indépendamment de l'orchestration, puis exposés à l'agent au travers d'un registre centralisé. Cette conception permet de développer et de tester chaque capacité d'analyse de manière isolée, puis de la rendre disponible à l'agent par simple enregistrement, conformément au principe d'extensibilité défini au chapitre précédent.
+
+Le tableau~\ref{tab:outils-agent} recense les familles d'outils implémentées pour l'agent analyste de données.
+
+\begin{table}[H]
+\centering
+\caption{Les outils de l'agent analyste de données}
+\label{tab:outils-agent}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.6cm}Y>{\raggedright\arraybackslash}p{4.6cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Famille & \color{white}Outils & \color{white}Rôle \\
+\midrule
+Inspection et profilage & \texttt{DescribeDataset}, \texttt{DatasetSummary}, \texttt{DatasetHead}, \texttt{DatasetShape}, \texttt{ListColumns}, \texttt{ColumnInfo} & Comprendre la structure, les types et la qualité d'un jeu de données. \\
+\midrule
+Statistiques et agrégation & \texttt{Mean}, \texttt{Median}, \texttt{Min}, \texttt{Max}, \texttt{Std}, \texttt{Quantiles}, \texttt{Correlation}, \texttt{Aggregate}, \texttt{Filter}, \texttt{Sort}, \texttt{OutlierDetection} & Calculer des indicateurs, croiser les variables et détecter les anomalies. \\
+\midrule
+Nettoyage & \texttt{MissingValues}, \texttt{Duplicates}, \texttt{DropColumns} & Préparer et fiabiliser les données avant analyse. \\
+\midrule
+Requêtes SQL (DuckDB) & \texttt{QuerySQL}, \texttt{DuckDBAggregate}, \texttt{DuckDBFilter}, \texttt{DuckDBWindowStats} & Interroger directement les fichiers via SQL (DuckDB). \\
+\midrule
+Visualisation & \texttt{GenerateChart}, \texttt{CorrelationHeatmap} & Produire des preuves visuelles au format Plotly. \\
+\midrule
+Planification & \texttt{CreateBlueprint} & Structurer le déroulement d'une analyse en étapes. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Chaque outil expose une interface normalisée — nom, description et schéma des paramètres — et est enregistré dans le registre au démarrage de l'application. Au cours d'une exécution, l'exécuteur sélectionne l'outil adapté à chaque étape du plan et reçoit un résultat structuré (tableau, statistique, spécification de graphique). Ce résultat alimente directement l'evidence de l'étape, garantissant que les conclusions reposent sur des traitements réellement exécutés.
+
+\subsection{Implémentation du moteur d'analyse}
+
+Le moteur d'analyse (paquet \texttt{analysis}) regroupe les traitements déterministes qui sous-tendent les outils de l'agent. Quatre domaines structurent sa réalisation.
+
+\subsubsection{Préparation et exploration des données}
+
+La préparation des données couvre le chargement multi-formats avec détection des encodages et des séparateurs, ainsi que le profilage des colonnes (types, valeurs manquantes, valeurs uniques, exemples). Les outils d'inspection permettent d'explorer un jeu de données : aperçu des premières lignes, forme de la table, résumé descriptif et liste des colonnes.
+
+\subsubsection{Analyses statistiques}
+
+Le moteur statistique fournit les calculs descriptifs (moyenne, médiane, écart-type, quantiles), les corrélations entre variables, les agrégations et la détection d'anomalies. Ces opérations sont implémentées à l'aide de \texttt{pandas} et \texttt{numpy}, puis exposées à l'agent sous forme d'outils normalisés.
+
+\subsubsection{Génération des visualisations}
+
+Les visualisations sont produites sous forme de spécifications \texttt{Plotly} interactives (histogrammes, diagrammes de dispersion, matrices de corrélation) ou de rendus \texttt{Matplotlib} statiques. Les spécifications générées sont enregistrées comme artefacts et rendues côté interface.
+
+\subsubsection{Génération des artefacts et rapports}
+
+Enfin, le moteur assure la production des artefacts : exports CSV des données traitées, spécifications de graphiques et synthèses. Chaque artefact est accompagné d'un résumé d'evidence associant le résultat à l'opération qui l'a produit, ce qui alimente le manifeste d'evidence de la réponse finale.
+
+\subsection{Le cadre d'exécution (\textit{harness}) en pratique}
+
+Le cadre d'exécution décrit au chapitre précédent (figure~\ref{fig:harness}) est mis en œuvre par l'orchestrateur à travers quatre mécanismes complémentaires : la conservation du contexte, sa construction pour le modèle, la gestion de l'historique et des états, et le contrôle des interactions avec le modèle.
+
+\subsubsection{Gestion et conservation du contexte}
+
+Le contexte durable de la plateforme repose sur les trois mémoires présentées au chapitre précédent. La mémoire épisodique — l'historique des échanges — est alimentée par la persistance des messages, des appels d'outils et des artefacts en base de données. La mémoire sémantique est portée par le catalogue des jeux de données et des catégories. La mémoire procédurale est constituée des prompts et de la configuration de l'agent. Ces sources sont conservées hors de la boîte d'exécution et reconstruites à chaque tour, conformément au principe d'exécution éphémère.
+
+\subsubsection{Construction du contexte pour le modèle}
+
+À chaque exécution, l'orchestrateur assemble le contexte transmis au modèle de langage : la requête de l'utilisateur, le schéma et le profilage du jeu de données courant, le prompt système définissant le rôle et les règles de l'agent, ainsi que la mémoire de travail et le résumé consolidé de la conversation. La langue de l'interface est également intégrée à la formulation des prompts, afin que l'agent réponde dans la langue de l'utilisateur.
+
+\subsubsection{Gestion de l'historique et des états}
+
+L'état de l'exécution est conservé par le \textit{checkpointer} de LangGraph, qui enregistre l'avancement du traitement (plan, étape courante, résultats intermédiaires, artefacts). Un résumé de conversation est consolidé périodiquement afin de maîtriser la taille du contexte : les échanges antérieurs sont condensés et injectés dans les tours suivants, tout en conservant l'historique complet en base de données.
+
+\subsubsection{Contrôle des interactions avec le modèle}
+
+Enfin, les interactions avec le modèle sont contrôlées : l'agent n'accède aux données que par l'intermédiaire d'outils validés, les appels au modèle sont configurés (modèle, paramètres de génération) et chaque exécution produit une trace exploitable pour le diagnostic et l'amélioration continue, conformément aux principes du \textit{LLM Ops} décrits au chapitre précédent. Le modèle est invoqué au travers d'une interface compatible OpenAI : en production, il est servi localement par la passerelle d'inférence décrite dans la section consacrée au déploiement, tandis que les phases de test ont recours à des API externes.
+
+\subsection{La traçabilité par l'evidence}
+
+L'\textbf{evidence} constitue le mécanisme garantissant la véracité des réponses. À chaque étape du plan, les résultats réels produits par les outils — résultats de requêtes, statistiques calculées, résumés de graphiques — sont accumulés dans l'état de l'exécution. La synthèse finale est construite à partir de ce manifeste d'evidence : le modèle de langage est explicitement invité à fonder ses conclusions sur les preuves calculées et à indiquer le niveau de confiance associé, comme l'illustre l'extrait suivant.
+
+\begin{lstlisting}[language=Python, caption={Accumulation de l'evidence et synthèse}]
+# Chaque étape accumule les preuves réellement calculées par les outils
+full_evidence = "".join(evidence_tokens)
+if full_evidence.strip():
+    step_evidence = f"\n## Étape {step.id}: {step.title}\n{full_evidence.strip()}"
+
+# La synthèse ne reçoit que l'evidence calculée, jamais un résultat inventé
+synthesis_prompt = SYNTHESIS_SYSTEM_PROMPT.format(evidence=evidence)
+\end{lstlisting}
+
+Ainsi, chaque conclusion présentée à l'utilisateur est traçable vers des résultats calculés de manière déterministe. Le modèle de langage interprète et rédige, mais ne produit jamais lui-même les chiffres : il s'appuie exclusivement sur l'evidence accumulée, conformément aux exigences de transparence et de reproductibilité définies au chapitre précédent.
+
+\begin{resultbox}{L'evidence au cœur de la fiabilité}
+Le mécanisme d'evidence garantit que toute réponse est fondée sur des résultats réellement calculés par le moteur d'analyse. Les graphiques et statistiques produits constituent des preuves associées aux conclusions, et non des illustrations décoratives.
+\end{resultbox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Réalisation du frontend et de l'internationalisation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{L'interface SvelteKit}
+
+L'interface a été développée avec SvelteKit 5, organisée autour de plusieurs espaces : un tableau de bord offrant une vue d'ensemble des jeux de données, des conversations et des rapports ; une gestion des jeux de données présentant le schéma, le profilage et les statistiques ; un espace de conversation ; ainsi qu'une page de paramètres. La navigation et les composants sont construits sur la bibliothèque de composants partagés du projet.
+
+\subsection{L'interface conversationnelle}
+
+L'espace de conversation constitue le cœur de l'expérience utilisateur. Il consomme le flux d'événements SSE diffusé par le backend et affiche en temps réel le déroulement de l'analyse : étapes du plan, appels d'outils, tokens de la réponse et artefacts produits. Les messages sont rendus au format Markdown et les appels d'outils sont présentés sous forme de panneaux dépliables, offrant ainsi une transparence totale sur le traitement en cours.
+
+\subsection{La gestion des sessions et des conversations}
+
+La plateforme permet de créer, lister, reprendre et supprimer des conversations. Chaque conversation est associée à un jeu de données, ce qui définit le contexte de l'analyse. L'historique des échanges est rechargé depuis le backend, permettant à l'utilisateur de reprendre une discussion là où elle s'est arrêtée.
+
+\subsection{La visualisation des résultats}
+
+Les graphiques produits par le moteur d'analyse sont rendus de manière interactive à partir de leurs spécifications Plotly, directement dans la conversation. Les artefacts — graphiques, exports, rapports — sont affichés sous forme de cartes avec la possibilité de les télécharger ou de les consulter.
+
+\subsection{L'internationalisation (i18n)}
+
+La plateforme est \textbf{internationalisée} en français et en anglais. L'internationalisation repose sur le framework \textit{inlang} et \textit{Paraglide JS} : les textes de l'interface sont centralisés dans des fichiers de messages par langue (\texttt{messages/en.json}, \texttt{messages/fr.json}), puis compilés en fonctions typées utilisées dans les composants. L'utilisateur peut basculer la langue de l'interface à tout moment depuis les paramètres, comme l'illustre l'extrait suivant.
+
+\begin{lstlisting}[language=HTML, caption={Utilisation de l'internationalisation dans un composant}]
+<script>
+  import { i18n, m } from '$lib/i18n';
+</script>
+
+<h1>{m.overview_title()}</h1>
+<button onclick={() => i18n.setLocale('fr')}>Français</button>
+\end{lstlisting}
+
+Au-delà de l'interface, la langue sélectionnée est intégrée à la construction des prompts adressés au modèle de langage : l'agent répond ainsi dans la langue de l'utilisateur, ce qui améliore l'accessibilité de la plateforme pour les professionnels de santé francophones et anglophones du GST-TTA.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Déploiement et intégration}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{L'intégration des composants}
+
+L'intégration de la solution s'est faite à trois niveaux complémentaires. L'intégration frontend/backend repose sur les interfaces REST et le streaming SSE : l'interface consomme directement les événements diffusés par l'API. L'intégration agent/moteur d'analyse passe par le registre d'outils : l'orchestrateur invoque les capacités du moteur sans dépendre de leur implémentation et récupère les résultats sous une forme structurée alimentant l'evidence. Enfin, l'intégration du modèle de langage est assurée par le cadre d'exécution (harness) : les appels au modèle sont configurés, encadrés et tracés, et les réponses sont produites dans la langue de l'utilisateur.
+
+\subsection{Le déploiement conteneurisé}
+
+La plateforme est conteneurisée et déployée au travers de Docker : une image pour l'API, une image pour l'application web, et une configuration Nginx assurant le reverse proxy. Un fichier de composition (\texttt{docker-compose}) orchestre l'ensemble des services — API, interface et base de données PostgreSQL — tandis que la configuration est externalisée par variables d'environnement. Cette approche garantit la portabilité et la reproductibilité du déploiement sur l'infrastructure locale, en cohérence avec l'exigence de souveraineté des données identifiée au chapitre consacré à l'analyse des besoins.
+
+\subsection{L'infrastructure de modèles de langage locaux}
+
+En production, la plateforme s'appuie sur une infrastructure de modèles de langage entièrement locale, qui garantit la souveraineté des traitements. Cette infrastructure repose sur une passerelle d'inférence auto-hébergée (projet \texttt{llms-gateway}) qui sert des modèles GGUF via le moteur \texttt{llama.cpp} et expose une API compatible OpenAI. Un reverse proxy Nginx constitue le point d'entrée unique (port 6060) et route les requêtes vers des conteneurs d'inférence dédiés par capacité — chat, embeddings, reranking, vision — gérés dynamiquement par le biais du SDK Docker.
+
+L'intégration avec la plateforme est transparente : le backend est configuré pour adresser la passerelle, comme l'illustre l'extrait suivant.
+
+\begin{lstlisting}[caption={Configuration de l'accès au modèle (extrait de \texttt{.env})}]
+# Production : modele local servi par la passerelle llms-gateway
+OPENAI_BASE_URL=http://localhost:6060/v1
+AGENT_MODEL=<modele-local>
+
+# Tests de developpement : API externe compatible OpenAI
+# OPENAI_BASE_URL=https://api.openai.com/v1
+\end{lstlisting}
+
+L'orchestrateur LangGraph et les appels du modèle utilisent ainsi le même contrat d'API, que le modèle soit servi localement par la passerelle ou, ponctuellement, par un fournisseur externe durant les tests. La passerelle assure également la gestion du cycle de vie des modèles : installation depuis le hub HuggingFace avec vérification d'intégrité, démarrage des conteneurs d'inférence à la demande et remplacement à chaud. Aucune donnée n'est transmise à un service externe en production, conformément à l'exigence de souveraineté identifiée au chapitre consacré à l'analyse des besoins.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ce chapitre a présenté la réalisation effective de la plateforme, en répondant à la question de la mise en œuvre concrète de la solution. L'intelligence des données a été introduite comme cadre structurant : la plateforme transforme les données hospitalières du GST-TTA en connaissances exploitables, accessibles en langage naturel et fondées sur des résultats vérifiables.
+
+Les principales réalisations ont été détaillées : le backend FastAPI et son API REST, la chaîne d'ingestion et de profilage des jeux de données, le streaming temps réel, l'orchestration agentique et le mécanisme d'evidence garantissant la traçabilité des réponses, l'interface SvelteKit et son internationalisation en français et en anglais, ainsi que le déploiement conteneurisé et l'infrastructure de modèles de langage locaux. Les mesures de sécurité et de gestion des erreurs mises en œuvre ont également été présentées. Seuls les extraits de code les plus structurants ont été inclus, conformément à l'esprit d'un rapport académique.
+
+La solution réalisée constitue ainsi une mise en œuvre complète des choix de conception du chapitre précédent. Le chapitre suivant est consacré aux tests effectués pour valider le bon fonctionnement de la plateforme, à la présentation des résultats obtenus ainsi qu'aux limites et perspectives d'amélioration.

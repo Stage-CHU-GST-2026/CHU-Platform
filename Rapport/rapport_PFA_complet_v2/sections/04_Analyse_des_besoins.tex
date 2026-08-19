@@ -1,0 +1,275 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Analyse des besoins et étude de l'existant}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+Ce chapitre a pour objectif d'analyser les besoins auxquels doit répondre la plateforme proposée et d'étudier les solutions existantes dans le domaine de l'analyse conversationnelle de données. Dans un premier temps, les différents acteurs ainsi que leurs besoins fonctionnels et non fonctionnels sont identifiés afin de définir le périmètre du projet. Dans un second temps, un état de l'art présente les principales technologies mobilisées ainsi qu'une étude comparative des plateformes existantes. Cette analyse permet enfin de justifier les choix retenus pour la conception de la solution proposée.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Analyse des besoins}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cette section présente les besoins identifiés auprès des futurs utilisateurs de la plateforme. L'objectif est de définir les fonctionnalités attendues ainsi que les contraintes auxquelles le système devra répondre.
+
+\subsection{Identification des acteurs}
+
+L'identification des acteurs constitue une étape préliminaire essentielle pour comprendre les interactions entre les utilisateurs et le système. La plateforme s'adresse à plusieurs catégories d'utilisateurs ayant des rôles et des attentes distincts.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    actor/.style={rectangle, draw, thick, minimum width=3.5cm, minimum height=1cm, align=center, rounded corners, fill=PrimaryRed!10},
+    system/.style={rectangle, draw, thick, minimum width=5cm, minimum height=0.8cm, align=center, rounded corners, fill=PrimaryRed!25, font=\bfseries},
+    arrow/.style={->, thick, color=PrimaryRed, -{Stealth[length=3mm]}}
+]
+\node[system] (system) {Plateforme CHU};
+\node[actor, above left=1cm and 1.5cm of system] (medecin) {Médecins \\ \small Professionnels de santé};
+\node[actor, above=0.5cm of system] (administratif) {Personnels \\ \small Administratifs et décideurs};
+\node[actor, above right=1cm and 1.5cm of system] (data) {Data Scientists \\ \small Analystes et chercheurs};
+
+\draw[arrow] (medecin) -- (system);
+\draw[arrow] (administratif) -- (system);
+\draw[arrow] (data) -- (system);
+\end{tikzpicture}
+\caption{Acteurs principaux de la plateforme}
+\label{fig:acteurs}
+\end{figure}
+
+Les acteurs identifiés sont les suivants :
+
+\begin{itemize}
+  \item \textbf{Médecins et professionnels de santé} : utilisateurs finaux souhaitant interroger les données en langage naturel pour obtenir des analyses rapides sur leurs activités ;
+  \item \textbf{Personnels administratifs et décideurs} : responsables du pilotage des établissements cherchant à suivre les indicateurs de performance et à prendre des décisions fondées sur les données ;
+  \item \textbf{Data scientists et analystes} : utilisateurs techniques nécessitant des fonctionnalités avancées pour des analyses complexes et reproductibles.
+\end{itemize}
+
+\subsection{Cas d'utilisation}
+
+Les cas d'utilisation principaux de la plateforme sont présentés dans le diagramme ci-dessous :
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    usecase/.style={ellipse, draw, thick, minimum width=3cm, minimum height=1.2cm, align=center, fill=SoftRed!20},
+    actor/.style={rectangle, draw, thick, minimum width=2.5cm, minimum height=0.8cm, align=center, rounded corners, fill=PrimaryRed!10},
+    arrow/.style={->, thick, color=PrimaryRed, -{Stealth[length=3mm]}}
+]
+\node[actor] (user) {Utilisateur};
+\node[usecase, above right=0.5cm and 1cm of user] (uc1) {Importer \\ des données};
+\node[usecase, right=1.5cm of uc1] (uc2) {Interroger en \\ langage naturel};
+\node[usecase, right=1.5cm of uc2] (uc3) {Visualiser \\ les résultats};
+\node[usecase, below=0.5cm of uc1] (uc4) {Exporter \\ des rapports};
+\node[usecase, below=0.5cm of uc2] (uc5) {Gérer ses \\ conversations};
+\node[usecase, below=0.5cm of uc3] (uc6) {Partager \\ des analyses};
+
+\draw[arrow] (user) -- (uc1);
+\draw[arrow] (user) -- (uc2);
+\draw[arrow] (user) -- (uc3);
+\draw[arrow] (user) -- (uc4);
+\draw[arrow] (user) -- (uc5);
+\draw[arrow] (user) -- (uc6);
+\end{tikzpicture}
+\caption{Diagramme des cas d'utilisation principaux}
+\label{fig:cas_utilisation}
+\end{figure}
+
+\subsection{Besoins fonctionnels}
+
+Les besoins fonctionnels décrivent les fonctionnalités que la plateforme doit offrir aux utilisateurs :
+
+\begin{itemize}
+  \item \textbf{Importation de données} : support multi-formats (CSV, XLSX, parquet, JSON) avec détection automatique de l'encodage et du délimiteur ;
+  \item \textbf{Interaction en langage naturel} : interface conversationnelle permettant de formuler des requêtes analytiques sans compétences techniques ;
+  \item \textbf{Planification automatique} : décomposition automatique d'une requête complexe en une séquence d'étapes ordonnées et traçables ;
+  \item \textbf{Analyse statistique} : calculs statistiques rigoureux (descriptives, corrélations, agrégations, profilage) via un moteur déterministe ;
+  \item \textbf{Visualisation automatique} : génération automatique de graphiques adaptés (histogrammes, diagrammes de dispersion, matrices de corrélation) ;
+  \item \textbf{Génération de rapports} : production de rapports synthétiques intégrant résultats, graphiques et interprétations ;
+  \item \textbf{Streaming en temps réel} : diffusion progressive des résultats (plan, étapes, graphiques, tokens) pour une expérience interactive ;
+  \item \textbf{Persistance} : sauvegarde des conversations et des artefacts (graphiques, rapports) entre les sessions ;
+  \item \textbf{Gestion des erreurs} : messages d'erreur clairs et suggestions pour guider l'utilisateur.
+\end{itemize}
+
+\subsection{Besoins non fonctionnels}
+
+Les besoins non fonctionnels définissent les qualités et contraintes du système :
+
+\begin{itemize}
+  \item \textbf{Sécurité} : confidentialité et intégrité des données sensibles, authentification des utilisateurs, chiffrement des communications ;
+  \item \textbf{Performance} : réactivité optimale avec un temps de réponse inférieur à 5 secondes pour les opérations courantes ;
+  \item \textbf{Modularité} : architecture permettant l'ajout de nouveaux outils, agents ou visualisations sans modifications majeures ;
+  \item \textbf{Extensibilité} : intégration facilitée de nouveaux modèles de langage et de nouvelles sources de données ;
+  \item \textbf{Traçabilité} : journalisation des actions et des résultats pour l'audit et la reproductibilité des analyses ;
+  \item \textbf{Maintenabilité} : bonnes pratiques de développement (tests unitaires, documentation, intégration continue) ;
+  \item \textbf{Portabilité} : déploiement sur différentes infrastructures via la conteneurisation (Docker) ;
+  \item \textbf{Souveraineté des données} : hébergement exclusif sur l'infrastructure du GST-TTA, sans transmission vers des services externes.
+\end{itemize}
+
+\begin{infobox}{Synthèse des besoins}
+L'analyse des besoins a permis d'identifier une plateforme intégrée, sécurisée et modulaire, capable de répondre aux exigences du contexte hospitalier tout en offrant une interface intuitive en langage naturel. Les besoins non fonctionnels, notamment la sécurité et la souveraineté des données, constituent des contraintes fortes qui orientent les choix architecturaux.
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{État de l'art}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Afin de concevoir une solution adaptée aux besoins identifiés, il est nécessaire d'étudier les principales technologies utilisées dans le domaine de l'intelligence artificielle générative et de l'analyse conversationnelle de données.
+
+\subsection{Intelligence artificielle générative}
+
+L'intelligence artificielle générative désigne l'ensemble des modèles capables de produire du contenu original — textes, images, code, etc. — à partir d'une entrée donnée. Contrairement aux modèles discriminants qui classifient ou prédisent, les modèles génératifs apprennent la distribution sous-jacente des données pour en générer de nouvelles.
+
+Les avancées récentes dans ce domaine, notamment avec l'architecture Transformers et le mécanisme d'attention, ont permis l'émergence de modèles de plus en plus performants, capables de comprendre et de générer un langage naturel de qualité.
+
+\subsection{Grands modèles de langage (LLMs)}
+
+Les grands modèles de langage (\textit{Large Language Models}) sont des modèles d'IA générative entraînés sur des corpus textuels massifs. Ils sont capables de comprendre des requêtes en langage naturel, de raisonner sur des informations complexes et de générer des réponses cohérentes.
+
+Parmi les LLMs les plus connus, on peut citer :
+
+\begin{itemize}
+  \item \textbf{GPT (OpenAI)} : modèles généralistes aux capacités étendues ;
+  \item \textbf{Claude (Anthropic)} : modèle axé sur la sécurité et la fiabilité ;
+  \item \textbf{Gemini (Google)} : modèle multimodal intégrant texte et image ;
+  \item \textbf{Llama (Meta)} : modèle open source permettant un déploiement local.
+\end{itemize}
+
+Les LLMs ouvrent la voie à de nouvelles interfaces conversationnelles où l'utilisateur interagit en langage naturel, sans nécessiter de compétences techniques particulières.
+
+\subsection{Agents intelligents}
+
+Un agent intelligent est un système capable de percevoir son environnement, de raisonner sur les actions à entreprendre et d'agir de manière autonome pour atteindre un objectif. Dans le contexte de l'analyse de données, un agent peut orchestrer différentes étapes du traitement, appeler des outils spécialisés et synthétiser les résultats.
+
+Les frameworks d'agents permettent aujourd'hui de :
+
+\begin{itemize}
+  \item décomposer des tâches complexes en sous-objectifs ;
+  \item sélectionner dynamiquement les outils adaptés ;
+  \item maintenir un état de la conversation ;
+  \item assurer la traçabilité des actions effectuées.
+\end{itemize}
+
+\subsection{Model Context Protocol (MCP)}
+
+Le Model Context Protocol est un protocole standardisé permettant aux modèles de langage d'interagir avec des outils et des sources de données externes de manière structurée. Il définit des interfaces communes pour :
+
+\begin{itemize}
+  \item la découverte des outils disponibles ;
+  \item l'invocation des outils avec des paramètres validés ;
+  \item le retour des résultats dans un format exploitable.
+\end{itemize}
+
+Ce protocole facilite l'intégration de nouvelles capacités aux agents sans modifier leur logique centrale.
+
+\subsection{Framework LangGraph}
+
+LangGraph est un framework open source permettant de construire des applications d'agents avec des graphes d'états. Il étend les capacités de LangChain en offrant :
+
+\begin{itemize}
+  \item une modélisation explicite du flux de contrôle ;
+  \item la persistance de l'état entre les étapes ;
+  \item la gestion de cycles et de conditionnels ;
+  \item une traçabilité complète des actions.
+\end{itemize}
+
+Cette approche est particulièrement adaptée aux workflows analytiques complexes où chaque étape doit être documentée et vérifiable.
+
+
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+Le RAG est une approche combinant la génération de texte avec la recherche d'informations dans des bases de données. Elle permet aux LLMs de produire des réponses basées sur des documents spécifiques plutôt que sur leur seule connaissance interne.
+
+Les bénéfices du RAG incluent :
+
+\begin{itemize}
+  \item une réduction des hallucinations du modèle ;
+  \item la capacité à répondre sur des données spécifiques non incluses dans l'entraînement ;
+  \item la traçabilité des sources d'information.
+\end{itemize}
+
+Dans le contexte de l'analyse de données, le RAG peut être utilisé pour fournir des informations contextuelles sur les données (métadonnées, schémas, descriptions) lors de l'interprétation des résultats.
+
+\subsection{Analyse conversationnelle de données}
+
+L'analyse conversationnelle de données est un domaine émergent qui combine interfaces en langage naturel, intelligence artificielle et visualisation de données. Elle permet aux utilisateurs de dialoguer avec leurs données sans avoir à maîtriser des langages de programmation ou des outils statistiques complexes.
+
+Les systèmes d'analyse conversationnelle reposent généralement sur :
+
+\begin{itemize}
+  \item une compréhension du langage naturel pour interpréter les requêtes ;
+  \item un moteur d'exécution pour réaliser les traitements demandés ;
+  \item une génération de langage naturel pour expliquer les résultats ;
+  \item une interface de visualisation interactive.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Étude comparative des solutions existantes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cette section présente une comparaison des principales plateformes actuellement disponibles pour l'analyse conversationnelle de données.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des principales plateformes d'analyse conversationnelle}
+\label{tab:comparaison}
+\rowcolors{2}{LightGray}{white}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.3cm}cccccc}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Solution &
+\color{white}Chat &
+\color{white}Analyse &
+\color{white}Graphiques &
+\color{white}Local &
+\color{white}Open source &
+\color{white}Sécurité \\
+\midrule
+ChatGPT ADA & \checkmark & \checkmark & \checkmark & \ding{55} & \ding{55} & Moyen \\
+Claude Analysis & \checkmark & \checkmark & \checkmark & \ding{55} & \ding{55} & Moyen \\
+Julius AI & \checkmark & \checkmark & \checkmark & \ding{55} & \ding{55} & Moyen \\
+Power BI Copilot & \checkmark & \checkmark & \checkmark & Entreprise & \ding{55} & Élevée \\
+Tableau AI & \checkmark & \checkmark & \checkmark & Entreprise & \ding{55} & Élevée \\
+\textbf{Notre plateforme} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & Très élevée \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+L'analyse comparative met en évidence plusieurs constats :
+
+\begin{itemize}
+  \item \textbf{Solutions cloud} : les plateformes existantes (ChatGPT ADA, Claude Analysis, Julius AI) sont majoritairement hébergées sur des infrastructures cloud publiques, ce qui pose des problèmes de confidentialité pour les données de santé ;
+  \item \textbf{Solutions propriétaires} : Power BI Copilot et Tableau AI sont des solutions d'entreprise propriétaires, coûteuses et non modifiables ;
+  \item \textbf{Manque de transparence} : les mécanismes de traitement sont souvent opaques, ne permettant pas de vérifier la reproductibilité des analyses ;
+  \item \textbf{Faible extensibilité} : l'ajout de nouveaux outils ou de nouvelles sources de données est généralement limité.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Positionnement de la solution proposée}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+À partir de l'analyse des besoins et de l'étude comparative réalisée, plusieurs limites des solutions existantes ont été identifiées. Bien que les plateformes actuelles proposent des fonctionnalités avancées d'analyse conversationnelle, elles reposent majoritairement sur des services cloud propriétaires, offrent une faible maîtrise des traitements réalisés et répondent difficilement aux exigences de confidentialité imposées par le domaine de la santé.
+
+La plateforme développée dans le cadre de ce projet adopte une approche différente reposant sur :
+
+\begin{itemize}
+  \item une \textbf{architecture modulaire} facilitant l'évolution du système et l'ajout de nouvelles fonctionnalités ;
+  \item une \textbf{exécution locale} garantissant la souveraineté des données au sein de l'infrastructure du GST-TTA ;
+  \item un \textbf{moteur d'analyse déterministe} assurant la reproductibilité et la vérifiabilité des résultats ;
+  \item une \textbf{orchestration basée sur des agents intelligents} (LangGraph) pour structurer le processus d'analyse ;
+  \item une \textbf{intégration adaptée} aux données hospitalières du GST-TTA, avec persistance des conversations et des artefacts.
+\end{itemize}
+
+Ces caractéristiques permettent de répondre aux besoins identifiés tout en garantissant la confidentialité, la traçabilité et l'évolutivité de la solution.
+En pratique, les modèles de langage sont servis localement au sein de l'infrastructure du groupement au travers d'une passerelle d'inférence auto-hébergée, conformément à l'exigence de souveraineté. Les API externes compatibles OpenAI ne sont mobilisées que ponctuellement, durant les phases de développement et de test.
+
+\begin{infobox}{Positionnement technologique}
+La plateforme se distingue par son approche hybride : elle combine la puissance des LLMs pour l'interaction en langage naturel avec un moteur d'analyse computationnel déterministe (pandas, matplotlib...), offrant ainsi à la fois la flexibilité du langage naturel et la rigueur des méthodes statistiques.
+\end{infobox}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ce chapitre a permis d'identifier les besoins fonctionnels et non fonctionnels de la plateforme ainsi que les contraintes propres au contexte hospitalier. L'étude des technologies et la comparaison des solutions existantes ont mis en évidence leurs avantages ainsi que leurs limites. Ces analyses justifient les choix technologiques retenus pour le développement de la plateforme et constituent la base de la conception présentée dans le chapitre suivant.
+
+Le chapitre suivant détaille l'architecture logicielle complète de la plateforme, en présentant les différentes composantes développées, leurs interactions et les mécanismes de persistance et de communication.

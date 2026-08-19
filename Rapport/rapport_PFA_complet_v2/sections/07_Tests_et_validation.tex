@@ -1,0 +1,173 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Tests et validation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+Ce chapitre présente les tests réalisés pour valider le bon fonctionnement de la plateforme et évaluer sa conformité aux besoins identifiés au chapitre consacré à l'analyse des besoins. Dans le cadre de la démarche Agile adoptée, la validation a été menée de manière continue : chaque sprint livrait un incrément fonctionnel vérifié avant d'être intégré à la solution.
+
+Le chapitre décrit la stratégie de test mise en œuvre et son environnement, les tests unitaires des composants, les tests d'intégration et la validation fonctionnelle, ainsi que les tests de la passerelle de modèles locaux. Il présente ensuite les aspects de sécurité, de performance et de qualité, avant de synthétiser les résultats obtenus, les limites identifiées et les perspectives d'amélioration envisageables.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Stratégie et environnement de test}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+La validation de la plateforme repose sur plusieurs niveaux de test complémentaires, conformes aux bonnes pratiques de développement logiciel :
+
+\begin{itemize}
+  \item \textbf{Tests unitaires} : validation de composants isolés, notamment l'exécution des outils de l'agent et la gestion de leurs erreurs ;
+  \item \textbf{Tests d'intégration} : vérification des interactions entre les composants — API, streaming, ingestion, orchestration ;
+  \item \textbf{Validation fonctionnelle} : scénarios de bout en bout correspondant aux cas d'utilisation identifiés au chapitre consacré à l'analyse des besoins ;
+  \item \textbf{Tests de sécurité et de performance} : contrôle des mécanismes de protection des données et de la réactivité des traitements.
+\end{itemize}
+
+L'environnement de test s'appuie sur \texttt{pytest} et le gestionnaire de paquets \texttt{uv} (\texttt{uv run pytest}), avec des scripts de validation localisés à la racine du dépôt ainsi que dans les différents composants. Pour la passerelle de modèles locaux, une intégration continue est en place au travers d'un workflow GitHub Actions, comme détaillé dans la suite du chapitre. Cette stratégie garantit une validation à la fois locale (développement) et automatisée (intégration).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tests unitaires des composants}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Les tests unitaires visent à valider le comportement des composants fondamentaux de l'agent et du moteur d'analyse, indépendamment du reste du système.
+
+\subsection{Exécution des outils et tolérance aux pannes}
+
+Le premier volet vérifie l'exécution des outils au travers du nœud d'outils de l'agent : les fonctions enregistrées dans le registre doivent être correctement invoquées à partir des appels d'outils du modèle et leurs résultats correctement formatés. Le second volet porte sur la \textbf{tolérance aux pannes} : un outil qui échoue (par exemple une requête SQL invalide) doit produire une erreur structurée, sans interrompre le processus d'exécution. Ce comportement est validé à la fois avec le mode de gestion d'erreur du nœud d'outils et au sein du graphe de l'agent, comme l'illustre l'extrait suivant.
+
+\begin{lstlisting}[language=Python, caption={Test de tolérance aux pannes d'un outil (extrait)}]
+from langchain_core.messages import AIMessage, ToolCall
+
+msg = AIMessage(content="", tool_calls=[ToolCall(name="bad_tool", args={}, id="call_123")])
+res = tools_node.invoke({"messages": [msg]})
+# L'echec de l'outil est capture et retourne sous forme d'erreur structuree,
+# sans interrompre le processus d'execution.
+\end{lstlisting}
+
+Ces validations confirment que le mécanisme de reprise présenté au chapitre précédent — l'erreur renvoyée dans la mémoire de travail et corrigée par le planificateur — s'appuie sur un socle d'exécution robuste.
+
+\subsection{Tests de bornes et robustesse}
+
+Un troisième volet vérifie les \textbf{bornes} appliquées aux traitements analytiques : le volume maximal des résultats retournés par les requêtes DuckDB (afin d'éviter la saturation mémoire) et les seuils de taille des jeux de données manipulés. Ces tests valident que les limites de sécurité définies lors de la réalisation sont effectivement respectées par le moteur d'analyse.
+
+Le moteur d'analyse (profilage, statistiques, chargement multi-formats) est par ailleurs exercé au travers de ces validations ainsi que dans les scénarios fonctionnels décrits ci-après.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tests d'intégration et validation fonctionnelle}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Les tests d'intégration et la validation fonctionnelle vérifient le comportement global de la plateforme selon les scénarios d'usage réels.
+
+\subsection{Validation de l'API et du streaming}
+
+Les points de terminaison de l'API REST (jeux de données, conversations, artefacts, catégories sémantiques) ont été validés, notamment la documentation OpenAPI générée automatiquement. Le flux de \textbf{streaming} (SSE) a été vérifié sur l'ensemble de ses événements : annonce du plan, étapes, appels d'outils, diffusion des tokens, artefacts, erreur et fin. La validation confirme que le frontend reçoit en temps réel les événements produits par l'orchestrateur, sans rupture de la connexion en cas d'erreur.
+
+\subsection{Validation de la chaîne d'ingestion}
+
+Le parcours d'importation d'un jeu de données a été validé de bout en bout : téléversement d'un fichier, enregistrement du fichier brut, profilage automatique des colonnes, persistance des métadonnées et affichage du schéma et des statistiques dans l'interface. Les formats pris en charge (CSV, Parquet, XLSX, JSON, etc.) et la détection des encodages ont été exercés sur des jeux de données variés.
+
+\subsection{Validation du workflow d'analyse}
+
+Le scénario central — une question posée en langage naturel aboutissant à une analyse complète — a été validé conformément au workflow présenté au chapitre consacré à la conception (figure~\ref{fig:activite-analyse}) : génération du plan, exécution des étapes par les outils, accumulation de l'evidence et synthèse de la réponse. La validation vérifie en particulier que chaque conclusion est tracée vers des résultats réellement calculés, et que les graphiques produits constituent des preuves associées aux réponses.
+
+\subsection{Validation utilisateur}
+
+Enfin, des démonstrations ont été réalisées avec les parties prenantes du GST-TTA afin de valider l'adéquation de la plateforme aux besoins métiers. Les retours recueillis ont été intégrés au fil des itérations, conformément à la démarche Agile présentée au chapitre consacré au contexte général, contribuant à l'amélioration continue de l'interface et des fonctionnalités.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tests de la passerelle de modèles locaux}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+La passerelle d'inférence qui sert les modèles locaux en production (présentée au chapitre précédent) dispose de sa propre suite de tests, garantissant la disponibilité de l'endpoint utilisé par la plateforme.
+
+\subsection{Suite de tests de la passerelle}
+
+La passerelle (\textit{llms-gateway}) est validée à plusieurs niveaux : des tests de santé des endpoints (\texttt{/health}, \texttt{/ready}), des tests de l'API de gestion des modèles (installation, listage, progression), des tests de recherche sur le hub HuggingFace et des tests du système. Les bibliothèques de base sont également couvertes : le registre et ses backends de stockage, la validation des fichiers téléchargés et le client HuggingFace pour le paquet central, ainsi que le cycle de vie des conteneurs et l'allocation des ports pour l'orchestration.
+
+\subsection{Intégration continue}
+
+Une intégration continue est mise en place au travers d'un workflow GitHub Actions qui, sur chaque modification, identifie les composants affectés (paquet central, interface en ligne de commande, orchestration) et exécute les cibles de test correspondantes. Cette automatisation garantit que les évolutions de la passerelle ne régressent pas les mécanismes de gestion des modèles sur lesquels s'appuie la plateforme en production.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Sécurité, performance et qualité}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Sécurité}
+
+Les contrôles de sécurité mis en œuvre lors de la réalisation ont été vérifiés : le moteur DuckDB fonctionne en lecture seule, les volumes de résultats sont bornés, et les formats des fichiers importés sont validés. Un audit de la plateforme a par ailleurs été mené, attribuant les appréciations suivantes : \textbf{A-} pour l'architecture et la qualité du code, \textbf{A} pour la conception de la base de données et du stockage, et \textbf{B-} pour la posture de sécurité, en raison de l'absence d'authentification et d'une politique CORS volontairement ouverte en environnement de développement. Ces réserves sont détaillées dans les limites de la solution.
+
+\subsection{Performance}
+
+La validation des performances s'est concentrée sur la réactivité du streaming temps réel (diffusion progressive des étapes et des tokens) et sur l'exécution des requêtes analytiques : le recours à DuckDB permet de traiter de grands volumes de données en mémoire, sans transiter par la base relationnelle pour les charges de calcul lourdes.
+
+\subsection{Qualité des réponses}
+
+La qualité des réponses produites par l'agent est évaluée au regard de leur fondement : chaque réponse s'appuie exclusivement sur l'evidence calculée par le moteur d'analyse, et les graphiques générés accompagnent les conclusions qu'ils illustrent. Ce mécanisme constitue une base objective d'évaluation, complétée par des critères d'appréciation automatisés (type \textit{LLM-as-a-judge}) envisagés pour affiner le contrôle qualité.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Résultats, limites et perspectives}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Résultats et synthèse}
+
+L'ensemble des validations a permis de confirmer le bon fonctionnement de la plateforme selon les scénarios prévus. Le tableau~\ref{tab:synthese-tests} synthétise les niveaux de test et les principaux constats.
+
+\begin{table}[H]
+\centering
+\caption{Synthèse des tests et validation}
+\label{tab:synthese-tests}
+\rowcolors{2}{LightGray}{white}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}p{4cm}Y>{\raggedright\arraybackslash}p{4.4cm}}
+\toprule
+\rowcolor{TableHeader}
+\color{white}Niveau de test & \color{white}Objets validés & \color{white}Constats \\
+\midrule
+Tests unitaires & Exécution des outils, tolérance aux pannes, bornes des requêtes & Mécanismes d'exécution et de reprise validés \\
+\midrule
+Intégration & API REST, streaming SSE, chaîne d'ingestion & Scénarios de bout en bout opérationnels \\
+\midrule
+Passerelle de modèles & Santé, API modèles, bibliothèques, CI & Suite dédiée opérationnelle et automatisée \\
+\midrule
+Sécurité et performance & Contrôles DuckDB, bornage, réactivité du streaming & Contrôles validés ; réserves identifiées (auth, CORS) \\
+\midrule
+Validation utilisateur & Démonstrations GST-TTA & Retours intégrés au fil des itérations \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Limites de la solution}
+
+Malgré les résultats obtenus, plusieurs limites ont été identifiées :
+
+\begin{itemize}
+  \item \textbf{Authentification} : les points de terminaison de l'API ne sont actuellement pas protégés par un contrôle d'authentification ; la plateforme ne distingue pas les utilisateurs ni leurs droits d'accès ;
+  \item \textbf{Politique CORS} : la configuration autorise volontairement toutes les origines en environnement de développement, ce qui doit être restreint en production ;
+  \item \textbf{Nettoyage des fichiers} : les artefacts générés sont conservés indéfiniment, sans politique de purge automatisée ;
+  \item \textbf{Interface héritée} : une ancienne interface (\texttt{web-2}) est maintenue en parallèle de l'application principale, engendrant une charge de maintenance redondante ;
+  \item \textbf{Dépendance aux API externes en test} : les phases de test ont recours à des API externes compatibles OpenAI, alors que la production privilégie les modèles locaux.
+\end{itemize}
+
+\subsection{Perspectives d'amélioration}
+
+Les limites identifiées ouvrent plusieurs perspectives d'amélioration :
+
+\begin{itemize}
+  \item \textbf{Sécurité} : mettre en place une authentification (JWT) et une autorisation multi-tenant, et restreindre la politique CORS par variables d'environnement ;
+  \item \textbf{Hygiène des données} : automatiser la purge des artefacts obsolètes et durcir l'accès aux fichiers ;
+  \item \textbf{Consolidation} : déprécier l'interface héritée et généraliser l'usage des modèles locaux pour les tests ;
+  \item \textbf{Qualité et intégration continue} : étendre l'intégration continue à l'ensemble de la plateforme et renforcer l'évaluation systématique des réponses de l'agent (critères objectifs, \textit{LLM-as-a-judge}) ;
+  \item \textbf{Extension des capacités} : enrichir le moteur d'analyse (nouveaux tests statistiques, connecteurs de données) et améliorer la gestion du contexte pour de très longues conversations.
+\end{itemize}
+
+\begin{resultbox}{Validation de la solution}
+Les tests réalisés confirment que la plateforme répond aux besoins fonctionnels identifiés et que ses mécanismes fondamentaux — orchestration, evidence, streaming, sécurité — fonctionnent conformément aux choix de conception. Les limites recensées, principalement liées à l'authentification et à l'industrialisation, constituent des axes d'amélioration prioritaires.
+\end{resultbox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ce chapitre a présenté la démarche de validation de la plateforme : la stratégie et l'environnement de test, les tests unitaires des composants, les tests d'intégration et la validation fonctionnelle, ainsi que les tests de la passerelle de modèles locaux. Les aspects de sécurité, de performance et de qualité ont été examinés, et les résultats ont été synthétisés.
+
+Les tests confirment le bon fonctionnement de la solution et la conformité de ses mécanismes fondamentaux aux choix de conception. Les limites identifiées — principalement l'absence d'authentification, la politique CORS et l'industrialisation des tests — ainsi que les perspectives d'amélioration associées constituent des axes de travail futurs.
+
+Ce chapitre clôt la présentation du projet. La conclusion générale du mémoire synthétise l'ensemble des travaux réalisés, de l'analyse des besoins à la validation de la plateforme, et rappelle les apports de la solution pour le GST-TTA.
